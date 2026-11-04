@@ -59,3 +59,9 @@ jobs:
             PID=$(adb shell pidof com.cubelogistics.placement || true); echo "PID=$PID"; adb logcat -d -v threadtime > /tmp/cube-logcat.txt; if [ -z "$PID" ]; then echo "APP_CRASHED"; grep -E "AndroidRuntime|FATAL EXCEPTION|Process: com.cubelogistics.placement|com.cubelogistics.placement" -A 100 -B 30 /tmp/cube-logcat.txt || true; exit 1; fi
             adb shell dumpsys activity activities | grep -q "com.cubelogistics.placement/.MainActivity" || (echo "MAIN_ACTIVITY_NOT_RESUMED"; tail -n 300 /tmp/cube-logcat.txt; exit 1)
             echo "APP_LAUNCH_OK"
+            adb shell input tap 160 475
+            sleep 3
+            PID2=$(adb shell pidof com.cubelogistics.placement || true); echo "POST_LOGIN_PID=$PID2"; if [ -z "$PID2" ]; then echo "APP_CRASHED_AFTER_LOGIN"; adb logcat -d -v threadtime | grep -E "AndroidRuntime|FATAL EXCEPTION|Process: com.cubelogistics.placement|com.cubelogistics.placement" -A 100 -B 30 || true; exit 1; fi
+            adb shell uiautomator dump /sdcard/cube-window.xml >/dev/null || true
+            adb shell cat /sdcard/cube-window.xml | grep -q "Hello, Naveen" || (echo "DASHBOARD_NOT_VISIBLE"; adb shell cat /sdcard/cube-window.xml || true; exit 1)
+            echo "LOGIN_DASHBOARD_OK"
