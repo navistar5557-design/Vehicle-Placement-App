@@ -16,7 +16,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -45,6 +44,41 @@ fun CubeApp(store: Store) {
     ) {
         var loggedIn by remember { mutableStateOf(false) }
         if (!loggedIn) CubeLoginScreen { loggedIn = true } else CubeMainShell(store)
+    }
+}
+
+@Composable
+private fun CubeBrandLogo(large: Boolean) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                "CUBE",
+                color = if (large) CubeBlue else Color.White,
+                fontWeight = FontWeight.Black,
+                fontSize = if (large) 44.sp else 24.sp,
+                letterSpacing = (-1).sp
+            )
+            Text(
+                "LOGISTICS",
+                color = CubeOrange,
+                fontWeight = FontWeight.Black,
+                fontSize = if (large) 19.sp else 9.sp
+            )
+        }
+        Spacer(Modifier.width(if (large) 8.dp else 4.dp))
+        Box(
+            modifier = Modifier
+                .size(if (large) 54.dp else 28.dp)
+                .clip(RoundedCornerShape(50))
+                .background(if (large) CubeBlue else Color.White),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(if (large) 28.dp else 15.dp)
+                    .background(CubeOrange, RoundedCornerShape(2.dp))
+            )
+        }
     }
 }
 
@@ -96,11 +130,7 @@ private fun CubeLoginScreen(onLogin: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.height(115.dp))
-            androidx.compose.foundation.Image(
-                painter = painterResource(R.drawable.cube_logo),
-                contentDescription = "CUBE Logistics",
-                modifier = Modifier.height(100.dp).fillMaxWidth()
-            )
+            CubeBrandLogo(large = true)
             Text("Transport Operations", color = CubeText, fontWeight = FontWeight.Bold, fontSize = 20.sp)
             Spacer(Modifier.height(28.dp))
 
@@ -156,11 +186,7 @@ private fun CubeMainShell(store: Store) {
             TopAppBar(
                 title = {
                     if (page == "Home") {
-                        androidx.compose.foundation.Image(
-                            painter = painterResource(R.drawable.cube_logo),
-                            contentDescription = null,
-                            modifier = Modifier.height(36.dp).width(112.dp)
-                        )
+                        CubeBrandLogo(large = false)
                     } else {
                         Text(page, fontWeight = FontWeight.Bold)
                     }
