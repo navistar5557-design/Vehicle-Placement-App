@@ -56,17 +56,6 @@ jobs:
             adb logcat -c
             adb shell am start -W -n com.cubelogistics.placement/.MainActivity
             sleep 5
-            echo "PID:"
-            PID=$(adb shell pidof com.cubelogistics.placement || true)
-            echo "$PID"
-            if [ -z "$PID" ]; then
-              echo "APP_CRASHED"
-              adb logcat -d -v threadtime | grep -E "AndroidRuntime|FATAL EXCEPTION|com.cubelogistics.placement|Process: com.cubelogistics.placement" -A 80 -B 20 || true
-              exit 1
-            fi
-            adb shell dumpsys activity activities | grep -q "com.cubelogistics.placement/.MainActivity" || {
-              echo "MAIN_ACTIVITY_NOT_RESUMED"
-              adb logcat -d -v color | tail -n 300
-              exit 1
-            }
+            PID=$(adb shell pidof com.cubelogistics.placement || true); echo "PID=$PID"; adb logcat -d -v threadtime > /tmp/cube-logcat.txt; if [ -z "$PID" ]; then echo "APP_CRASHED"; grep -E "AndroidRuntime|FATAL EXCEPTION|Process: com.cubelogistics.placement|com.cubelogistics.placement" -A 100 -B 30 /tmp/cube-logcat.txt || true; exit 1; fi
+            adb shell dumpsys activity activities | grep -q "com.cubelogistics.placement/.MainActivity" || (echo "MAIN_ACTIVITY_NOT_RESUMED"; tail -n 300 /tmp/cube-logcat.txt; exit 1)
             echo "APP_LAUNCH_OK"
