@@ -238,7 +238,7 @@ fun StyledTripListScreen(store: Store) {
                             Text(t.vehicle, color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 16.sp)
                             Text(t.from + "  →  " + t.to, fontWeight = FontWeight.SemiBold)
                         }
-                        Text(day(t.createdAt), fontSize = 11.sp, color = Color.Gray)
+                        Text(styledDay(t.createdAt), fontSize = 11.sp, color = Color.Gray)
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -321,7 +321,7 @@ fun StyledVehicleReport(store: Store) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             OutlinedButton(
                 onClick = {
-                    val csv = reportCsv(shown)
+                    val csv = styledReportCsv(shown)
                     val intent = Intent(Intent.ACTION_SEND).apply {
                         type = "text/csv"
                         putExtra(Intent.EXTRA_SUBJECT, "CUBE Vehicle-wise Report")
@@ -337,7 +337,7 @@ fun StyledVehicleReport(store: Store) {
             }
             OutlinedButton(
                 onClick = {
-                    val csv = reportCsv(shown)
+                    val csv = styledReportCsv(shown)
                     val intent = Intent(Intent.ACTION_SEND).apply {
                         type = "text/csv"
                         putExtra(Intent.EXTRA_SUBJECT, "CUBE Vehicle-wise Report")
@@ -663,22 +663,22 @@ private fun EmptyCard(title: String, subtitle: String) {
     }
 }
 
-private fun day(value: Long): String = SimpleDateFormat("dd-MM-yyyy", Locale.US).format(Date(value))
+private fun styledDay(value: Long): String = SimpleDateFormat("dd-MM-yyyy", Locale.US).format(Date(value))
 
-private fun csvCell(value: String): String {
+private fun styledCsvCell(value: String): String {
     val quote = 34.toChar()
     val escaped = value.replace(quote.toString(), quote.toString() + quote)
     return if (escaped.contains(',') || escaped.contains(quote) || escaped.contains('\n')) quote + escaped + quote else escaped
 }
 
-private fun reportCsv(trips: List<Trip>): String = buildString {
+private fun styledReportCsv(trips: List<Trip>): String = buildString {
     appendLine("Date,Vendor,Vehicle,Current Location,From,To,Booking Type,Freight,Net Freight,Advance,Balance,Weight Ton,Trip KM,Fuel Expense,Total Expenses,Margin")
     trips.forEach { t ->
         val row = listOf(
-            day(t.createdAt), t.vendor, t.vehicle, t.currentLocation, t.from, t.to, t.bookingType,
+            styledDay(t.createdAt), t.vendor, t.vehicle, t.currentLocation, t.from, t.to, t.bookingType,
             t.freight.toString(), t.netFreight.toString(), t.advance.toString(), t.balance.toString(),
             t.weightTon.toString(), t.totalKm.toString(), t.fuelExpense.toString(), t.totalExpenses.toString(), t.margin.toString()
         )
-        appendLine(row.joinToString(",") { csvCell(it) })
+        appendLine(row.joinToString(",") { styledCsvCell(it) })
     }
 }
