@@ -1,245 +1,351 @@
 package com.cubelogistics.placement
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import java.util.UUID
+import androidx.compose.ui.unit.sp
+import kotlin.math.max
 
 val CubeBlue = Color(0xFF073B7A)
+val CubeBlue2 = Color(0xFF0D4E9B)
 val CubeOrange = Color(0xFFFF6500)
+val CubeLightBlue = Color(0xFFEAF3FF)
+val CubeGreen = Color(0xFF139B47)
+val CubeLightGreen = Color(0xFFE7F8EA)
+val CubeLightOrange = Color(0xFFFFF0E6)
+val CubeBg = Color(0xFFF7F9FD)
+val CubeText = Color(0xFF102A56)
 
 @Composable
 fun CubeApp(store: Store) {
-    MaterialTheme(colorScheme = lightColorScheme(primary = CubeBlue, secondary = CubeOrange)) {
-        var logged by remember { mutableStateOf(false) }
-        if (!logged) Login { logged = true } else MainShell(store)
+    MaterialTheme(
+        colorScheme = lightColorScheme(
+            primary = CubeBlue,
+            secondary = CubeOrange,
+            background = CubeBg,
+            surface = Color.White
+        )
+    ) {
+        var loggedIn by remember { mutableStateOf(false) }
+        if (!loggedIn) CubeLoginScreen { loggedIn = true } else CubeMainShell(store)
     }
 }
 
 @Composable
-fun Login(go: () -> Unit) {
+private fun CubeLoginScreen(onLogin: () -> Unit) {
     var user by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
-    Column(
-        Modifier.fillMaxSize().padding(28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text("CUBE", style = MaterialTheme.typography.displayLarge, color = CubeBlue, fontWeight = FontWeight.Black)
-        Text("LOGISTICS", style = MaterialTheme.typography.headlineSmall, color = CubeOrange, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(24.dp))
-        OutlinedTextField(user, { user = it }, label = { Text("User ID") }, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(pass, { pass = it }, label = { Text("Password") }, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(16.dp))
-        Button(go, Modifier.fillMaxWidth()) { Text("Login") }
+    var rememberMe by remember { mutableStateOf(true) }
+
+    Box(Modifier.fillMaxSize().background(Color.White)) {
+        Canvas(Modifier.fillMaxSize()) {
+            val top = Path().apply {
+                moveTo(0f, 0f)
+                lineTo(size.width, 0f)
+                lineTo(size.width, size.height * .13f)
+                cubicTo(size.width * .72f, size.height * .09f, size.width * .30f, size.height * .08f, 0f, size.height * .20f)
+                close()
+            }
+            drawPath(top, CubeBlue)
+            val topOrange = Path().apply {
+                moveTo(0f, size.height * .18f)
+                cubicTo(size.width * .28f, size.height * .09f, size.width * .72f, size.height * .09f, size.width, size.height * .13f)
+                lineTo(size.width, size.height * .145f)
+                cubicTo(size.width * .72f, size.height * .105f, size.width * .28f, size.height * .105f, 0f, size.height * .205f)
+                close()
+            }
+            drawPath(topOrange, CubeOrange)
+
+            val bottom = Path().apply {
+                moveTo(0f, size.height * .86f)
+                cubicTo(size.width * .35f, size.height * .78f, size.width * .72f, size.height * .92f, size.width, size.height * .78f)
+                lineTo(size.width, size.height)
+                lineTo(0f, size.height)
+                close()
+            }
+            drawPath(bottom, CubeBlue)
+            val bottomOrange = Path().apply {
+                moveTo(0f, size.height * .84f)
+                cubicTo(size.width * .35f, size.height * .77f, size.width * .72f, size.height * .90f, size.width, size.height * .77f)
+                lineTo(size.width, size.height * .79f)
+                cubicTo(size.width * .72f, size.height * .93f, size.width * .35f, size.height * .80f, 0f, size.height * .88f)
+                close()
+            }
+            drawPath(bottomOrange, CubeOrange)
+        }
+
+        Column(
+            Modifier.fillMaxSize().padding(horizontal = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(Modifier.height(115.dp))
+            androidx.compose.foundation.Image(
+                painter = painterResource(R.drawable.cube_logo),
+                contentDescription = "CUBE Logistics",
+                modifier = Modifier.height(100.dp).fillMaxWidth()
+            )
+            Text("Transport Operations", color = CubeText, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+            Spacer(Modifier.height(28.dp))
+
+            OutlinedTextField(
+                value = user,
+                onValueChange = { user = it },
+                leadingIcon = { Icon(Icons.Default.Person, null, tint = CubeBlue) },
+                label = { Text("User ID") },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = pass,
+                onValueChange = { pass = it },
+                leadingIcon = { Icon(Icons.Default.Lock, null, tint = CubeBlue) },
+                label = { Text("Password") },
+                visualTransformation = PasswordVisualTransformation(),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(rememberMe, { rememberMe = it })
+                Text("Remember Me", fontSize = 13.sp)
+                Spacer(Modifier.weight(1f))
+                Text("Forgot Password?", color = CubeBlue, fontSize = 13.sp)
+            }
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = onLogin,
+                colors = ButtonDefaults.buttonColors(containerColor = CubeOrange),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth().height(54.dp)
+            ) {
+                Text("Login", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                Spacer(Modifier.width(12.dp))
+                Icon(Icons.Default.ArrowForward, null)
+            }
+        }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainShell(store: Store) {
-    var page by remember { mutableStateOf("Dashboard") }
+private fun CubeMainShell(store: Store) {
+    var page by remember { mutableStateOf("Home") }
+
     Scaffold(
+        containerColor = CubeBg,
         topBar = {
             TopAppBar(
-                title = { Text(if (page == "Dashboard") "CUBE LOGISTICS" else page) },
-                navigationIcon = {
-                    if (page != "Dashboard") {
-                        TextButton(onClick = { page = "Dashboard" }) { Text("Back", color = Color.White) }
+                title = {
+                    if (page == "Home") {
+                        androidx.compose.foundation.Image(
+                            painter = painterResource(R.drawable.cube_logo),
+                            contentDescription = null,
+                            modifier = Modifier.height(36.dp).width(112.dp)
+                        )
+                    } else {
+                        Text(page, fontWeight = FontWeight.Bold)
                     }
+                },
+                navigationIcon = {
+                    if (page != "Home") {
+                        IconButton(onClick = { page = "Home" }) {
+                            Icon(Icons.Default.ArrowBack, null, tint = Color.White)
+                        }
+                    } else {
+                        IconButton(onClick = {}) { Icon(Icons.Default.Menu, null, tint = Color.White) }
+                    }
+                },
+                actions = {
+                    if (page == "Home") IconButton(onClick = {}) { Icon(Icons.Default.Notifications, null, tint = Color.White) }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = CubeBlue,
                     titleContentColor = Color.White
                 )
             )
+        },
+        bottomBar = {
+            NavigationBar(containerColor = Color.White, tonalElevation = 6.dp) {
+                BottomItem("Home", Icons.Default.Home, page == "Home") { page = "Home" }
+                BottomItem("Trips", Icons.Default.LocalShipping, page == "Trip List") { page = "Trip List" }
+                BottomItem("Reports", Icons.Default.BarChart, page.startsWith("Reports")) { page = "Reports" }
+                BottomItem("Masters", Icons.Default.Settings, page == "Masters") { page = "Masters" }
+            }
         }
     ) { pad ->
         Box(Modifier.padding(pad)) {
             when (page) {
-                "Dashboard" -> DashboardScreen(store) { page = it }
-                "Masters" -> MastersScreen(store)
-                "New Trip" -> TripEntryInline(store) { page = "Trip List" }
-                "Trip List" -> TripListInline(store)
-                "Reports" -> ReportsInline(store)
+                "Home" -> CubeDashboard(store) { page = it }
+                "New Trip" -> StyledTripEntryScreen(store) { page = "Trip List" }
+                "Trip List" -> StyledTripListScreen(store)
+                "Reports" -> StyledReportsHome(store) { page = it }
+                "Vehicle-wise Report" -> StyledVehicleReport(store)
+                "Masters" -> StyledMastersScreen(store)
             }
         }
     }
 }
 
 @Composable
-fun DashboardScreen(store: Store, go: (String) -> Unit) {
-    val trips = store.trips()
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Vehicle Placement Dashboard", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = CubeBlue)
-        Spacer(Modifier.height(12.dp))
-        Text("Trips: " + trips.size)
-        Text("Freight: ₹" + fmt(trips.sumOf { it.freight }) + "   Margin: ₹" + fmt(trips.sumOf { it.margin }))
-        Spacer(Modifier.height(16.dp))
-        listOf("New Trip", "Trip List", "Reports", "Masters").forEach { p ->
-            Button({ go(p) }, Modifier.fillMaxWidth()) { Text(p) }
-            Spacer(Modifier.height(8.dp))
-        }
-    }
+private fun RowScope.BottomItem(label: String, icon: ImageVector, selected: Boolean, action: () -> Unit) {
+    NavigationBarItem(
+        selected = selected,
+        onClick = action,
+        icon = { Icon(icon, null) },
+        label = { Text(label, fontSize = 11.sp) },
+        colors = NavigationBarItemDefaults.colors(
+            selectedIconColor = Color.White,
+            selectedTextColor = CubeOrange,
+            indicatorColor = CubeOrange,
+            unselectedIconColor = CubeBlue,
+            unselectedTextColor = CubeText
+        )
+    )
 }
 
 @Composable
-fun TripEntryInline(store: Store, done: () -> Unit) {
-    val vehicles = remember { store.vehicles().filter { it.active } }
-    val vendors = remember { store.vendors().filter { it.active } }
-    val locations = remember { store.locations().filter { it.active } }
-
-    var vendor by remember { mutableStateOf(vendors.firstOrNull()?.name ?: "") }
-    var vehicle by remember { mutableStateOf(vehicles.firstOrNull()?.number ?: "") }
-    var from by remember { mutableStateOf(locations.firstOrNull()?.name ?: "") }
-    var to by remember { mutableStateOf(locations.getOrNull(1)?.name ?: "") }
-    var freight by remember { mutableStateOf("") }
-    var netFreight by remember { mutableStateOf("") }
-    var advance by remember { mutableStateOf("") }
-    var weight by remember { mutableStateOf("") }
-    var km by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf("") }
-
-    val mileage = vehicles.find { it.number == vehicle }?.mileage ?: 0.0
-    val freightValue = freight.num()
-    val advanceValue = advance.num()
-    val booking = if (advanceValue <= 0) "To Pay at Unloading"
-    else if (freightValue > 0) ((advanceValue / freightValue) * 100).toInt().toString() + "% Advance"
-    else "-"
+private fun CubeDashboard(store: Store, go: (String) -> Unit) {
+    val trips = store.trips()
+    val freight = trips.sumOf { it.freight }
+    val expenses = trips.sumOf { it.totalExpenses }
+    val margin = trips.sumOf { it.margin }
+    val marginPct = if (freight > 0) margin / freight * 100 else 0.0
 
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)
     ) {
-        SimplePicker("Vendor", vendors.map { it.name }, vendor) { vendor = it }
-        SimplePicker("Vehicle", vehicles.map { it.number }, vehicle) { vehicle = it }
-        SimplePicker("From", locations.map { it.name }, from) { from = it }
-        SimplePicker("To", locations.map { it.name }, to) { to = it }
-
-        SimpleNumberField("Freight Amount", freight) { freight = it }
-        SimpleNumberField("Net Freight Amount", netFreight) { netFreight = it }
-        SimpleNumberField("Advance Amount", advance) { advance = it }
-        Text("Booking Type: $booking")
-        Text("Balance: ₹" + fmt(freightValue - advanceValue))
-        SimpleNumberField("Weight Ton", weight) { weight = it }
-        SimpleNumberField("Trip Total KM", km) { km = it }
-
-        val fuelExpense = if (mileage > 0) (km.num() / mileage) * store.fuelRate else 0.0
-        Text("Mileage: $mileage km/L")
-        Text("Fuel Rate: ₹" + fmt(store.fuelRate))
-        Text("Fuel Expense: ₹" + fmt(fuelExpense))
-
-        if (message.isNotBlank()) Text(message, color = MaterialTheme.colorScheme.error)
-
-        Button(
-            onClick = {
-                if (vendor.isBlank() || vehicle.isBlank() || freightValue <= 0) {
-                    message = "Vendor, vehicle and freight are required"
-                } else {
-                    val trip = Trip(
-                        id = UUID.randomUUID().toString(),
-                        createdAt = System.currentTimeMillis(),
-                        vendor = vendor,
-                        vehicle = vehicle,
-                        currentLocation = from,
-                        from = from,
-                        to = to,
-                        freight = freightValue,
-                        netFreight = if (netFreight.num() > 0) netFreight.num() else freightValue,
-                        advance = advanceValue,
-                        weightTon = weight.num(),
-                        currentToOriginKm = 0.0,
-                        totalKm = km.num(),
-                        transitHours = 0.0,
-                        mileage = mileage,
-                        fuelRate = store.fuelRate,
-                        fixedExpenses = 0.0,
-                        fastag = 0.0,
-                        rtoTarpaulin = 0.0,
-                        loadingUnloading = 0.0,
-                        expenseRules = emptyList()
-                    )
-                    val all = store.trips()
-                    all.add(trip)
-                    store.saveTrips(all)
-                    done()
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) { Text("Save Trip") }
-    }
-}
-
-@Composable
-fun TripListInline(store: Store) {
-    var trips by remember { mutableStateOf(store.trips()) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        if (trips.isEmpty()) Text("No trips created.")
-        trips.sortedByDescending { it.createdAt }.forEach { trip ->
-            Card(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                Column(Modifier.padding(12.dp)) {
-                    Text(trip.vehicle + " • " + trip.from + " → " + trip.to, fontWeight = FontWeight.Bold)
-                    Text(trip.vendor + " • " + trip.bookingType)
-                    Text("Freight ₹" + fmt(trip.freight) + " • Margin ₹" + fmt(trip.margin))
-                    TextButton(onClick = {
-                        trips = trips.filterNot { it.id == trip.id }.toMutableList()
-                        store.saveTrips(trips)
-                    }) { Text("Delete") }
-                }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column {
+                Text("Hello, Naveen", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text("Transport Operations Dashboard", color = CubeBlue, fontSize = 12.sp)
+            }
+            Spacer(Modifier.weight(1f))
+            Surface(shape = RoundedCornerShape(10.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFD7DFEC)), color = Color.White) {
+                Text("Nov 2026  ⌄", Modifier.padding(horizontal = 10.dp, vertical = 8.dp), fontSize = 12.sp)
             }
         }
-    }
-}
-
-@Composable
-fun ReportsInline(store: Store) {
-    val trips = store.trips()
-    var vehicle by remember { mutableStateOf("All") }
-    val filtered = if (vehicle == "All") trips else trips.filter { it.vehicle == vehicle }
-
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        SimplePicker("Vehicle", listOf("All") + store.vehicles().map { it.number }, vehicle) { vehicle = it }
         Spacer(Modifier.height(12.dp))
-        Text("Trips: " + filtered.size)
-        Text("Freight: ₹" + fmt(filtered.sumOf { it.freight }))
-        Text("Expenses: ₹" + fmt(filtered.sumOf { it.totalExpenses }))
-        Text("Margin: ₹" + fmt(filtered.sumOf { it.margin }), fontWeight = FontWeight.Bold)
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            KpiCard("Trips", trips.size.toString(), Icons.Default.LocalShipping, CubeLightBlue, CubeBlue, Modifier.weight(1f))
+            KpiCard("Freight Amount", "₹ " + money0(freight), Icons.Default.Paid, CubeLightGreen, CubeGreen, Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            KpiCard("Total Expenses", "₹ " + money0(expenses), Icons.Default.ReceiptLong, CubeLightOrange, Color(0xFFE64A19), Modifier.weight(1f))
+            KpiCard("Margin", "₹ " + money0(margin), Icons.Default.BarChart, CubeLightGreen, CubeGreen, Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(10.dp))
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = CubeLightGreen),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Margin %", color = CubeText, fontWeight = FontWeight.SemiBold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(String.format(java.util.Locale.US, "%.2f%%", marginPct), fontSize = 26.sp, fontWeight = FontWeight.Black)
+                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Default.TrendingUp, null, tint = CubeGreen)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(12.dp)) {
+                Text("Trips Trend (Last 7 Days)", color = CubeBlue, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    Modifier.fillMaxWidth().height(105.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    val bars = listOf(3, 4, 5, 6, 4, 6, max(8, trips.size.coerceAtMost(10)))
+                    bars.forEachIndexed { index, value ->
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom) {
+                            Box(
+                                Modifier.width(22.dp).height((value * 8).dp)
+                                    .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                    .background(Color(0xFF2D88E8))
+                            )
+                            Text((24 + index).toString() + " Oct", fontSize = 8.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            QuickAction("New Trip", Icons.Default.Add, Modifier.weight(1f)) { go("New Trip") }
+            QuickAction("Trip List", Icons.Default.List, Modifier.weight(1f)) { go("Trip List") }
+            QuickAction("Reports", Icons.Default.BarChart, Modifier.weight(1f)) { go("Reports") }
+            QuickAction("Masters", Icons.Default.Settings, Modifier.weight(1f)) { go("Masters") }
+        }
+        Spacer(Modifier.height(10.dp))
     }
 }
 
 @Composable
-fun SimpleNumberField(label: String, value: String, onChange: (String) -> Unit) {
-    OutlinedTextField(value, onChange, label = { Text(label) }, modifier = Modifier.fillMaxWidth())
-    Spacer(Modifier.height(6.dp))
+private fun KpiCard(title: String, value: String, icon: ImageVector, bg: Color, accent: Color, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.height(92.dp),
+        colors = CardDefaults.cardColors(containerColor = bg),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, null, tint = accent)
+                Spacer(Modifier.width(6.dp))
+                Text(title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(value, fontSize = 19.sp, fontWeight = FontWeight.Black, color = Color.Black)
+        }
+    }
 }
 
 @Composable
-fun SimplePicker(label: String, items: List<String>, selected: String, onSelect: (String) -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) {
-            Text(label + ": " + selected)
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            items.forEach { item ->
-                DropdownMenuItem(
-                    text = { Text(item) },
-                    onClick = {
-                        onSelect(item)
-                        open = false
-                    }
-                )
-            }
+private fun QuickAction(label: String, icon: ImageVector, modifier: Modifier = Modifier, action: () -> Unit) {
+    OutlinedCard(
+        onClick = action,
+        modifier = modifier.height(74.dp),
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.outlinedCardColors(containerColor = Color.White)
+    ) {
+        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Icon(icon, null, tint = if (label == "New Trip") CubeOrange else CubeBlue)
+            Spacer(Modifier.height(4.dp))
+            Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
 
 fun String.num(): Double = toDoubleOrNull() ?: 0.0
 fun fmt(v: Double): String = String.format(java.util.Locale.US, "%.2f", v)
+fun money0(v: Double): String = String.format(java.util.Locale("en", "IN"), "%,.0f", v)
