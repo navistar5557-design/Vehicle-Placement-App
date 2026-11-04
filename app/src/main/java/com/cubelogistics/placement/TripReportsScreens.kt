@@ -93,10 +93,13 @@ fun reportCsv(trips: List<Trip>): String = buildString {
 }
 
 fun csvCell(value: String): String {
-    val escaped = value.replace(""", """")
-    return if (escaped.contains(',') || escaped.contains('"') || escaped.contains('\n')) {
-        """ + escaped + """
-    } else escaped
+    val quote = 34.toChar()
+    val escaped = value.replace(quote.toString(), quote.toString() + quote)
+    return if (escaped.contains(',') || escaped.contains(quote) || escaped.contains('\n')) {
+        quote + escaped + quote
+    } else {
+        escaped
+    }
 }
 
 fun day(value: Long): String =
