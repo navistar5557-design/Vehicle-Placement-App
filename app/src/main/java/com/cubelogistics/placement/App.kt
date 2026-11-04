@@ -83,6 +83,69 @@ private fun CubeBrandLogo(large: Boolean) {
 }
 
 @Composable
+private fun CubeBrandLogo(modifier: Modifier = Modifier, compact: Boolean = false) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                "CUBE",
+                color = if (compact) Color.White else CubeBlue,
+                fontWeight = FontWeight.Black,
+                fontSize = if (compact) 20.sp else 48.sp,
+                letterSpacing = (-1).sp
+            )
+            Text(
+                "LOGISTICS",
+                color = CubeOrange,
+                fontWeight = FontWeight.Black,
+                fontSize = if (compact) 8.sp else 20.sp,
+                letterSpacing = 1.sp
+            )
+        }
+        Spacer(Modifier.width(if (compact) 5.dp else 10.dp))
+        Canvas(Modifier.size(if (compact) 28.dp else 62.dp)) {
+            val cx = size.width / 2f
+            val top = size.height * .05f
+            val mid = size.height * .50f
+            val bottom = size.height * .96f
+            val half = size.width * .43f
+            val pin = Path().apply {
+                moveTo(cx, top)
+                lineTo(cx + half, mid * .78f)
+                lineTo(cx, bottom)
+                lineTo(cx - half, mid * .78f)
+                close()
+            }
+            drawPath(pin, if (compact) Color.White else CubeBlue)
+            val d = size.width * .24f
+            val diamond = Path().apply {
+                moveTo(cx, mid - d)
+                lineTo(cx + d, mid)
+                lineTo(cx, mid + d)
+                lineTo(cx - d, mid)
+                close()
+            }
+            drawPath(diamond, CubeOrange)
+            val inner = size.width * .12f
+            val whiteDiamond = Path().apply {
+                moveTo(cx, mid - inner)
+                lineTo(cx + inner, mid)
+                lineTo(cx, mid + inner)
+                lineTo(cx - inner, mid)
+                close()
+            }
+            drawPath(whiteDiamond, Color.White)
+        }
+    }
+}
+
+@Composable
 private fun CubeLoginScreen(onLogin: () -> Unit) {
     var user by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
