@@ -27,6 +27,7 @@ val CubeBlue=Color(0xFF073B7A); val CubeOrange=Color(0xFFFF6500)
   Button(go,Modifier.fillMaxWidth(),colors=ButtonDefaults.buttonColors(containerColor=CubeOrange)){Text("Login")}
  }
 }
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable fun Dashboard(store:Store){
  var tab by remember{mutableStateOf("Dashboard")}
  Scaffold(topBar={TopAppBar(title={Text("CUBE LOGISTICS",fontWeight=FontWeight.Bold)},colors=TopAppBarDefaults.topAppBarColors(containerColor=CubeBlue,titleContentColor=Color.White))}){
