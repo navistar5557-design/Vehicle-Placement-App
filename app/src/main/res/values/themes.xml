@@ -1,0 +1,1 @@
+<resources><style name="Theme.CubeLogistics" parent="android:style/Theme.Material.Light.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:colorAccent">#FF6500</item><item name="android:navigationBarColor">#073B7A</item><item name="android:statusBarColor">#073B7A</item></style></resources>
