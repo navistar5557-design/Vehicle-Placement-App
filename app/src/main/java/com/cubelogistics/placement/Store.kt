@@ -6,7 +6,11 @@ import org.json.JSONObject
 
 class Store(context:Context){
  private val p=context.getSharedPreferences("cube_store",Context.MODE_PRIVATE)
- var fuelRate:Double get()=p.getFloat("fuel_rate",100f).toDouble() set(value){p.edit().putFloat("fuel_rate",value.toFloat()).apply()}
+ var fuelRate: Double
+  get() = p.getFloat("fuel_rate", 100f).toDouble()
+  set(value) {
+   p.edit().putFloat("fuel_rate", value.toFloat()).apply()
+  }
 
  fun vehicles():MutableList<Vehicle>{
   val a=JSONArray(p.getString("vehicles","[]"))
