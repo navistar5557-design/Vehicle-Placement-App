@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
@@ -151,7 +152,7 @@ fun StyledTripEntryScreen(store: Store, done: () -> Unit) {
 
         if (message.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
-            Text(message, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.SemiBold)
+            Text(message, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold, fontFamily = FontFamily.SansSerif)
         }
 
         Spacer(Modifier.height(12.dp))
@@ -235,8 +236,8 @@ fun StyledTripListScreen(store: Store) {
                         }
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(t.vehicle, color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                            Text(t.from + "  →  " + t.to, fontWeight = FontWeight.SemiBold)
+                            Text(t.vehicle, color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 15.sp, fontFamily = FontFamily.SansSerif)
+                            Text(t.from + "  →  " + t.to, fontWeight = FontWeight.Bold, fontFamily = FontFamily.SansSerif)
                         }
                         Text(styledDay(t.createdAt), fontSize = 11.sp, color = Color.Gray)
                     }
@@ -493,7 +494,7 @@ private fun StyledNameMaster(label: String, initial: List<String>, save: (List<S
             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(if (label == "Vendor") Icons.Default.Groups else Icons.Default.LocationOn, null, tint = CubeBlue)
                 Spacer(Modifier.width(10.dp))
-                Text(it, fontWeight = FontWeight.SemiBold)
+                Text(it, fontWeight = FontWeight.Bold, fontFamily = FontFamily.SansSerif)
             }
         }
     }
@@ -529,7 +530,7 @@ private fun SectionHeader(icon: ImageVector, title: String) {
         Row(Modifier.padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, tint = CubeOrange)
             Spacer(Modifier.width(8.dp))
-            Text(title, color = CubeBlue, fontWeight = FontWeight.Black)
+            Text(title, color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 15.sp)
         }
     }
 }
@@ -557,7 +558,7 @@ private fun StyledPicker(label: String, items: List<String>, selected: String, o
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
         ) {
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
-                Text(label, fontSize = 10.sp, color = Color.Gray)
+                Text(label, fontSize = 10.sp, color = Color(0xFF6A6A6A), fontWeight = FontWeight.SemiBold
                 Text(selected.ifBlank { "Select" }, color = Color.Black, fontWeight = FontWeight.SemiBold, maxLines = 1)
             }
             Icon(Icons.Default.KeyboardArrowDown, null, tint = CubeBlue)
@@ -602,7 +603,7 @@ private fun SummaryCard(title: String, value: String, color: Color, modifier: Mo
     Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = color), shape = RoundedCornerShape(10.dp)) {
         Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(title, fontSize = 11.sp, color = CubeText)
-            Text(value, fontSize = 17.sp, fontWeight = FontWeight.Black)
+            Text(value, fontSize = 17.sp, fontWeight = FontWeight.Black, color = Color(0xFF111111))
         }
     }
 }
@@ -621,8 +622,8 @@ private fun ReportOption(icon: ImageVector, title: String, subtitle: String, act
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                Text(subtitle, fontSize = 12.sp, color = Color.DarkGray)
+                Text(title, color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 15.sp, fontFamily = FontFamily.SansSerif)
+                Text(subtitle, fontSize = 11.sp, color = Color(0xFF333333), fontFamily = FontFamily.SansSerif
             }
             Icon(Icons.Default.ChevronRight, null, tint = CubeBlue)
         }
@@ -636,8 +637,8 @@ private fun StyledTextBox(label: String, value: String, icon: ImageVector) {
             Icon(icon, null, tint = CubeBlue)
             Spacer(Modifier.width(10.dp))
             Column {
-                Text(label, fontSize = 10.sp, color = Color.Gray)
-                Text(value, fontWeight = FontWeight.SemiBold)
+                Text(label, fontSize = 10.sp, color = Color(0xFF6A6A6A), fontWeight = FontWeight.SemiBold
+                Text(value, fontWeight = FontWeight.Bold, fontFamily = FontFamily.SansSerif)
             }
         }
     }
@@ -646,8 +647,8 @@ private fun StyledTextBox(label: String, value: String, icon: ImageVector) {
 @Composable
 private fun SmallMetric(title: String, value: String) {
     Column {
-        Text(title, fontSize = 10.sp, color = Color.Gray)
-        Text(value, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text(title, fontSize = 10.sp, color = Color(0xFF6A6A6A), fontWeight = FontWeight.SemiBold
+        Text(value, fontSize = 12.sp, fontWeight = FontWeight.Black, color = Color(0xFF111111))
     }
 }
 
