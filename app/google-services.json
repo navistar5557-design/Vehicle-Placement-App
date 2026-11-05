@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "771656307864",
+    "project_id": "cube-vehicle-placement",
+    "storage_bucket": "cube-vehicle-placement.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:771656307864:android:ba9cbac75e6145610ceced",
+        "android_client_info": {
+          "package_name": "com.cubelogistics.placement"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0AlvGWpiLa9D1aVbPEMuPcnI1M-DmCR4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
