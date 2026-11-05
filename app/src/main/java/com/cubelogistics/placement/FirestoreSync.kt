@@ -1,0 +1,204 @@
+package com.cubelogistics.placement
+
+import android.content.Context
+import android.util.Base64
+import com.google.firebase.FirebaseApp
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
+
+class FirestoreSync(private val context: Context, private val store: Store) {
+    private val app: FirebaseApp? by lazy {
+        FirebaseApp.getApps(context).firstOrNull() ?: FirebaseApp.initializeApp(context)
+    }
+
+    private val db: FirebaseFirestore?
+        get() = app?.let { FirebaseFirestore.getInstance(it) }
+
+    fun isConfigured(): Boolean = db != null
+
+    fun uploadLocalSnapshot(onComplete: (Result<Unit>) -> Unit = {}) {
+        val firestore = db
+        if (firestore == null) {
+            onComplete(Result.failure(IllegalStateException("Firebase is not configured yet")))
+            return
+        }
+
+        val batch = firestore.batch()
+
+        store.vehicles().forEach { vehicle ->
+            val ref = firestore.collection("vehicles").document(idOf(vehicle.number))
+            batch.set(
+                ref,
+                mapOf(
+                    "number" to vehicle.number,
+                    "mileage" to vehicle.mileage,
+                    "active" to vehicle.active,
+                    "updatedAt" to System.currentTimeMillis()
+                ),
+                SetOptions.merge()
+            )
+        }
+
+        store.vendors().forEach { vendor ->
+            val ref = firestore.collection("vendors").document(idOf(vendor.name))
+            batch.set(
+                ref,
+                mapOf(
+                    "name" to vendor.name,
+                    "active" to vendor.active,
+                    "updatedAt" to System.currentTimeMillis()
+                ),
+                SetOptions.merge()
+            )
+        }
+
+        store.locations().forEach { location ->
+            val ref = firestore.collection("locations").document(idOf(location.name))
+            batch.set(
+                ref,
+                mapOf(
+                    "name" to location.name,
+                    "active" to location.active,
+                    "updatedAt" to System.currentTimeMillis()
+                ),
+                SetOptions.merge()
+            )
+        }
+
+        store.trips().forEach { trip ->
+            val ref = firestore.collection("trips").document(trip.id)
+            batch.set(ref, trip.toFirestoreMap(), SetOptions.merge())
+        }
+
+        batch.set(
+            firestore.collection("settings").document("fuelRate"),
+            mapOf(
+                "value" to store.fuelRate,
+                "updatedAt" to System.currentTimeMillis()
+            ),
+            SetOptions.merge()
+        )
+
+        batch.commit()
+            .addOnSuccessListener { onComplete(Result.success(Unit)) }
+            .addOnFailureListener { onComplete(Result.failure(it)) }
+    }
+
+    fun downloadCloudSnapshot(onComplete: (Result<Unit>) -> Unit = {}) {
+        val firestore = db
+        if (firestore == null) {
+            onComplete(Result.failure(IllegalStateException("Firebase is not configured yet")))
+            return
+        }
+
+        firestore.collection("vehicles").get()
+            .addOnSuccessListener { vehicleSnap ->
+                val vehicles = vehicleSnap.documents.mapNotNull { doc ->
+                    val number = doc.getString("number") ?: return@mapNotNull null
+                    val mileage = doc.getDouble("mileage") ?: return@mapNotNull null
+                    Vehicle(number, mileage, doc.getBoolean("active") ?: true)
+                }
+                if (vehicles.isNotEmpty()) store.saveVehicles(vehicles)
+
+                firestore.collection("vendors").get()
+                    .addOnSuccessListener { vendorSnap ->
+                        val vendors = vendorSnap.documents.mapNotNull { doc ->
+                            doc.getString("name")?.let { Vendor(it, doc.getBoolean("active") ?: true) }
+                        }
+                        if (vendors.isNotEmpty()) store.saveVendors(vendors)
+
+                        firestore.collection("locations").get()
+                            .addOnSuccessListener { locationSnap ->
+                                val locations = locationSnap.documents.mapNotNull { doc ->
+                                    doc.getString("name")?.let { Location(it, doc.getBoolean("active") ?: true) }
+                                }
+                                if (locations.isNotEmpty()) store.saveLocations(locations)
+
+                                firestore.collection("trips").get()
+                                    .addOnSuccessListener { tripSnap ->
+                                        val trips = tripSnap.documents.mapNotNull { it.toTripOrNull() }
+                                        if (trips.isNotEmpty()) store.saveTrips(trips)
+
+                                        firestore.collection("settings").document("fuelRate").get()
+                                            .addOnSuccessListener { fuelDoc ->
+                                                fuelDoc.getDouble("value")?.let { store.fuelRate = it }
+                                                onComplete(Result.success(Unit))
+                                            }
+                                            .addOnFailureListener { onComplete(Result.failure(it)) }
+                                    }
+                                    .addOnFailureListener { onComplete(Result.failure(it)) }
+                            }
+                            .addOnFailureListener { onComplete(Result.failure(it)) }
+                    }
+                    .addOnFailureListener { onComplete(Result.failure(it)) }
+            }
+            .addOnFailureListener { onComplete(Result.failure(it)) }
+    }
+
+    private fun idOf(value: String): String =
+        Base64.encodeToString(value.toByteArray(), Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+}
+
+private fun Trip.toFirestoreMap(): Map<String, Any> = mapOf(
+    "id" to id,
+    "createdAt" to createdAt,
+    "vendor" to vendor,
+    "vehicle" to vehicle,
+    "currentLocation" to currentLocation,
+    "from" to from,
+    "to" to to,
+    "freight" to freight,
+    "netFreight" to netFreight,
+    "advance" to advance,
+    "weightTon" to weightTon,
+    "currentToOriginKm" to currentToOriginKm,
+    "totalKm" to totalKm,
+    "transitHours" to transitHours,
+    "mileage" to mileage,
+    "fuelRate" to fuelRate,
+    "fixedExpenses" to fixedExpenses,
+    "fastag" to fastag,
+    "rtoTarpaulin" to rtoTarpaulin,
+    "loadingUnloading" to loadingUnloading,
+    "expenseRules" to expenseRules.map { mapOf("name" to it.name, "percent" to it.percent) },
+    "updatedAt" to System.currentTimeMillis()
+)
+
+private fun com.google.firebase.firestore.DocumentSnapshot.toTripOrNull(): Trip? {
+    val rules = (get("expenseRules") as? List<*>)
+        ?.mapNotNull { row ->
+            val map = row as? Map<*, *> ?: return@mapNotNull null
+            val name = map["name"] as? String ?: return@mapNotNull null
+            val percent = (map["percent"] as? Number)?.toDouble() ?: return@mapNotNull null
+            ExpenseRule(name, percent)
+        }
+        ?: emptyList()
+
+    return try {
+        Trip(
+            id = getString("id") ?: id,
+            createdAt = getLong("createdAt") ?: 0L,
+            vendor = getString("vendor") ?: "",
+            vehicle = getString("vehicle") ?: "",
+            currentLocation = getString("currentLocation") ?: "",
+            from = getString("from") ?: "",
+            to = getString("to") ?: "",
+            freight = getDouble("freight") ?: 0.0,
+            netFreight = getDouble("netFreight") ?: getDouble("freight") ?: 0.0,
+            advance = getDouble("advance") ?: 0.0,
+            weightTon = getDouble("weightTon") ?: 0.0,
+            currentToOriginKm = getDouble("currentToOriginKm") ?: 0.0,
+            totalKm = getDouble("totalKm") ?: 0.0,
+            transitHours = getDouble("transitHours") ?: 0.0,
+            mileage = getDouble("mileage") ?: 0.0,
+            fuelRate = getDouble("fuelRate") ?: 0.0,
+            fixedExpenses = getDouble("fixedExpenses") ?: 0.0,
+            fastag = getDouble("fastag") ?: 0.0,
+            rtoTarpaulin = getDouble("rtoTarpaulin") ?: 0.0,
+            loadingUnloading = getDouble("loadingUnloading") ?: 0.0,
+            expenseRules = rules
+        )
+    } catch (_: Exception) {
+        null
+    }
+}
