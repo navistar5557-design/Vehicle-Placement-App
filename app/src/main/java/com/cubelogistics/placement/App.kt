@@ -18,7 +18,9 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.max
@@ -33,9 +35,22 @@ val CubeLightOrange = Color(0xFFFFF0E6)
 val CubeBg = Color(0xFFF7F9FD)
 val CubeText = Color(0xFF102A56)
 
+val CubeTypography = Typography(
+    displayLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Black, color = CubeText),
+    headlineLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Black, color = CubeText),
+    headlineMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold, color = CubeText),
+    titleLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold, color = CubeText),
+    titleMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold, color = CubeText),
+    bodyLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Medium, color = Color(0xFF111111)),
+    bodyMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Medium, color = Color(0xFF111111)),
+    labelLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold),
+    labelMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.SemiBold)
+)
+
 @Composable
 fun CubeApp(store: Store) {
     MaterialTheme(
+        typography = CubeTypography,
         colorScheme = lightColorScheme(
             primary = CubeBlue,
             secondary = CubeOrange,
@@ -50,35 +65,64 @@ fun CubeApp(store: Store) {
 
 @Composable
 private fun CubeBrandLogo(large: Boolean) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(horizontalAlignment = Alignment.End) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Column(horizontalAlignment = Alignment.Start) {
             Text(
                 "CUBE",
-                color = if (large) CubeBlue else Color.White,
+                color = if (large) Color(0xFF183C86) else Color.White,
                 fontWeight = FontWeight.Black,
-                fontSize = if (large) 44.sp else 24.sp,
-                letterSpacing = (-1).sp
+                fontStyle = FontStyle.Italic,
+                fontSize = if (large) 44.sp else 22.sp,
+                letterSpacing = if (large) (-2.5).sp else (-1.3).sp,
+                lineHeight = if (large) 40.sp else 20.sp
             )
             Text(
                 "LOGISTICS",
                 color = CubeOrange,
                 fontWeight = FontWeight.Black,
-                fontSize = if (large) 19.sp else 9.sp
+                fontStyle = FontStyle.Italic,
+                fontSize = if (large) 17.sp else 8.sp,
+                letterSpacing = if (large) 1.sp else .4.sp,
+                lineHeight = if (large) 16.sp else 8.sp
             )
         }
-        Spacer(Modifier.width(if (large) 8.dp else 4.dp))
-        Box(
-            modifier = Modifier
-                .size(if (large) 54.dp else 28.dp)
-                .clip(RoundedCornerShape(50))
-                .background(if (large) CubeBlue else Color.White),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(if (large) 28.dp else 15.dp)
-                    .background(CubeOrange, RoundedCornerShape(2.dp))
-            )
+        Spacer(Modifier.width(if (large) 6.dp else 4.dp))
+        Canvas(Modifier.size(if (large) 54.dp else 30.dp)) {
+            val cx = size.width / 2f
+            val top = size.height * .03f
+            val mid = size.height * .42f
+            val bottom = size.height * .98f
+            val half = size.width * .42f
+            val pin = Path().apply {
+                moveTo(cx, top)
+                cubicTo(cx + half * .72f, top, cx + half, mid * .58f, cx + half, mid)
+                cubicTo(cx + half, mid * 1.32f, cx + half * .54f, mid * 1.72f, cx, bottom)
+                cubicTo(cx - half * .54f, mid * 1.72f, cx - half, mid * 1.32f, cx - half, mid)
+                cubicTo(cx - half, mid * .58f, cx - half * .72f, top, cx, top)
+                close()
+            }
+            drawPath(pin, if (large) Color(0xFF183C86) else Color.White)
+            val d = size.width * .24f
+            val diamond = Path().apply {
+                moveTo(cx, mid - d)
+                lineTo(cx + d, mid)
+                lineTo(cx, mid + d)
+                lineTo(cx - d, mid)
+                close()
+            }
+            drawPath(diamond, CubeOrange)
+            val inner = size.width * .13f
+            val whiteDiamond = Path().apply {
+                moveTo(cx, mid - inner)
+                lineTo(cx + inner, mid)
+                lineTo(cx, mid + inner)
+                lineTo(cx - inner, mid)
+                close()
+            }
+            drawPath(whiteDiamond, Color.White)
         }
     }
 }
@@ -608,8 +652,8 @@ private fun CubeDashboard(store: Store, go: (String) -> Unit) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column {
-                Text("Hello, Naveen", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                Text("Transport Operations Dashboard", color = CubeBlue, fontSize = 12.sp)
+                Text("Hello, Naveen", fontSize = 19.sp, fontWeight = FontWeight.Black, color = Color(0xFF111111))
+                Text("Transport Operations Dashboard", color = CubeBlue, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
             }
             Spacer(Modifier.weight(1f))
             Surface(shape = RoundedCornerShape(10.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFD7DFEC)), color = Color.White) {
@@ -651,7 +695,7 @@ private fun CubeDashboard(store: Store, go: (String) -> Unit) {
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(Modifier.padding(12.dp)) {
-                Text("Trips Trend (Last 7 Days)", color = CubeBlue, fontWeight = FontWeight.Bold)
+                Text("Trips Trend (Last 7 Days)", color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 14.sp)
                 Spacer(Modifier.height(10.dp))
                 Row(
                     Modifier.fillMaxWidth().height(105.dp),
@@ -695,10 +739,10 @@ private fun KpiCard(title: String, value: String, icon: ImageVector, bg: Color, 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(icon, null, tint = accent)
                 Spacer(Modifier.width(6.dp))
-                Text(title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text(title, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111111))
             }
             Spacer(Modifier.height(8.dp))
-            Text(value, fontSize = 19.sp, fontWeight = FontWeight.Black, color = Color.Black)
+            Text(value, fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.Black)
         }
     }
 }
@@ -714,7 +758,7 @@ private fun QuickAction(label: String, icon: ImageVector, modifier: Modifier = M
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Icon(icon, null, tint = if (label == "New Trip") CubeOrange else CubeBlue)
             Spacer(Modifier.height(4.dp))
-            Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = CubeText)
         }
     }
 }
