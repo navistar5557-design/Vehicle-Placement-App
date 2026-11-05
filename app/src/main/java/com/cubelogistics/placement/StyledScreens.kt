@@ -558,7 +558,7 @@ private fun StyledPicker(label: String, items: List<String>, selected: String, o
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
         ) {
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
-                Text(label, fontSize = 10.sp, color = Color(0xFF6A6A6A), fontWeight = FontWeight.SemiBold
+                Text(label, fontSize = 10.sp, color = Color(0xFF6A6A6A), fontWeight = FontWeight.SemiBold)
                 Text(selected.ifBlank { "Select" }, color = Color.Black, fontWeight = FontWeight.SemiBold, maxLines = 1)
             }
             Icon(Icons.Default.KeyboardArrowDown, null, tint = CubeBlue)
@@ -623,7 +623,7 @@ private fun ReportOption(icon: ImageVector, title: String, subtitle: String, act
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 15.sp, fontFamily = FontFamily.SansSerif)
-                Text(subtitle, fontSize = 11.sp, color = Color(0xFF333333), fontFamily = FontFamily.SansSerif
+                Text(subtitle, fontSize = 11.sp, color = Color(0xFF333333), fontFamily = FontFamily.SansSerif)
             }
             Icon(Icons.Default.ChevronRight, null, tint = CubeBlue)
         }
@@ -637,7 +637,7 @@ private fun StyledTextBox(label: String, value: String, icon: ImageVector) {
             Icon(icon, null, tint = CubeBlue)
             Spacer(Modifier.width(10.dp))
             Column {
-                Text(label, fontSize = 10.sp, color = Color(0xFF6A6A6A), fontWeight = FontWeight.SemiBold
+                Text(label, fontSize = 10.sp, color = Color(0xFF6A6A6A), fontWeight = FontWeight.SemiBold)
                 Text(value, fontWeight = FontWeight.Bold, fontFamily = FontFamily.SansSerif)
             }
         }
@@ -647,7 +647,7 @@ private fun StyledTextBox(label: String, value: String, icon: ImageVector) {
 @Composable
 private fun SmallMetric(title: String, value: String) {
     Column {
-        Text(title, fontSize = 10.sp, color = Color(0xFF6A6A6A), fontWeight = FontWeight.SemiBold
+        Text(title, fontSize = 10.sp, color = Color(0xFF6A6A6A), fontWeight = FontWeight.SemiBold)
         Text(value, fontSize = 12.sp, fontWeight = FontWeight.Black, color = Color(0xFF111111))
     }
 }
