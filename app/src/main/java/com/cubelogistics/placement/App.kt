@@ -31,6 +31,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.max
+import kotlinx.coroutines.launch
 
 val CubeBlue = Color(0xFF073B7A)
 val CubeBlue2 = Color(0xFF0D4E9B)
@@ -578,6 +579,8 @@ private fun CubeLoginScreen(onLogin: () -> Unit) {
 private fun CubeMainShell(store: Store) {
     var page by remember { mutableStateOf("Home") }
     var breakdown by remember { mutableStateOf("Trips") }
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
     val now = remember { Calendar.getInstance() }
     var monthYear by remember { mutableStateOf(now.get(Calendar.YEAR) to now.get(Calendar.MONTH)) }
@@ -593,69 +596,129 @@ private fun CubeMainShell(store: Store) {
         }
     }
 
-    Scaffold(
-        containerColor = CubeBg,
-        topBar = {
-            TopAppBar(
-                title = {
-                    if (page == "Home") {
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(
+                drawerContainerColor = Color.White,
+                modifier = Modifier.width(290.dp)
+            ) {
+                Box(
+                    Modifier.fillMaxWidth().background(CubeBlue).padding(18.dp)
+                ) {
+                    Column {
                         CubeBrandLogo(large = false)
-                    } else {
-                        Text(page, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(8.dp))
+                        Text("Vehicle Placement App", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
-                },
-                navigationIcon = {
-                    if (page != "Home") {
-                        IconButton(onClick = { page = "Home" }) {
-                            Icon(Icons.Default.ArrowBack, null, tint = Color.White)
-                        }
-                    } else {
-                        IconButton(onClick = {}) { Icon(Icons.Default.Menu, null, tint = Color.White) }
-                    }
-                },
-                actions = {
-                    if (page == "Home") IconButton(onClick = {}) { Icon(Icons.Default.Notifications, null, tint = Color.White) }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = CubeBlue,
-                    titleContentColor = Color.White
-                )
-            )
-        },
-        bottomBar = {
-            NavigationBar(containerColor = Color.White, tonalElevation = 6.dp) {
-                BottomItem("Home", Icons.Default.Home, page == "Home") { page = "Home" }
-                BottomItem("Trips", Icons.Default.LocalShipping, page == "Trip List") { page = "Trip List" }
-                BottomItem("Reports", Icons.Default.BarChart, page.startsWith("Reports")) { page = "Reports" }
-                BottomItem("Masters", Icons.Default.Settings, page == "Masters") { page = "Masters" }
+                }
+                Spacer(Modifier.height(10.dp))
+                DrawerMenuItem("Home", Icons.Default.Home) {
+                    page = "Home"
+                    scope.launch { drawerState.close() }
+                }
+                DrawerMenuItem("New Trip", Icons.Default.AddCircleOutline) {
+                    page = "New Trip"
+                    scope.launch { drawerState.close() }
+                }
+                DrawerMenuItem("Trip List", Icons.Default.LocalShipping) {
+                    page = "Trip List"
+                    scope.launch { drawerState.close() }
+                }
+                DrawerMenuItem("Reports", Icons.Default.BarChart) {
+                    page = "Reports"
+                    scope.launch { drawerState.close() }
+                }
+                DrawerMenuItem("Masters", Icons.Default.Settings) {
+                    page = "Masters"
+                    scope.launch { drawerState.close() }
+                }
             }
         }
-    ) { pad ->
-        Box(Modifier.padding(pad)) {
-            when (page) {
-                "Home" -> CubeDashboard(
-                    store = store,
-                    range = range,
-                    monthYear = monthYear,
-                    customMode = customMode,
-                    customStart = customStart,
-                    customEnd = customEnd,
-                    onMonthChange = { y, m -> monthYear = y to m },
-                    onCustomModeChange = { customMode = it },
-                    onCustomStart = { customStart = it },
-                    onCustomEnd = { customEnd = it },
-                    onBreakdown = { kind -> breakdown = kind; page = "Dashboard Breakdown" },
-                    go = { page = it }
+    ) {
+        Scaffold(
+            containerColor = CubeBg,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        if (page == "Home") {
+                            CubeBrandLogo(large = false)
+                        } else {
+                            Text(page, fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    navigationIcon = {
+                        if (page != "Home") {
+                            IconButton(onClick = { page = "Home" }) {
+                                Icon(Icons.Default.ArrowBack, null, tint = Color.White)
+                            }
+                        } else {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Default.Menu, null, tint = Color.White)
+                            }
+                        }
+                    },
+                    actions = {
+                        if (page == "Home") IconButton(onClick = {}) {
+                            Icon(Icons.Default.Notifications, null, tint = Color.White)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = CubeBlue,
+                        titleContentColor = Color.White
+                    )
                 )
-                "Dashboard Breakdown" -> DashboardBreakdownScreen(store, range, breakdown)
-                "New Trip" -> StyledTripEntryScreen(store) { page = "Trip List" }
-                "Trip List" -> StyledTripListScreen(store)
-                "Reports" -> StyledReportsHome(store) { page = it }
-                "Vehicle-wise Report" -> StyledVehicleReport(store)
-                "Masters" -> StyledMastersScreen(store)
+            },
+            bottomBar = {
+                NavigationBar(containerColor = Color.White, tonalElevation = 6.dp) {
+                    BottomItem("Home", Icons.Default.Home, page == "Home") { page = "Home" }
+                    BottomItem("Trips", Icons.Default.LocalShipping, page == "Trip List") { page = "Trip List" }
+                    BottomItem("New Trip", Icons.Default.AddCircleOutline, page == "New Trip") { page = "New Trip" }
+                    BottomItem("Masters", Icons.Default.Settings, page == "Masters") { page = "Masters" }
+                }
+            }
+        ) { pad ->
+            Box(Modifier.padding(pad)) {
+                when (page) {
+                    "Home" -> CubeDashboard(
+                        store = store,
+                        range = range,
+                        monthYear = monthYear,
+                        customMode = customMode,
+                        customStart = customStart,
+                        customEnd = customEnd,
+                        onMonthChange = { y, m -> monthYear = y to m },
+                        onCustomModeChange = { customMode = it },
+                        onCustomStart = { customStart = it },
+                        onCustomEnd = { customEnd = it },
+                        onBreakdown = { kind -> breakdown = kind; page = "Dashboard Breakdown" },
+                        go = { page = it }
+                    )
+                    "Dashboard Breakdown" -> DashboardBreakdownScreen(store, range, breakdown)
+                    "New Trip" -> StyledTripEntryScreen(store) { page = "Trip List" }
+                    "Trip List" -> StyledTripListScreen(store)
+                    "Reports" -> StyledReportsHome(store) { page = it }
+                    "Vehicle-wise Report" -> StyledVehicleReport(store)
+                    "Masters" -> StyledMastersScreen(store)
+                }
             }
         }
     }
+}
+
+@Composable
+private fun DrawerMenuItem(label: String, icon: ImageVector, action: () -> Unit) {
+    NavigationDrawerItem(
+        label = { Text(label, fontWeight = FontWeight.Bold) },
+        selected = false,
+        onClick = action,
+        icon = { Icon(icon, null, tint = CubeBlue) },
+        colors = NavigationDrawerItemDefaults.colors(
+            unselectedContainerColor = Color.Transparent,
+            unselectedTextColor = CubeText
+        ),
+        modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp)
+    )
 }
 
 @Composable
