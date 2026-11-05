@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -146,6 +147,142 @@ private fun CubeBrandLogo(modifier: Modifier = Modifier, compact: Boolean = fals
 }
 
 @Composable
+private fun MockupLoginLogo() {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(horizontalAlignment = Alignment.Start) {
+            Text(
+                "CUBE",
+                color = Color(0xFF183C86),
+                fontWeight = FontWeight.Black,
+                fontStyle = FontStyle.Italic,
+                fontSize = 50.sp,
+                letterSpacing = (-3).sp,
+                lineHeight = 44.sp
+            )
+            Text(
+                "LOGISTICS",
+                color = CubeOrange,
+                fontWeight = FontWeight.Black,
+                fontStyle = FontStyle.Italic,
+                fontSize = 19.sp,
+                letterSpacing = 1.sp,
+                lineHeight = 18.sp
+            )
+        }
+        Spacer(Modifier.width(6.dp))
+        Canvas(Modifier.size(58.dp)) {
+            val cx = size.width / 2f
+            val top = size.height * .03f
+            val mid = size.height * .42f
+            val bottom = size.height * .98f
+            val half = size.width * .42f
+            val pin = Path().apply {
+                moveTo(cx, top)
+                cubicTo(cx + half * .72f, top, cx + half, mid * .58f, cx + half, mid)
+                cubicTo(cx + half, mid * 1.32f, cx + half * .54f, mid * 1.72f, cx, bottom)
+                cubicTo(cx - half * .54f, mid * 1.72f, cx - half, mid * 1.32f, cx - half, mid)
+                cubicTo(cx - half, mid * .58f, cx - half * .72f, top, cx, top)
+                close()
+            }
+            drawPath(pin, Color(0xFF183C86))
+            val d = size.width * .24f
+            val diamond = Path().apply {
+                moveTo(cx, mid - d)
+                lineTo(cx + d, mid)
+                lineTo(cx, mid + d)
+                lineTo(cx - d, mid)
+                close()
+            }
+            drawPath(diamond, CubeOrange)
+            val inner = size.width * .13f
+            val whiteDiamond = Path().apply {
+                moveTo(cx, mid - inner)
+                lineTo(cx + inner, mid)
+                lineTo(cx, mid + inner)
+                lineTo(cx - inner, mid)
+                close()
+            }
+            drawPath(whiteDiamond, Color.White)
+        }
+    }
+}
+
+@Composable
+private fun MockupTruckIllustration(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        val blue = Color(0xFF2367B2)
+        val dark = Color(0xFF0E4B8F)
+        val light = Color(0xFFDDEBFA)
+
+        // trailer
+        drawRoundRect(
+            color = Color.White,
+            topLeft = androidx.compose.ui.geometry.Offset(w * .08f, h * .20f),
+            size = androidx.compose.ui.geometry.Size(w * .56f, h * .42f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(5f, 5f)
+        )
+        drawRect(
+            color = light,
+            topLeft = androidx.compose.ui.geometry.Offset(w * .10f, h * .23f),
+            size = androidx.compose.ui.geometry.Size(w * .52f, h * .05f)
+        )
+        drawLine(
+            color = blue,
+            start = androidx.compose.ui.geometry.Offset(w * .10f, h * .60f),
+            end = androidx.compose.ui.geometry.Offset(w * .64f, h * .60f),
+            strokeWidth = 3f
+        )
+
+        // cab
+        val cab = Path().apply {
+            moveTo(w * .63f, h * .28f)
+            lineTo(w * .79f, h * .28f)
+            lineTo(w * .90f, h * .46f)
+            lineTo(w * .90f, h * .62f)
+            lineTo(w * .63f, h * .62f)
+            close()
+        }
+        drawPath(cab, blue)
+        drawRect(
+            color = Color.White,
+            topLeft = androidx.compose.ui.geometry.Offset(w * .68f, h * .33f),
+            size = androidx.compose.ui.geometry.Size(w * .11f, h * .12f)
+        )
+        drawRect(
+            color = dark,
+            topLeft = androidx.compose.ui.geometry.Offset(w * .81f, h * .34f),
+            size = androidx.compose.ui.geometry.Size(w * .07f, h * .10f)
+        )
+
+        // wheels
+        drawCircle(dark, radius = h * .085f, center = androidx.compose.ui.geometry.Offset(w * .25f, h * .66f))
+        drawCircle(dark, radius = h * .085f, center = androidx.compose.ui.geometry.Offset(w * .73f, h * .66f))
+        drawCircle(Color.White, radius = h * .035f, center = androidx.compose.ui.geometry.Offset(w * .25f, h * .66f))
+        drawCircle(Color.White, radius = h * .035f, center = androidx.compose.ui.geometry.Offset(w * .73f, h * .66f))
+
+        // road / motion lines
+        drawLine(
+            color = Color(0xFF7DB1E6),
+            start = androidx.compose.ui.geometry.Offset(w * .04f, h * .80f),
+            end = androidx.compose.ui.geometry.Offset(w * .62f, h * .68f),
+            strokeWidth = 3f
+        )
+        drawLine(
+            color = Color(0xFFB2D0EF),
+            start = androidx.compose.ui.geometry.Offset(w * .00f, h * .92f),
+            end = androidx.compose.ui.geometry.Offset(w * .70f, h * .74f),
+            strokeWidth = 2f
+        )
+    }
+}
+
+@Composable
 private fun CubeLoginScreen(onLogin: () -> Unit) {
     var user by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
@@ -153,87 +290,234 @@ private fun CubeLoginScreen(onLogin: () -> Unit) {
 
     Box(Modifier.fillMaxSize().background(Color.White)) {
         Canvas(Modifier.fillMaxSize()) {
-            val top = Path().apply {
+            // Top blue band
+            val topBlue = Path().apply {
                 moveTo(0f, 0f)
                 lineTo(size.width, 0f)
-                lineTo(size.width, size.height * .13f)
-                cubicTo(size.width * .72f, size.height * .09f, size.width * .30f, size.height * .08f, 0f, size.height * .20f)
+                lineTo(size.width, size.height * .075f)
+                cubicTo(
+                    size.width * .74f, size.height * .060f,
+                    size.width * .33f, size.height * .072f,
+                    0f, size.height * .185f
+                )
                 close()
             }
-            drawPath(top, CubeBlue)
+            drawPath(topBlue, Color(0xFF124783))
+
+            // Thin white separator
+            val topWhite = Path().apply {
+                moveTo(0f, size.height * .178f)
+                cubicTo(
+                    size.width * .32f, size.height * .069f,
+                    size.width * .74f, size.height * .055f,
+                    size.width, size.height * .070f
+                )
+                lineTo(size.width, size.height * .080f)
+                cubicTo(
+                    size.width * .74f, size.height * .064f,
+                    size.width * .32f, size.height * .079f,
+                    0f, size.height * .190f
+                )
+                close()
+            }
+            drawPath(topWhite, Color.White)
+
+            // Orange accent
             val topOrange = Path().apply {
-                moveTo(0f, size.height * .18f)
-                cubicTo(size.width * .28f, size.height * .09f, size.width * .72f, size.height * .09f, size.width, size.height * .13f)
-                lineTo(size.width, size.height * .145f)
-                cubicTo(size.width * .72f, size.height * .105f, size.width * .28f, size.height * .105f, 0f, size.height * .205f)
+                moveTo(0f, size.height * .165f)
+                cubicTo(
+                    size.width * .32f, size.height * .060f,
+                    size.width * .74f, size.height * .046f,
+                    size.width, size.height * .064f
+                )
+                lineTo(size.width, size.height * .076f)
+                cubicTo(
+                    size.width * .74f, size.height * .058f,
+                    size.width * .32f, size.height * .072f,
+                    0f, size.height * .180f
+                )
                 close()
             }
             drawPath(topOrange, CubeOrange)
 
-            val bottom = Path().apply {
-                moveTo(0f, size.height * .86f)
-                cubicTo(size.width * .35f, size.height * .78f, size.width * .72f, size.height * .92f, size.width, size.height * .78f)
+            // Bottom blue sweep
+            val bottomBlue = Path().apply {
+                moveTo(0f, size.height * .905f)
+                cubicTo(
+                    size.width * .28f, size.height * .815f,
+                    size.width * .67f, size.height * .915f,
+                    size.width, size.height * .760f
+                )
                 lineTo(size.width, size.height)
                 lineTo(0f, size.height)
                 close()
             }
-            drawPath(bottom, CubeBlue)
+            drawPath(bottomBlue, Color(0xFF124783))
+
+            // Bottom orange sweep
             val bottomOrange = Path().apply {
-                moveTo(0f, size.height * .84f)
-                cubicTo(size.width * .35f, size.height * .77f, size.width * .72f, size.height * .90f, size.width, size.height * .77f)
-                lineTo(size.width, size.height * .79f)
-                cubicTo(size.width * .72f, size.height * .93f, size.width * .35f, size.height * .80f, 0f, size.height * .88f)
+                moveTo(0f, size.height * .890f)
+                cubicTo(
+                    size.width * .28f, size.height * .805f,
+                    size.width * .67f, size.height * .900f,
+                    size.width, size.height * .748f
+                )
+                lineTo(size.width, size.height * .764f)
+                cubicTo(
+                    size.width * .67f, size.height * .920f,
+                    size.width * .28f, size.height * .825f,
+                    0f, size.height * .918f
+                )
                 close()
             }
             drawPath(bottomOrange, CubeOrange)
         }
 
         Column(
-            Modifier.fillMaxSize().padding(horizontal = 28.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 34.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(115.dp))
-            CubeBrandLogo(large = true)
-            Text("Transport Operations", color = CubeText, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(132.dp))
+
+            MockupLoginLogo()
+
+            Spacer(Modifier.height(26.dp))
+            Text(
+                "Transport Operations",
+                color = Color(0xFF102A63),
+                fontWeight = FontWeight.Black,
+                fontSize = 18.sp
+            )
+
+            Spacer(Modifier.height(22.dp))
 
             OutlinedTextField(
                 value = user,
                 onValueChange = { user = it },
-                leadingIcon = { Icon(Icons.Default.Person, null, tint = CubeBlue) },
-                label = { Text("User ID") },
+                placeholder = { Text("User ID", fontSize = 14.sp, color = Color(0xFF404040)) },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.PersonOutline,
+                        contentDescription = null,
+                        tint = Color(0xFF123F82),
+                        modifier = Modifier.size(22.dp)
+                    )
+                },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
+                shape = RoundedCornerShape(8.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFFABC2E3),
+                    unfocusedBorderColor = Color(0xFFABC2E3),
+                    cursorColor = CubeBlue
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
             )
+
             Spacer(Modifier.height(10.dp))
+
             OutlinedTextField(
                 value = pass,
                 onValueChange = { pass = it },
-                leadingIcon = { Icon(Icons.Default.Lock, null, tint = CubeBlue) },
-                label = { Text("Password") },
+                placeholder = { Text("Password", fontSize = 14.sp, color = Color(0xFF404040)) },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.LockOutline,
+                        contentDescription = null,
+                        tint = Color(0xFF123F82),
+                        modifier = Modifier.size(22.dp)
+                    )
+                },
+                trailingIcon = {
+                    Icon(
+                        Icons.Default.Visibility,
+                        contentDescription = null,
+                        tint = Color(0xFF123F82),
+                        modifier = Modifier.size(20.dp)
+                    )
+                },
                 visualTransformation = PasswordVisualTransformation(),
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
+                shape = RoundedCornerShape(8.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFFABC2E3),
+                    unfocusedBorderColor = Color(0xFFABC2E3),
+                    cursorColor = CubeBlue
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
             )
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(rememberMe, { rememberMe = it })
-                Text("Remember Me", fontSize = 13.sp)
+
+            Spacer(Modifier.height(7.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = rememberMe,
+                    onCheckedChange = { rememberMe = it },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = Color(0xFF17488B),
+                        uncheckedColor = Color(0xFF17488B),
+                        checkmarkColor = Color.White
+                    ),
+                    modifier = Modifier.size(32.dp)
+                )
+                Text(
+                    "Remember Me",
+                    color = Color(0xFF111111),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
                 Spacer(Modifier.weight(1f))
-                Text("Forgot Password?", color = CubeBlue, fontSize = 13.sp)
+                Text(
+                    "Forgot Password?",
+                    color = Color(0xFF0A56AE),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
             }
-            Spacer(Modifier.height(12.dp))
+
+            Spacer(Modifier.height(21.dp))
+
             Button(
                 onClick = onLogin,
-                colors = ButtonDefaults.buttonColors(containerColor = CubeOrange),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth().height(54.dp)
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5C00)),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(51.dp)
             ) {
-                Text("Login", fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                Spacer(Modifier.width(12.dp))
-                Icon(Icons.Default.ArrowForward, null)
+                Spacer(Modifier.weight(.8f))
+                Text(
+                    "Login",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp
+                )
+                Spacer(Modifier.width(20.dp))
+                Icon(
+                    Icons.Default.ArrowForward,
+                    contentDescription = null,
+                    modifier = Modifier.size(23.dp)
+                )
+                Spacer(Modifier.weight(.55f))
             }
+
+            Spacer(Modifier.weight(1f))
+
+            MockupTruckIllustration(
+                modifier = Modifier
+                    .width(205.dp)
+                    .height(92.dp)
+                    .align(Alignment.Start)
+            )
+
+            Spacer(Modifier.height(48.dp))
         }
     }
 }
