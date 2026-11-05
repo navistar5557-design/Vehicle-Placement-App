@@ -4,6 +4,11 @@ import android.content.Intent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.coroutineScope
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -383,6 +388,23 @@ fun StyledVehicleReport(store: Store) {
     }
 }
 
+private fun Modifier.holdForTwoSeconds(onHold: () -> Unit): Modifier = pointerInput(onHold) {
+    detectTapGestures(
+        onPress = {
+            coroutineScope {
+                var fired = false
+                val job = launch {
+                    delay(2000)
+                    fired = true
+                    onHold()
+                }
+                tryAwaitRelease()
+                if (!fired) job.cancel()
+            }
+        }
+    )
+}
+
 @Composable
 fun StyledMastersScreen(store: Store) {
     var tab by remember { mutableStateOf("Vehicles") }
@@ -400,11 +422,19 @@ fun StyledMastersScreen(store: Store) {
                 )
             }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(6.dp))
+        if (tab != "Fuel") {
+            Text(
+                "Press and hold an existing " + tab.dropLast(1).lowercase() + " for 2 seconds to edit.",
+                fontSize = 10.sp,
+                color = Color.Gray
+            )
+            Spacer(Modifier.height(8.dp))
+        }
         when (tab) {
             "Vehicles" -> StyledVehicleMaster(store)
-            "Vendors" -> StyledNameMaster("Vendor", store.vendors().map { it.name }) { store.saveVendors(it.map(::Vendor)) }
-            "Locations" -> StyledNameMaster("Location", store.locations().map { it.name }) { store.saveLocations(it.map(::Location)) }
+            "Vendors" -> StyledNameMaster("Vendor", store)
+            "Locations" -> StyledNameMaster("Location", store)
             "Fuel" -> StyledFuelMaster(store)
         }
     }
@@ -416,6 +446,7 @@ private fun StyledVehicleMaster(store: Store) {
     var number by remember { mutableStateOf("") }
     var mileage by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
+    var editing by remember { mutableStateOf<Vehicle?>(null) }
 
     SectionHeader(Icons.Default.LocalShipping, "Vehicle Master")
     StyledNumberOrTextField("Vehicle No", number) { number = it.uppercase() }
@@ -443,7 +474,10 @@ private fun StyledVehicleMaster(store: Store) {
 
     items.forEach { v ->
         OutlinedCard(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+                .holdForTwoSeconds { editing = v },
             shape = RoundedCornerShape(10.dp)
         ) {
             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -462,13 +496,76 @@ private fun StyledVehicleMaster(store: Store) {
             }
         }
     }
+
+    editing?.let { old ->
+        var editNumber by remember(old) { mutableStateOf(old.number) }
+        var editMileage by remember(old) { mutableStateOf(old.mileage.toString()) }
+        var editError by remember(old) { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { editing = null },
+            title = { Text("Edit Vehicle", color = CubeBlue, fontWeight = FontWeight.Black) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = editNumber,
+                        onValueChange = { editNumber = it.uppercase() },
+                        label = { Text("Vehicle No") },
+                        singleLine = true
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = editMileage,
+                        onValueChange = { editMileage = it },
+                        label = { Text("Mileage (2.5 to 6.0 km/L)") },
+                        singleLine = true
+                    )
+                    if (editError.isNotBlank()) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(editError, color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val newNo = editNumber.trim()
+                        val newMileage = editMileage.num()
+                        editError = when {
+                            newNo.isBlank() -> "Vehicle number is required"
+                            newMileage < 2.5 || newMileage > 6.0 -> "Mileage must be between 2.5 and 6.0"
+                            items.any { it.number != old.number && it.number.equals(newNo, true) } -> "Duplicate vehicle number"
+                            else -> {
+                                store.renameVehicle(old.number, newNo, newMileage)
+                                items = store.vehicles()
+                                editing = null
+                                message = "Vehicle updated"
+                                ""
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = CubeOrange)
+                ) { Text("Update") }
+            },
+            dismissButton = {
+                TextButton(onClick = { editing = null }) { Text("Cancel") }
+            }
+        )
+    }
 }
 
 @Composable
-private fun StyledNameMaster(label: String, initial: List<String>, save: (List<String>) -> Unit) {
-    var items by remember { mutableStateOf(initial) }
+private fun StyledNameMaster(label: String, store: Store) {
+    var items by remember(label) {
+        mutableStateOf(if (label == "Vendor") store.vendors().map { it.name } else store.locations().map { it.name })
+    }
     var name by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
+    var editing by remember { mutableStateOf<String?>(null) }
+
+    fun saveAll(values: List<String>) {
+        if (label == "Vendor") store.saveVendors(values.map(::Vendor))
+        else store.saveLocations(values.map(::Location))
+    }
 
     SectionHeader(if (label == "Vendor") Icons.Default.Groups else Icons.Default.LocationOn, label + " Master")
     StyledNumberOrTextField(label + " Name", name) { name = it }
@@ -480,7 +577,7 @@ private fun StyledNameMaster(label: String, initial: List<String>, save: (List<S
             else if (items.any { it.equals(n, true) }) message = "Duplicate " + label
             else {
                 items = items + n
-                save(items)
+                saveAll(items)
                 name = ""
                 message = label + " saved"
             }
@@ -488,15 +585,68 @@ private fun StyledNameMaster(label: String, initial: List<String>, save: (List<S
         colors = ButtonDefaults.buttonColors(containerColor = CubeOrange),
         modifier = Modifier.fillMaxWidth()
     ) { Text("Add " + label) }
+
     if (message.isNotBlank()) Text(message, Modifier.padding(vertical = 8.dp), color = CubeBlue)
-    items.forEach {
-        OutlinedCard(Modifier.fillMaxWidth().padding(bottom = 7.dp), shape = RoundedCornerShape(10.dp)) {
+
+    items.forEach { item ->
+        OutlinedCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 7.dp)
+                .holdForTwoSeconds { editing = item },
+            shape = RoundedCornerShape(10.dp)
+        ) {
             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(if (label == "Vendor") Icons.Default.Groups else Icons.Default.LocationOn, null, tint = CubeBlue)
                 Spacer(Modifier.width(10.dp))
-                Text(it, fontWeight = FontWeight.Bold, fontFamily = FontFamily.SansSerif)
+                Text(item, fontWeight = FontWeight.Bold, fontFamily = FontFamily.SansSerif)
             }
         }
+    }
+
+    editing?.let { old ->
+        var editName by remember(old) { mutableStateOf(old) }
+        var editError by remember(old) { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { editing = null },
+            title = { Text("Edit " + label, color = CubeBlue, fontWeight = FontWeight.Black) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = editName,
+                        onValueChange = { editName = it },
+                        label = { Text(label + " Name") },
+                        singleLine = true
+                    )
+                    if (editError.isNotBlank()) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(editError, color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val newName = editName.trim()
+                        editError = when {
+                            newName.isBlank() -> label + " name is required"
+                            items.any { it != old && it.equals(newName, true) } -> "Duplicate " + label
+                            else -> {
+                                if (label == "Vendor") store.renameVendor(old, newName) else store.renameLocation(old, newName)
+                                items = if (label == "Vendor") store.vendors().map { it.name } else store.locations().map { it.name }
+                                editing = null
+                                message = label + " updated"
+                                ""
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = CubeOrange)
+                ) { Text("Update") }
+            },
+            dismissButton = {
+                TextButton(onClick = { editing = null }) { Text("Cancel") }
+            }
+        )
     }
 }
 
