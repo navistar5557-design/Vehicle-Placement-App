@@ -1,5 +1,12 @@
 package com.cubelogistics.placement
 
+import android.app.DatePickerDialog
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.LocalContext
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -570,6 +577,21 @@ private fun CubeLoginScreen(onLogin: () -> Unit) {
 @Composable
 private fun CubeMainShell(store: Store) {
     var page by remember { mutableStateOf("Home") }
+    var breakdown by remember { mutableStateOf("Trips") }
+
+    val now = remember { Calendar.getInstance() }
+    var monthYear by remember { mutableStateOf(now.get(Calendar.YEAR) to now.get(Calendar.MONTH)) }
+    var customMode by remember { mutableStateOf(false) }
+    var customStart by remember { mutableStateOf<Long?>(null) }
+    var customEnd by remember { mutableStateOf<Long?>(null) }
+
+    val range = remember(monthYear, customMode, customStart, customEnd) {
+        if (customMode && customStart != null && customEnd != null) {
+            DashboardRange(customStart!!, endOfDay(customEnd!!), "Custom")
+        } else {
+            monthRange(monthYear.first, monthYear.second)
+        }
+    }
 
     Scaffold(
         containerColor = CubeBg,
@@ -611,7 +633,21 @@ private fun CubeMainShell(store: Store) {
     ) { pad ->
         Box(Modifier.padding(pad)) {
             when (page) {
-                "Home" -> CubeDashboard(store) { page = it }
+                "Home" -> CubeDashboard(
+                    store = store,
+                    range = range,
+                    monthYear = monthYear,
+                    customMode = customMode,
+                    customStart = customStart,
+                    customEnd = customEnd,
+                    onMonthChange = { y, m -> monthYear = y to m },
+                    onCustomModeChange = { customMode = it },
+                    onCustomStart = { customStart = it },
+                    onCustomEnd = { customEnd = it },
+                    onBreakdown = { kind -> breakdown = kind; page = "Dashboard Breakdown" },
+                    go = { page = it }
+                )
+                "Dashboard Breakdown" -> DashboardBreakdownScreen(store, range, breakdown)
                 "New Trip" -> StyledTripEntryScreen(store) { page = "Trip List" }
                 "Trip List" -> StyledTripListScreen(store)
                 "Reports" -> StyledReportsHome(store) { page = it }
@@ -639,13 +675,58 @@ private fun RowScope.BottomItem(label: String, icon: ImageVector, selected: Bool
     )
 }
 
+data class DashboardRange(val start: Long, val end: Long, val label: String)
+
+private fun monthRange(year: Int, month: Int): DashboardRange {
+    val start = Calendar.getInstance().apply {
+        clear()
+        set(year, month, 1, 0, 0, 0)
+    }
+    val end = Calendar.getInstance().apply {
+        clear()
+        set(year, month, 1, 0, 0, 0)
+        add(Calendar.MONTH, 1)
+        add(Calendar.MILLISECOND, -1)
+    }
+    val label = SimpleDateFormat("MMM yyyy", Locale.US).format(Date(start.timeInMillis))
+    return DashboardRange(start.timeInMillis, end.timeInMillis, label)
+}
+
+private fun endOfDay(value: Long): Long = Calendar.getInstance().apply {
+    timeInMillis = value
+    set(Calendar.HOUR_OF_DAY, 23)
+    set(Calendar.MINUTE, 59)
+    set(Calendar.SECOND, 59)
+    set(Calendar.MILLISECOND, 999)
+}.timeInMillis
+
+private fun shortDate(value: Long): String =
+    SimpleDateFormat("dd MMM yyyy", Locale.US).format(Date(value))
+
+private fun filterTrips(trips: List<Trip>, range: DashboardRange): List<Trip> =
+    trips.filter { it.createdAt in range.start..range.end }
+
 @Composable
-private fun CubeDashboard(store: Store, go: (String) -> Unit) {
-    val trips = store.trips()
+private fun CubeDashboard(
+    store: Store,
+    range: DashboardRange,
+    monthYear: Pair<Int, Int>,
+    customMode: Boolean,
+    customStart: Long?,
+    customEnd: Long?,
+    onMonthChange: (Int, Int) -> Unit,
+    onCustomModeChange: (Boolean) -> Unit,
+    onCustomStart: (Long) -> Unit,
+    onCustomEnd: (Long) -> Unit,
+    onBreakdown: (String) -> Unit,
+    go: (String) -> Unit
+) {
+    val trips = filterTrips(store.trips(), range)
     val freight = trips.sumOf { it.freight }
     val expenses = trips.sumOf { it.totalExpenses }
     val margin = trips.sumOf { it.margin }
     val marginPct = if (freight > 0) margin / freight * 100 else 0.0
+    var showPeriod by remember { mutableStateOf(false) }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)
@@ -656,24 +737,57 @@ private fun CubeDashboard(store: Store, go: (String) -> Unit) {
                 Text("Transport Operations Dashboard", color = CubeBlue, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
             }
             Spacer(Modifier.weight(1f))
-            Surface(shape = RoundedCornerShape(10.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFD7DFEC)), color = Color.White) {
-                Text("Nov 2026  ⌄", Modifier.padding(horizontal = 10.dp, vertical = 8.dp), fontSize = 12.sp)
+            Surface(
+                onClick = { showPeriod = true },
+                shape = RoundedCornerShape(10.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFD7DFEC)),
+                color = Color.White
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.CalendarMonth, null, tint = CubeBlue, modifier = Modifier.size(17.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text(if (customMode && customStart != null && customEnd != null) {
+                        SimpleDateFormat("dd MMM", Locale.US).format(Date(customStart)) + " - " +
+                            SimpleDateFormat("dd MMM", Locale.US).format(Date(customEnd))
+                    } else range.label, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.width(3.dp))
+                    Icon(Icons.Default.KeyboardArrowDown, null, modifier = Modifier.size(17.dp))
+                }
             }
         }
+
+        if (showPeriod) {
+            DashboardPeriodDialog(
+                monthYear = monthYear,
+                customMode = customMode,
+                customStart = customStart,
+                customEnd = customEnd,
+                onMonthChange = onMonthChange,
+                onCustomModeChange = onCustomModeChange,
+                onCustomStart = onCustomStart,
+                onCustomEnd = onCustomEnd,
+                onDismiss = { showPeriod = false }
+            )
+        }
+
         Spacer(Modifier.height(12.dp))
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            KpiCard("Trips", trips.size.toString(), Icons.Default.LocalShipping, CubeLightBlue, CubeBlue, Modifier.weight(1f))
-            KpiCard("Freight Amount", "₹ " + money0(freight), Icons.Default.Paid, CubeLightGreen, CubeGreen, Modifier.weight(1f))
+            KpiCard("Trips", trips.size.toString(), Icons.Default.LocalShipping, CubeLightBlue, CubeBlue, Modifier.weight(1f)) { onBreakdown("Trips") }
+            KpiCard("Freight Amount", "₹ " + money0(freight), Icons.Default.Paid, CubeLightGreen, CubeGreen, Modifier.weight(1f)) { onBreakdown("Freight") }
         }
         Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            KpiCard("Total Expenses", "₹ " + money0(expenses), Icons.Default.ReceiptLong, CubeLightOrange, Color(0xFFE64A19), Modifier.weight(1f))
-            KpiCard("Margin", "₹ " + money0(margin), Icons.Default.BarChart, CubeLightGreen, CubeGreen, Modifier.weight(1f))
+            KpiCard("Total Expenses", "₹ " + money0(expenses), Icons.Default.ReceiptLong, CubeLightOrange, Color(0xFFE64A19), Modifier.weight(1f)) { onBreakdown("Expenses") }
+            KpiCard("Margin", "₹ " + money0(margin), Icons.Default.BarChart, CubeLightGreen, CubeGreen, Modifier.weight(1f)) { onBreakdown("Margin") }
         }
         Spacer(Modifier.height(10.dp))
 
         Card(
+            onClick = { onBreakdown("Margin %") },
             colors = CardDefaults.cardColors(containerColor = CubeLightGreen),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
@@ -681,36 +795,47 @@ private fun CubeDashboard(store: Store, go: (String) -> Unit) {
             Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Margin %", color = CubeText, fontWeight = FontWeight.SemiBold)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(String.format(java.util.Locale.US, "%.2f%%", marginPct), fontSize = 26.sp, fontWeight = FontWeight.Black)
+                    Text(String.format(Locale.US, "%.2f%%", marginPct), fontSize = 26.sp, fontWeight = FontWeight.Black)
                     Spacer(Modifier.width(8.dp))
                     Icon(Icons.Default.TrendingUp, null, tint = CubeGreen)
                 }
+                Text("Tap for breakup", fontSize = 9.sp, color = Color(0xFF64806B))
             }
         }
 
         Spacer(Modifier.height(12.dp))
         Card(
+            onClick = { onBreakdown("Trend") },
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(Modifier.padding(12.dp)) {
-                Text("Trips Trend (Last 7 Days)", color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                Text("Trips Trend", color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                Text(range.label + " • tap for daily breakup", fontSize = 9.sp, color = Color.Gray)
                 Spacer(Modifier.height(10.dp))
+                val daily = trips.groupBy {
+                    SimpleDateFormat("dd", Locale.US).format(Date(it.createdAt))
+                }.mapValues { it.value.size }
+                val maxCount = max(1, daily.values.maxOrNull() ?: 1)
+                val days = daily.toList().sortedBy { it.first }.takeLast(7)
                 Row(
                     Modifier.fillMaxWidth().height(105.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.Bottom
                 ) {
-                    val bars = listOf(3, 4, 5, 6, 4, 6, max(8, trips.size.coerceAtMost(10)))
-                    bars.forEachIndexed { index, value ->
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom) {
-                            Box(
-                                Modifier.width(22.dp).height((value * 8).dp)
-                                    .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
-                                    .background(Color(0xFF2D88E8))
-                            )
-                            Text((24 + index).toString() + " Oct", fontSize = 8.sp)
+                    if (days.isEmpty()) {
+                        Text("No trips in selected period", fontSize = 11.sp, color = Color.Gray)
+                    } else {
+                        days.forEach { (day, count) ->
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom) {
+                                Box(
+                                    Modifier.width(22.dp).height((28 + (count * 58 / maxCount)).dp)
+                                        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                        .background(Color(0xFF2D88E8))
+                                )
+                                Text(day, fontSize = 8.sp)
+                            }
                         }
                     }
                 }
@@ -729,8 +854,114 @@ private fun CubeDashboard(store: Store, go: (String) -> Unit) {
 }
 
 @Composable
-private fun KpiCard(title: String, value: String, icon: ImageVector, bg: Color, accent: Color, modifier: Modifier = Modifier) {
+private fun DashboardPeriodDialog(
+    monthYear: Pair<Int, Int>,
+    customMode: Boolean,
+    customStart: Long?,
+    customEnd: Long?,
+    onMonthChange: (Int, Int) -> Unit,
+    onCustomModeChange: (Boolean) -> Unit,
+    onCustomStart: (Long) -> Unit,
+    onCustomEnd: (Long) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+
+    fun openDate(initial: Long?, onPicked: (Long) -> Unit) {
+        val cal = Calendar.getInstance().apply { if (initial != null) timeInMillis = initial }
+        DatePickerDialog(
+            context,
+            { _, y, m, d ->
+                val picked = Calendar.getInstance().apply {
+                    clear()
+                    set(y, m, d, 0, 0, 0)
+                }.timeInMillis
+                onPicked(picked)
+            },
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Select Dashboard Period", color = CubeBlue, fontWeight = FontWeight.Black) },
+        text = {
+            Column {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = !customMode,
+                        onClick = { onCustomModeChange(false) },
+                        label = { Text("Month") }
+                    )
+                    FilterChip(
+                        selected = customMode,
+                        onClick = { onCustomModeChange(true) },
+                        label = { Text("Custom Date") }
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+                if (!customMode) {
+                    val cal = Calendar.getInstance().apply {
+                        clear()
+                        set(monthYear.first, monthYear.second, 1)
+                    }
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        IconButton(onClick = {
+                            cal.add(Calendar.MONTH, -1)
+                            onMonthChange(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH))
+                        }) { Icon(Icons.Default.ChevronLeft, null) }
+                        Text(
+                            SimpleDateFormat("MMMM yyyy", Locale.US).format(cal.time),
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        IconButton(onClick = {
+                            cal.add(Calendar.MONTH, 1)
+                            onMonthChange(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH))
+                        }) { Icon(Icons.Default.ChevronRight, null) }
+                    }
+                } else {
+                    OutlinedButton(onClick = { openDate(customStart, onCustomStart) }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.CalendarMonth, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("From: " + (customStart?.let(::shortDate) ?: "Select date"))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(onClick = { openDate(customEnd, onCustomEnd) }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.CalendarMonth, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("To: " + (customEnd?.let(::shortDate) ?: "Select date"))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = CubeOrange)
+            ) { Text("Apply") }
+        }
+    )
+}
+
+@Composable
+private fun KpiCard(
+    title: String,
+    value: String,
+    icon: ImageVector,
+    bg: Color,
+    accent: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
     Card(
+        onClick = onClick,
         modifier = modifier.height(92.dp),
         colors = CardDefaults.cardColors(containerColor = bg),
         shape = RoundedCornerShape(12.dp)
@@ -743,6 +974,144 @@ private fun KpiCard(title: String, value: String, icon: ImageVector, bg: Color, 
             }
             Spacer(Modifier.height(8.dp))
             Text(value, fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.Black)
+            Text("Tap for breakup", fontSize = 8.sp, color = accent.copy(alpha = .75f))
+        }
+    }
+}
+
+@Composable
+private fun DashboardBreakdownScreen(store: Store, range: DashboardRange, kind: String) {
+    val trips = filterTrips(store.trips(), range).sortedByDescending { it.createdAt }
+    val freight = trips.sumOf { it.freight }
+    val expenses = trips.sumOf { it.totalExpenses }
+    val margin = trips.sumOf { it.margin }
+    val marginPct = if (freight > 0) margin / freight * 100 else 0.0
+
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
+        Surface(
+            color = CubeLightBlue,
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(12.dp)) {
+                Text(kind + " Breakdown", color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                Text(
+                    shortDate(range.start) + " - " + shortDate(range.end),
+                    fontSize = 11.sp,
+                    color = Color(0xFF555555)
+                )
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+
+        when (kind) {
+            "Expenses" -> {
+                val percentage = trips.sumOf { it.percentageExpenses }
+                val fuel = trips.sumOf { it.fuelExpense }
+                val fastag = trips.sumOf { it.fastag }
+                val rto = trips.sumOf { it.rtoTarpaulin }
+                val loading = trips.sumOf { it.loadingUnloading }
+                val fixed = trips.sumOf { it.fixedExpenses }
+                BreakdownTotal("Total Expenses", expenses, CubeLightOrange)
+                ExpenseBreakRow("Fuel Expense", fuel)
+                ExpenseBreakRow("Percentage Expenses", percentage)
+                ExpenseBreakRow("FASTag", fastag)
+                ExpenseBreakRow("RTO / Tarpaulin", rto)
+                ExpenseBreakRow("Loading & Unloading", loading)
+                ExpenseBreakRow("Fixed Expenses", fixed)
+            }
+            "Trend" -> {
+                val fmtDay = SimpleDateFormat("dd MMM yyyy", Locale.US)
+                val grouped = trips.groupBy { fmtDay.format(Date(it.createdAt)) }
+                    .toSortedMap(compareBy { fmtDay.parse(it)?.time ?: 0L })
+                BreakdownTotal("Trips", trips.size.toDouble(), CubeLightBlue, money = false)
+                grouped.forEach { (date, rows) ->
+                    BreakdownRow(date, rows.size.toString(), "₹" + money0(rows.sumOf { it.freight }))
+                }
+            }
+            else -> {
+                val totalValue = when (kind) {
+                    "Trips" -> trips.size.toDouble()
+                    "Freight" -> freight
+                    "Margin" -> margin
+                    "Margin %" -> marginPct
+                    else -> 0.0
+                }
+                BreakdownTotal(
+                    title = kind,
+                    value = totalValue,
+                    color = if (kind == "Margin" || kind == "Margin %") CubeLightGreen else CubeLightBlue,
+                    money = kind == "Freight" || kind == "Margin",
+                    percent = kind == "Margin %"
+                )
+                trips.forEach { t ->
+                    val primary = when (kind) {
+                        "Trips" -> t.vehicle + " • " + t.from + " → " + t.to
+                        "Freight" -> "₹" + money0(t.freight)
+                        "Margin" -> "₹" + money0(t.margin)
+                        "Margin %" -> String.format(Locale.US, "%.2f%%", t.marginPercent)
+                        else -> ""
+                    }
+                    val secondary = when (kind) {
+                        "Trips" -> t.vendor
+                        "Freight" -> t.vehicle + " • " + t.vendor
+                        "Margin" -> "Freight ₹" + money0(t.freight) + " • Expenses ₹" + money0(t.totalExpenses)
+                        "Margin %" -> t.vehicle + " • Margin ₹" + money0(t.margin)
+                        else -> ""
+                    }
+                    BreakdownRow(
+                        shortDate(t.createdAt) + " • " + t.vehicle,
+                        primary,
+                        secondary
+                    )
+                }
+            }
+        }
+
+        if (trips.isEmpty()) {
+            Card(colors = CardDefaults.cardColors(containerColor = Color.White), modifier = Modifier.fillMaxWidth()) {
+                Text("No trip data for the selected period.", Modifier.padding(18.dp), color = Color.Gray)
+            }
+        }
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun BreakdownTotal(title: String, value: Double, color: Color, money: Boolean = true, percent: Boolean = false) {
+    Card(colors = CardDefaults.cardColors(containerColor = color), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+        Column(Modifier.padding(14.dp)) {
+            Text(title, color = CubeText, fontWeight = FontWeight.Bold)
+            Text(
+                when {
+                    percent -> String.format(Locale.US, "%.2f%%", value)
+                    money -> "₹ " + money0(value)
+                    else -> value.toInt().toString()
+                },
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Black
+            )
+        }
+    }
+    Spacer(Modifier.height(10.dp))
+}
+
+@Composable
+private fun ExpenseBreakRow(label: String, amount: Double) {
+    BreakdownRow(label, "₹ " + money0(amount), "")
+}
+
+@Composable
+private fun BreakdownRow(title: String, value: String, subtitle: String) {
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.outlinedCardColors(containerColor = Color.White)
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Text(title, color = CubeBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            Text(value, fontWeight = FontWeight.Black, fontSize = 16.sp)
+            if (subtitle.isNotBlank()) Text(subtitle, fontSize = 10.sp, color = Color.Gray)
         }
     }
 }
