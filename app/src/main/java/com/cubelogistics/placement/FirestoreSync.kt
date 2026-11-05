@@ -16,6 +16,48 @@ class FirestoreSync(private val context: Context, private val store: Store) {
 
     fun isConfigured(): Boolean = db != null
 
+    fun startAutomaticSync(onComplete: (Result<Unit>) -> Unit = {}) {
+        val firestore = db
+        if (firestore == null) {
+            onComplete(Result.failure(IllegalStateException("Firebase is not configured yet")))
+            return
+        }
+
+        val collections = listOf("vehicles", "vendors", "locations", "trips")
+        val results = mutableMapOf<String, Boolean>()
+
+        fun finishCheck() {
+            if (results.size != collections.size) return
+            val cloudHasData = results.values.any { it }
+            if (cloudHasData) {
+                downloadCloudSnapshot { result ->
+                    if (result.isSuccess) {
+                        store.onDataChanged = { uploadLocalSnapshot() }
+                    }
+                    onComplete(result)
+                }
+            } else {
+                uploadLocalSnapshot { result ->
+                    if (result.isSuccess) {
+                        store.onDataChanged = { uploadLocalSnapshot() }
+                    }
+                    onComplete(result)
+                }
+            }
+        }
+
+        collections.forEach { name ->
+            firestore.collection(name).limit(1).get()
+                .addOnSuccessListener {
+                    results[name] = !it.isEmpty
+                    finishCheck()
+                }
+                .addOnFailureListener {
+                    onComplete(Result.failure(it))
+                }
+        }
+    }
+
     fun uploadLocalSnapshot(onComplete: (Result<Unit>) -> Unit = {}) {
         val firestore = db
         if (firestore == null) {
@@ -98,30 +140,32 @@ class FirestoreSync(private val context: Context, private val store: Store) {
                     val mileage = doc.getDouble("mileage") ?: return@mapNotNull null
                     Vehicle(number, mileage, doc.getBoolean("active") ?: true)
                 }
-                if (vehicles.isNotEmpty()) store.saveVehicles(vehicles)
+                if (vehicles.isNotEmpty()) store.withoutCloudCallback { store.saveVehicles(vehicles) }
 
                 firestore.collection("vendors").get()
                     .addOnSuccessListener { vendorSnap ->
                         val vendors = vendorSnap.documents.mapNotNull { doc ->
                             doc.getString("name")?.let { Vendor(it, doc.getBoolean("active") ?: true) }
                         }
-                        if (vendors.isNotEmpty()) store.saveVendors(vendors)
+                        if (vendors.isNotEmpty()) store.withoutCloudCallback { store.saveVendors(vendors) }
 
                         firestore.collection("locations").get()
                             .addOnSuccessListener { locationSnap ->
                                 val locations = locationSnap.documents.mapNotNull { doc ->
                                     doc.getString("name")?.let { Location(it, doc.getBoolean("active") ?: true) }
                                 }
-                                if (locations.isNotEmpty()) store.saveLocations(locations)
+                                if (locations.isNotEmpty()) store.withoutCloudCallback { store.saveLocations(locations) }
 
                                 firestore.collection("trips").get()
                                     .addOnSuccessListener { tripSnap ->
                                         val trips = tripSnap.documents.mapNotNull { it.toTripOrNull() }
-                                        if (trips.isNotEmpty()) store.saveTrips(trips)
+                                        if (trips.isNotEmpty()) store.withoutCloudCallback { store.saveTrips(trips) }
 
                                         firestore.collection("settings").document("fuelRate").get()
                                             .addOnSuccessListener { fuelDoc ->
-                                                fuelDoc.getDouble("value")?.let { store.fuelRate = it }
+                                                fuelDoc.getDouble("value")?.let { value ->
+                                                    store.withoutCloudCallback { store.fuelRate = value }
+                                                }
                                                 onComplete(Result.success(Unit))
                                             }
                                             .addOnFailureListener { onComplete(Result.failure(it)) }
