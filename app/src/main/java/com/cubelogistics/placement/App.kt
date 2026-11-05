@@ -425,7 +425,7 @@ private fun CubeLoginScreen(onLogin: () -> Unit) {
                 placeholder = { Text("Password", fontSize = 14.sp, color = Color(0xFF404040)) },
                 leadingIcon = {
                     Icon(
-                        Icons.Default.LockOutline,
+                        Icons.Default.Lock,
                         contentDescription = null,
                         tint = Color(0xFF123F82),
                         modifier = Modifier.size(22.dp)
