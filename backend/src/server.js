@@ -12,6 +12,7 @@ if (!MONGODB_URI) {
 }
 
 const client = new MongoClient(MONGODB_URI, {
+  family: 4,
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
@@ -19,7 +20,6 @@ const client = new MongoClient(MONGODB_URI, {
   }
 });
 
-await client.connect();
 const db = client.db(DB_NAME);
 
 const vehicles = db.collection("vehicles");
@@ -29,14 +29,29 @@ const trips = db.collection("trips");
 const settings = db.collection("settings");
 const auditLogs = db.collection("audit_logs");
 
-await Promise.all([
-  vehicles.createIndex({ number: 1 }, { unique: true }),
-  vendors.createIndex({ name: 1 }, { unique: true }),
-  locations.createIndex({ name: 1 }, { unique: true }),
-  trips.createIndex({ id: 1 }, { unique: true }),
-  trips.createIndex({ createdAt: -1 }),
-  auditLogs.createIndex({ createdAt: -1 })
-]);
+let databaseReady = false;
+let lastDatabaseError = null;
+
+async function initializeDatabase() {
+  try {
+    await client.connect();
+    await Promise.all([
+      vehicles.createIndex({ number: 1 }, { unique: true }),
+      vendors.createIndex({ name: 1 }, { unique: true }),
+      locations.createIndex({ name: 1 }, { unique: true }),
+      trips.createIndex({ id: 1 }, { unique: true }),
+      trips.createIndex({ createdAt: -1 }),
+      auditLogs.createIndex({ createdAt: -1 })
+    ]);
+    databaseReady = true;
+    lastDatabaseError = null;
+    console.log("MongoDB connected successfully");
+  } catch (error) {
+    databaseReady = false;
+    lastDatabaseError = error?.message || String(error);
+    console.error("MongoDB connection failed:", lastDatabaseError);
+  }
+}
 
 const app = express();
 app.use(cors());
@@ -56,12 +71,33 @@ async function audit(action, entityType, before = null, after = null) {
 }
 
 app.get("/health", async (_req, res) => {
-  try {
-    await db.command({ ping: 1 });
-    res.json({ ok: true, database: DB_NAME });
-  } catch (error) {
-    res.status(503).json({ ok: false, error: error.message });
+  let ping = false;
+  if (databaseReady) {
+    try {
+      await db.command({ ping: 1 });
+      ping = true;
+    } catch (error) {
+      databaseReady = false;
+      lastDatabaseError = error?.message || String(error);
+    }
   }
+  res.json({
+    ok: true,
+    service: "cube-vehicle-placement-api",
+    database: DB_NAME,
+    databaseReady: databaseReady && ping,
+    databaseError: databaseReady && ping ? null : lastDatabaseError
+  });
+});
+
+app.use("/api", (_req, res, next) => {
+  if (!databaseReady) {
+    return res.status(503).json({
+      error: "Database connection is not ready",
+      detail: lastDatabaseError
+    });
+  }
+  next();
 });
 
 app.get("/api/bootstrap", async (_req, res) => {
@@ -266,6 +302,10 @@ app.use((error, _req, res, _next) => {
 
 app.listen(PORT, () => {
   console.log("CUBE Vehicle Placement API listening on port " + PORT);
+  initializeDatabase();
+  setInterval(() => {
+    if (!databaseReady) initializeDatabase();
+  }, 30000);
 });
 
 process.on("SIGTERM", async () => {
