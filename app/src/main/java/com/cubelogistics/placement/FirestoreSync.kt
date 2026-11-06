@@ -16,6 +16,22 @@ class FirestoreSync(private val context: Context, private val store: Store) {
 
     fun isConfigured(): Boolean = db != null
 
+    private fun attachDeletionSync() {
+        val firestore = db ?: return
+        store.onVehicleRemoved = { oldNumber ->
+            firestore.collection("vehicles").document(idOf(oldNumber)).delete()
+        }
+        store.onVendorRemoved = { oldName ->
+            firestore.collection("vendors").document(idOf(oldName)).delete()
+        }
+        store.onLocationRemoved = { oldName ->
+            firestore.collection("locations").document(idOf(oldName)).delete()
+        }
+        store.onTripRemoved = { tripId ->
+            firestore.collection("trips").document(tripId).delete()
+        }
+    }
+
     fun startAutomaticSync(onComplete: (Result<Unit>) -> Unit = {}) {
         val firestore = db
         if (firestore == null) {
@@ -33,6 +49,7 @@ class FirestoreSync(private val context: Context, private val store: Store) {
                 downloadCloudSnapshot { result ->
                     if (result.isSuccess) {
                         store.onDataChanged = { uploadLocalSnapshot() }
+                        attachDeletionSync()
                     }
                     onComplete(result)
                 }
@@ -40,6 +57,7 @@ class FirestoreSync(private val context: Context, private val store: Store) {
                 uploadLocalSnapshot { result ->
                     if (result.isSuccess) {
                         store.onDataChanged = { uploadLocalSnapshot() }
+                        attachDeletionSync()
                     }
                     onComplete(result)
                 }
