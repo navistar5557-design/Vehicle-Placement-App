@@ -60,6 +60,7 @@ val CubeTypography = Typography(
 fun CubeApp(store: Store) {
     val context = LocalContext.current
     val auth = remember { FirebaseAuth.getInstance() }
+    val roleRepo = remember { UserRoleRepository() }
     val loginPrefs = remember { context.getSharedPreferences("cube_auth", android.content.Context.MODE_PRIVATE) }
     val rememberLogin = remember { loginPrefs.getBoolean("remember_login", false) }
 
@@ -77,15 +78,40 @@ fun CubeApp(store: Store) {
         )
     ) {
         var loggedIn by remember { mutableStateOf(rememberLogin && auth.currentUser != null) }
-        if (!loggedIn) {
-            CubeLoginScreen(
+        var profile by remember { mutableStateOf<UserProfile?>(null) }
+        var profileLoading by remember { mutableStateOf(loggedIn) }
+
+        fun loadProfile() {
+            profileLoading = true
+            roleRepo.loadCurrentUser { result ->
+                profile = result.getOrNull()
+                profileLoading = false
+            }
+        }
+
+        LaunchedEffect(loggedIn) {
+            if (loggedIn && profile == null) loadProfile()
+        }
+
+        when {
+            !loggedIn -> CubeLoginScreen(
                 onLoginSuccess = { rememberMe ->
                     loginPrefs.edit().putBoolean("remember_login", rememberMe).apply()
                     loggedIn = true
+                    loadProfile()
                 }
             )
-        } else {
-            CubeMainShell(store)
+            profileLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = CubeOrange)
+            }
+            profile == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Unable to load user permissions.", color = MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.height(10.dp))
+                    Button(onClick = { loadProfile() }) { Text("Retry") }
+                }
+            }
+            else -> CubeMainShell(store, profile!!)
         }
     }
 }
@@ -657,7 +683,7 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CubeMainShell(store: Store) {
+private fun CubeMainShell(store: Store, profile: UserProfile) {
     var page by remember { mutableStateOf("Home") }
     var breakdown by remember { mutableStateOf("Trips") }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -691,6 +717,8 @@ private fun CubeMainShell(store: Store) {
                         CubeBrandLogo(large = false)
                         Spacer(Modifier.height(8.dp))
                         Text("Vehicle Placement App", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(profile.email, color = Color.White.copy(alpha = .85f), fontSize = 11.sp)
+                        Text(profile.role.label, color = CubeOrange, fontWeight = FontWeight.Black, fontSize = 11.sp)
                     }
                 }
                 Spacer(Modifier.height(10.dp))
@@ -698,9 +726,11 @@ private fun CubeMainShell(store: Store) {
                     page = "Home"
                     scope.launch { drawerState.close() }
                 }
-                DrawerMenuItem("New Trip", Icons.Default.AddCircleOutline) {
-                    page = "New Trip"
-                    scope.launch { drawerState.close() }
+                if (profile.role.canCreateTrips) {
+                    DrawerMenuItem("New Trip", Icons.Default.AddCircleOutline) {
+                        page = "New Trip"
+                        scope.launch { drawerState.close() }
+                    }
                 }
                 DrawerMenuItem("Trip List", Icons.Default.LocalShipping) {
                     page = "Trip List"
@@ -710,9 +740,11 @@ private fun CubeMainShell(store: Store) {
                     page = "Reports"
                     scope.launch { drawerState.close() }
                 }
-                DrawerMenuItem("Masters", Icons.Default.Settings) {
-                    page = "Masters"
-                    scope.launch { drawerState.close() }
+                if (profile.role.canManageMasters) {
+                    DrawerMenuItem("Masters", Icons.Default.Settings) {
+                        page = "Masters"
+                        scope.launch { drawerState.close() }
+                    }
                 }
             }
         }
@@ -754,8 +786,12 @@ private fun CubeMainShell(store: Store) {
                 NavigationBar(containerColor = Color.White, tonalElevation = 6.dp) {
                     BottomItem("Home", Icons.Default.Home, page == "Home") { page = "Home" }
                     BottomItem("Trips", Icons.Default.LocalShipping, page == "Trip List") { page = "Trip List" }
-                    BottomItem("New Trip", Icons.Default.AddCircleOutline, page == "New Trip") { page = "New Trip" }
-                    BottomItem("Masters", Icons.Default.Settings, page == "Masters") { page = "Masters" }
+                    if (profile.role.canCreateTrips) {
+                        BottomItem("New Trip", Icons.Default.AddCircleOutline, page == "New Trip") { page = "New Trip" }
+                    }
+                    if (profile.role.canManageMasters) {
+                        BottomItem("Masters", Icons.Default.Settings, page == "Masters") { page = "Masters" }
+                    }
                 }
             }
         ) { pad ->
@@ -776,13 +812,25 @@ private fun CubeMainShell(store: Store) {
                         go = { page = it }
                     )
                     "Dashboard Breakdown" -> DashboardBreakdownScreen(store, range, breakdown)
-                    "New Trip" -> StyledTripEntryScreen(store) { page = "Trip List" }
-                    "Trip List" -> StyledTripListScreen(store)
+                    "New Trip" -> if (profile.role.canCreateTrips) StyledTripEntryScreen(store) { page = "Trip List" } else AccessDeniedScreen()
+                    "Trip List" -> StyledTripListScreen(store, canDelete = profile.role.canDeleteTrips)
                     "Reports" -> StyledReportsHome(store) { page = it }
                     "Vehicle-wise Report" -> StyledVehicleReport(store)
-                    "Masters" -> StyledMastersScreen(store)
+                    "Masters" -> if (profile.role.canManageMasters) StyledMastersScreen(store) else AccessDeniedScreen()
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AccessDeniedScreen() {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Default.Lock, null, tint = CubeBlue, modifier = Modifier.size(42.dp))
+            Spacer(Modifier.height(10.dp))
+            Text("Access restricted", fontWeight = FontWeight.Black, color = CubeBlue)
+            Text("Your user role does not allow this action.", fontSize = 12.sp, color = Color.Gray)
         }
     }
 }
