@@ -80,7 +80,10 @@ fun StyledTripEntryScreen(store: Store, done: () -> Unit) {
                 shape = RoundedCornerShape(10.dp),
                 border = BorderStroke(1.dp, Color(0xFFF2D66B))
             ) {
-                Text("Mileage: " + fmt(mileage) + " km/L", Modifier.padding(10.dp), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Column(Modifier.padding(horizontal = 10.dp, vertical = 7.dp)) {
+                    Text("Vehicle Mileage", fontSize = 9.sp, color = Color(0xFF6A6A6A), fontWeight = FontWeight.SemiBold)
+                    Text(fmt(mileage) + " km/L", fontSize = 12.sp, fontWeight = FontWeight.Black, color = CubeBlue)
+                }
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -442,6 +445,8 @@ fun StyledMastersScreen(store: Store) {
     }
 }
 
+private val vehicleMileageOptions = (25..60).map { String.format(Locale.US, "%.1f", it / 10.0) }
+
 @Composable
 private fun StyledVehicleMaster(store: Store) {
     var items by remember { mutableStateOf(store.vehicles()) }
@@ -453,7 +458,11 @@ private fun StyledVehicleMaster(store: Store) {
     SectionHeader(Icons.Default.LocalShipping, "Vehicle Master")
     StyledNumberOrTextField("Vehicle No", number) { number = it.uppercase() }
     Spacer(Modifier.height(8.dp))
-    StyledNumberField("Mileage (2.5 to 6.0 km/L)", mileage) { mileage = it }
+    StyledPicker(
+        "Vehicle Mileage (km/L)",
+        vehicleMileageOptions,
+        mileage
+    ) { mileage = it }
     Spacer(Modifier.height(8.dp))
     Button(
         onClick = {
@@ -515,12 +524,11 @@ private fun StyledVehicleMaster(store: Store) {
                         singleLine = true
                     )
                     Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = editMileage,
-                        onValueChange = { editMileage = it },
-                        label = { Text("Mileage (2.5 to 6.0 km/L)") },
-                        singleLine = true
-                    )
+                    StyledPicker(
+                        "Vehicle Mileage (km/L)",
+                        vehicleMileageOptions,
+                        editMileage
+                    ) { editMileage = it }
                     if (editError.isNotBlank()) {
                         Spacer(Modifier.height(6.dp))
                         Text(editError, color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
