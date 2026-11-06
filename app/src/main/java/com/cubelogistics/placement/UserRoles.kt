@@ -101,7 +101,7 @@ class UserRoleRepository(private val context: Context) {
     }
 
     fun listUsers(onComplete: (Result<List<UserProfile>>) -> Unit) {
-        db.collection("users").orderBy("usernameLower").get()
+        db.collection("users").get()
             .addOnSuccessListener { snap ->
                 listRoles { roleResult ->
                     val roles = roleResult.getOrDefault(emptyList()).associateBy { it.id }
@@ -112,7 +112,7 @@ class UserRoleRepository(private val context: Context) {
                         val roleId = doc.getString("roleId") ?: doc.getString("role") ?: "user"
                         val role = roles[roleId] ?: if (roleId == "admin") defaultAdminRole() else defaultUserRole()
                         UserProfile(uid, username, loginEmail, roleId, role)
-                    }
+                    }.sortedBy { it.username.lowercase() }
                     onComplete(Result.success(users))
                 }
             }
@@ -213,6 +213,25 @@ class UserRoleRepository(private val context: Context) {
             .addOnSuccessListener { doc ->
                 if (doc.exists()) {
                     val roleId = doc.getString("roleId") ?: doc.getString("role") ?: "user"
+                    val username = doc.getString("username")
+                        ?: doc.getString("email")?.substringBefore("@")
+                        ?: user.email?.substringBefore("@")
+                        ?: "user"
+                    val loginEmail = doc.getString("loginEmail") ?: doc.getString("email") ?: user.email.orEmpty()
+
+                    ref.set(
+                        mapOf(
+                            "uid" to user.uid,
+                            "username" to username,
+                            "usernameLower" to normalizeUsername(username),
+                            "loginEmail" to loginEmail,
+                            "roleId" to roleId,
+                            "active" to (doc.getBoolean("active") ?: true),
+                            "updatedAt" to System.currentTimeMillis()
+                        ),
+                        com.google.firebase.firestore.SetOptions.merge()
+                    )
+
                     loadRole(roleId) { roleResult ->
                         val role = roleResult.getOrElse {
                             if (roleId == "admin") defaultAdminRole() else defaultUserRole()
@@ -221,8 +240,8 @@ class UserRoleRepository(private val context: Context) {
                             Result.success(
                                 UserProfile(
                                     uid = user.uid,
-                                    username = doc.getString("username") ?: user.email.orEmpty(),
-                                    loginEmail = doc.getString("loginEmail") ?: user.email.orEmpty(),
+                                    username = username,
+                                    loginEmail = loginEmail,
                                     roleId = roleId,
                                     role = role
                                 )
