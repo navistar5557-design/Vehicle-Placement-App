@@ -259,8 +259,14 @@ class UserRoleRepository(private val context: Context) {
         ensureDefaultRoles {
             db.collection("users").limit(1).get()
                 .addOnSuccessListener { existingUsers ->
-                    val role = if (existingUsers.isEmpty) defaultAdminRole() else defaultUserRole()
-                    val username = email.substringBefore("@").ifBlank { "user" }
+                    if (!existingUsers.isEmpty) {
+                        auth.signOut()
+                        onComplete(Result.failure(IllegalAccessException("This account is not authorized. Please contact Admin.")))
+                        return@addOnSuccessListener
+                    }
+
+                    val role = defaultAdminRole()
+                    val username = email.substringBefore("@").ifBlank { "admin" }
                     val data = mapOf(
                         "uid" to uid,
                         "username" to username,
