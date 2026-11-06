@@ -61,6 +61,7 @@ fun CubeApp(store: Store) {
     val context = LocalContext.current
     val auth = remember { FirebaseAuth.getInstance() }
     val roleRepo = remember { UserRoleRepository() }
+    val firestoreSync = remember { FirestoreSync(context, store) }
     val loginPrefs = remember { context.getSharedPreferences("cube_auth", android.content.Context.MODE_PRIVATE) }
     val rememberLogin = remember { loginPrefs.getBoolean("remember_login", false) }
 
@@ -91,6 +92,12 @@ fun CubeApp(store: Store) {
 
         LaunchedEffect(loggedIn) {
             if (loggedIn && profile == null) loadProfile()
+        }
+
+        LaunchedEffect(profile?.uid) {
+            if (profile != null && auth.currentUser != null) {
+                firestoreSync.startAutomaticSync()
+            }
         }
 
         when {
