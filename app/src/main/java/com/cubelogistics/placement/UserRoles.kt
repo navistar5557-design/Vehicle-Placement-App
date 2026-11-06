@@ -37,6 +37,31 @@ class UserRoleRepository {
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
 
+    fun listUsers(onComplete: (Result<List<UserProfile>>) -> Unit) {
+        db.collection("users").orderBy("email").get()
+            .addOnSuccessListener { snap ->
+                val users = snap.documents.mapNotNull { doc ->
+                    val uid = doc.getString("uid") ?: doc.id
+                    val email = doc.getString("email") ?: return@mapNotNull null
+                    UserProfile(uid, email, UserRole.from(doc.getString("role")))
+                }
+                onComplete(Result.success(users))
+            }
+            .addOnFailureListener { onComplete(Result.failure(it)) }
+    }
+
+    fun updateRole(uid: String, role: UserRole, onComplete: (Result<Unit>) -> Unit) {
+        db.collection("users").document(uid)
+            .update(
+                mapOf(
+                    "role" to role.label.lowercase(),
+                    "updatedAt" to System.currentTimeMillis()
+                )
+            )
+            .addOnSuccessListener { onComplete(Result.success(Unit)) }
+            .addOnFailureListener { onComplete(Result.failure(it)) }
+    }
+
     fun loadCurrentUser(onComplete: (Result<UserProfile>) -> Unit) {
         val user = auth.currentUser
         if (user == null) {
