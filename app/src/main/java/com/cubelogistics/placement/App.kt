@@ -1219,6 +1219,14 @@ private fun UserProfileMenu(
     profile: UserProfile,
     onLogout: () -> Unit
 ) {
+    val context = LocalContext.current
+    val appVersion = remember {
+        try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "-"
+        } catch (_: Exception) {
+            "-"
+        }
+    }
     var expanded by remember { mutableStateOf(false) }
     val initial = profile.username.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "U"
 
@@ -1295,7 +1303,7 @@ private fun UserProfileMenu(
                             color = Color.Gray
                         )
                         Text(
-                            BuildConfig.VERSION_NAME,
+                            appVersion,
                             color = CubeBlue,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp
