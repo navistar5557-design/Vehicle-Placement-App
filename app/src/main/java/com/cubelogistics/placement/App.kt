@@ -809,6 +809,7 @@ private fun CubeMainShell(store: Store, profile: UserProfile) {
                         onCustomStart = { customStart = it },
                         onCustomEnd = { customEnd = it },
                         onBreakdown = { kind -> breakdown = kind; page = "Dashboard Breakdown" },
+                        role = profile.role,
                         go = { page = it }
                     )
                     "Dashboard Breakdown" -> DashboardBreakdownScreen(store, range, breakdown)
@@ -911,6 +912,7 @@ private fun CubeDashboard(
     onCustomStart: (Long) -> Unit,
     onCustomEnd: (Long) -> Unit,
     onBreakdown: (String) -> Unit,
+    role: UserRole,
     go: (String) -> Unit
 ) {
     val trips = filterTrips(store.trips(), range)
@@ -1036,10 +1038,14 @@ private fun CubeDashboard(
 
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            QuickAction("New Trip", Icons.Default.Add, Modifier.weight(1f)) { go("New Trip") }
+            if (role.canCreateTrips) {
+                QuickAction("New Trip", Icons.Default.Add, Modifier.weight(1f)) { go("New Trip") }
+            }
             QuickAction("Trip List", Icons.Default.List, Modifier.weight(1f)) { go("Trip List") }
             QuickAction("Reports", Icons.Default.BarChart, Modifier.weight(1f)) { go("Reports") }
-            QuickAction("Masters", Icons.Default.Settings, Modifier.weight(1f)) { go("Masters") }
+            if (role.canManageMasters) {
+                QuickAction("Masters", Icons.Default.Settings, Modifier.weight(1f)) { go("Masters") }
+            }
         }
         Spacer(Modifier.height(10.dp))
     }
