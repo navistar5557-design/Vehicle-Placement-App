@@ -1,6 +1,7 @@
 package com.cubelogistics.placement
 
 import android.app.DatePickerDialog
+import android.widget.Toast
 
 import android.content.Intent
 import androidx.compose.foundation.BorderStroke
@@ -360,7 +361,7 @@ fun StyledVehicleReport(store: Store) {
 
         Spacer(Modifier.height(12.dp))
         Button(
-            onClick = {},
+            onClick = { Toast.makeText(ctx, "Report generated", Toast.LENGTH_SHORT).show() },
             modifier = Modifier.fillMaxWidth().height(50.dp),
             colors = ButtonDefaults.buttonColors(containerColor = CubeOrange),
             shape = RoundedCornerShape(10.dp)
