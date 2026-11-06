@@ -758,11 +758,9 @@ private fun CubeMainShell(store: Store, profile: UserProfile) {
                         scope.launch { drawerState.close() }
                     }
                 }
-                if (profile.role.canManageUsers) {
-                    DrawerMenuItem("Settings", Icons.Default.AdminPanelSettings) {
-                        page = "Settings"
-                        scope.launch { drawerState.close() }
-                    }
+                DrawerMenuItem("Settings", Icons.Default.AdminPanelSettings) {
+                    page = "Settings"
+                    scope.launch { drawerState.close() }
                 }
             }
         }
@@ -836,7 +834,7 @@ private fun CubeMainShell(store: Store, profile: UserProfile) {
                     "Reports" -> StyledReportsHome(store) { page = it }
                     "Vehicle-wise Report" -> StyledVehicleReport(store)
                     "Masters" -> if (profile.role.canManageMasters) StyledMastersScreen(store) else AccessDeniedScreen()
-                    "Settings" -> if (profile.role.canManageUsers) AdminSettingsScreen() else AccessDeniedScreen()
+                    "Settings" -> SettingsScreen(profile)
                 }
             }
         }
@@ -844,7 +842,7 @@ private fun CubeMainShell(store: Store, profile: UserProfile) {
 }
 
 @Composable
-private fun AdminSettingsScreen() {
+private fun SettingsScreen(profile: UserProfile) {
     val context = LocalContext.current
     val repo = remember { UserRoleRepository(context) }
     var tab by remember { mutableStateOf("Users") }
@@ -880,8 +878,13 @@ private fun AdminSettingsScreen() {
                 Icon(Icons.Default.AdminPanelSettings, null, tint = CubeOrange)
                 Spacer(Modifier.width(8.dp))
                 Column {
-                    Text("Admin Settings", color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                    Text("Manage application roles and users", fontSize = 10.sp, color = Color.Gray)
+                    Text("Settings", color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                    Text(
+                        if (profile.role.canManageUsers) "Manage application roles and users"
+                        else "View account role and access permissions",
+                        fontSize = 10.sp,
+                        color = Color.Gray
+                    )
                 }
             }
         }
@@ -911,12 +914,81 @@ private fun AdminSettingsScreen() {
             Box(Modifier.fillMaxWidth().padding(30.dp), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = CubeOrange)
             }
-        } else if (tab == "Users") {
-            AdminUsersPanel(repo, roles, users, onMessage = { message = it }, onRefresh = { refresh() })
+        } else if (profile.role.canManageUsers) {
+            if (tab == "Users") {
+                AdminUsersPanel(repo, roles, users, onMessage = { message = it }, onRefresh = { refresh() })
+            } else {
+                AdminRolesPanel(repo, roles, onMessage = { message = it }, onRefresh = { refresh() })
+            }
         } else {
-            AdminRolesPanel(repo, roles, onMessage = { message = it }, onRefresh = { refresh() })
+            ReadOnlySettingsPanel(profile, roles)
         }
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun ReadOnlySettingsPanel(
+    profile: UserProfile,
+    roles: List<RoleDefinition>
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Text("My Account", color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 15.sp)
+            Spacer(Modifier.height(8.dp))
+            Text("Username", fontSize = 10.sp, color = Color.Gray)
+            Text(profile.username, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(6.dp))
+            Text("Assigned Role", fontSize = 10.sp, color = Color.Gray)
+            Text(profile.role.name, color = CubeOrange, fontWeight = FontWeight.Black)
+        }
+    }
+
+    Spacer(Modifier.height(14.dp))
+    Text("Available Roles", color = CubeBlue, fontWeight = FontWeight.Black)
+    Spacer(Modifier.height(6.dp))
+    roles.forEach { role ->
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+        ) {
+            Column(Modifier.padding(12.dp)) {
+                Text(role.name, color = CubeBlue, fontWeight = FontWeight.Black)
+                Text(
+                    listOfNotNull(
+                        "Create Trips".takeIf { role.canCreateTrips },
+                        "Masters".takeIf { role.canManageMasters },
+                        "Delete Trips".takeIf { role.canDeleteTrips },
+                        "Reports".takeIf { role.canViewReports },
+                        "Manage Users".takeIf { role.canManageUsers }
+                    ).joinToString(" • ").ifBlank { "View only" },
+                    fontSize = 10.sp,
+                    color = Color.Gray
+                )
+            }
+        }
+    }
+
+    Surface(
+        color = CubeLightBlue,
+        shape = RoundedCornerShape(10.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Lock, null, tint = CubeBlue)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "Only Admin can create or edit roles and users.",
+                fontSize = 11.sp,
+                color = CubeText,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
     }
 }
 
