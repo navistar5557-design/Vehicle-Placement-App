@@ -11,7 +11,7 @@ android {
  packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }
 dependencies {
- implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
+ implementation(platform("com.google.firebase:firebase-bom:33.13.0"))
  implementation("com.google.firebase:firebase-firestore")
  implementation("com.google.firebase:firebase-auth")
  implementation(platform("androidx.compose:compose-bom:2024.12.01"))
