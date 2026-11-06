@@ -7,6 +7,10 @@ import org.json.JSONObject
 class Store(context:Context){
  private val p=context.getSharedPreferences("cube_store",Context.MODE_PRIVATE)
  var onDataChanged: (() -> Unit)? = null
+ var onVehicleRemoved: ((String) -> Unit)? = null
+ var onVendorRemoved: ((String) -> Unit)? = null
+ var onLocationRemoved: ((String) -> Unit)? = null
+ var onTripRemoved: ((String) -> Unit)? = null
  private var suppressCloudCallback = false
 
  fun withoutCloudCallback(block: () -> Unit) {
@@ -30,13 +34,37 @@ class Store(context:Context){
   if(a.length()==0)return mutableListOf(Vehicle("KA51AM6819",3.0),Vehicle("TN28BX7711",4.0))
   return MutableList(a.length()){i->a.getJSONObject(i).let{Vehicle(it.getString("n"),it.getDouble("m"),it.optBoolean("a",true))}}
  }
- fun saveVehicles(x:List<Vehicle>){val a=JSONArray();x.forEach{a.put(JSONObject().put("n",it.number).put("m",it.mileage).put("a",it.active))};p.edit().putString("vehicles",a.toString()).apply();changed()}
+ fun saveVehicles(x:List<Vehicle>){
+  val removed=if(!suppressCloudCallback) vehicles().map{it.number}.toSet()-x.map{it.number}.toSet() else emptySet()
+  val a=JSONArray();x.forEach{a.put(JSONObject().put("n",it.number).put("m",it.mileage).put("a",it.active))}
+  p.edit().putString("vehicles",a.toString()).apply()
+  if(!suppressCloudCallback) removed.forEach{onVehicleRemoved?.invoke(it)}
+  changed()
+ }
  fun vendors():MutableList<Vendor>{val a=JSONArray(p.getString("vendors","[]"));if(a.length()==0)return mutableListOf(Vendor("GLOBAL TRP"));return MutableList(a.length()){Vendor(a.getJSONObject(it).getString("n"),a.getJSONObject(it).optBoolean("a",true))}}
- fun saveVendors(x:List<Vendor>){val a=JSONArray();x.forEach{a.put(JSONObject().put("n",it.name).put("a",it.active))};p.edit().putString("vendors",a.toString()).apply();changed()}
+ fun saveVendors(x:List<Vendor>){
+  val removed=if(!suppressCloudCallback) vendors().map{it.name}.toSet()-x.map{it.name}.toSet() else emptySet()
+  val a=JSONArray();x.forEach{a.put(JSONObject().put("n",it.name).put("a",it.active))}
+  p.edit().putString("vendors",a.toString()).apply()
+  if(!suppressCloudCallback) removed.forEach{onVendorRemoved?.invoke(it)}
+  changed()
+ }
  fun locations():MutableList<Location>{val a=JSONArray(p.getString("locations","[]"));if(a.length()==0)return mutableListOf(Location("NAVI MUMBAI"),Location("BHIWANDI"),Location("ERODE"));return MutableList(a.length()){Location(a.getJSONObject(it).getString("n"),a.getJSONObject(it).optBoolean("a",true))}}
- fun saveLocations(x:List<Location>){val a=JSONArray();x.forEach{a.put(JSONObject().put("n",it.name).put("a",it.active))};p.edit().putString("locations",a.toString()).apply();changed()}
+ fun saveLocations(x:List<Location>){
+  val removed=if(!suppressCloudCallback) locations().map{it.name}.toSet()-x.map{it.name}.toSet() else emptySet()
+  val a=JSONArray();x.forEach{a.put(JSONObject().put("n",it.name).put("a",it.active))}
+  p.edit().putString("locations",a.toString()).apply()
+  if(!suppressCloudCallback) removed.forEach{onLocationRemoved?.invoke(it)}
+  changed()
+ }
  fun trips():MutableList<Trip>{val a=JSONArray(p.getString("trips","[]"));return MutableList(a.length()){i->decodeTrip(a.getJSONObject(i))}}
- fun saveTrips(x:List<Trip>){val a=JSONArray();x.forEach{a.put(encodeTrip(it))};p.edit().putString("trips",a.toString()).apply();changed()}
+ fun saveTrips(x:List<Trip>){
+  val removed=if(!suppressCloudCallback) trips().map{it.id}.toSet()-x.map{it.id}.toSet() else emptySet()
+  val a=JSONArray();x.forEach{a.put(encodeTrip(it))}
+  p.edit().putString("trips",a.toString()).apply()
+  if(!suppressCloudCallback) removed.forEach{onTripRemoved?.invoke(it)}
+  changed()
+ }
 
  fun renameVehicle(oldNumber:String,newNumber:String,newMileage:Double){
   val vs=vehicles().map{if(it.number==oldNumber)it.copy(number=newNumber,mileage=newMileage)else it}
