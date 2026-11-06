@@ -30,8 +30,8 @@ class Store(context:Context){
   }
 
  fun vehicles():MutableList<Vehicle>{
+  if(!p.contains("vehicles")) return mutableListOf(Vehicle("KA51AM6819",3.0),Vehicle("TN28BX7711",4.0))
   val a=JSONArray(p.getString("vehicles","[]"))
-  if(a.length()==0)return mutableListOf(Vehicle("KA51AM6819",3.0),Vehicle("TN28BX7711",4.0))
   return MutableList(a.length()){i->a.getJSONObject(i).let{Vehicle(it.getString("n"),it.getDouble("m"),it.optBoolean("a",true))}}
  }
  fun saveVehicles(x:List<Vehicle>){
@@ -41,7 +41,7 @@ class Store(context:Context){
   if(!suppressCloudCallback) removed.forEach{onVehicleRemoved?.invoke(it)}
   changed()
  }
- fun vendors():MutableList<Vendor>{val a=JSONArray(p.getString("vendors","[]"));if(a.length()==0)return mutableListOf(Vendor("GLOBAL TRP"));return MutableList(a.length()){Vendor(a.getJSONObject(it).getString("n"),a.getJSONObject(it).optBoolean("a",true))}}
+ fun vendors():MutableList<Vendor>{if(!p.contains("vendors"))return mutableListOf(Vendor("GLOBAL TRP"));val a=JSONArray(p.getString("vendors","[]"));return MutableList(a.length()){Vendor(a.getJSONObject(it).getString("n"),a.getJSONObject(it).optBoolean("a",true))}}
  fun saveVendors(x:List<Vendor>){
   val removed=if(!suppressCloudCallback) vendors().map{it.name}.toSet()-x.map{it.name}.toSet() else emptySet()
   val a=JSONArray();x.forEach{a.put(JSONObject().put("n",it.name).put("a",it.active))}
@@ -49,7 +49,7 @@ class Store(context:Context){
   if(!suppressCloudCallback) removed.forEach{onVendorRemoved?.invoke(it)}
   changed()
  }
- fun locations():MutableList<Location>{val a=JSONArray(p.getString("locations","[]"));if(a.length()==0)return mutableListOf(Location("NAVI MUMBAI"),Location("BHIWANDI"),Location("ERODE"));return MutableList(a.length()){Location(a.getJSONObject(it).getString("n"),a.getJSONObject(it).optBoolean("a",true))}}
+ fun locations():MutableList<Location>{if(!p.contains("locations"))return mutableListOf(Location("NAVI MUMBAI"),Location("BHIWANDI"),Location("ERODE"));val a=JSONArray(p.getString("locations","[]"));return MutableList(a.length()){Location(a.getJSONObject(it).getString("n"),a.getJSONObject(it).optBoolean("a",true))}}
  fun saveLocations(x:List<Location>){
   val removed=if(!suppressCloudCallback) locations().map{it.name}.toSet()-x.map{it.name}.toSet() else emptySet()
   val a=JSONArray();x.forEach{a.put(JSONObject().put("n",it.name).put("a",it.active))}
