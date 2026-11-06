@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.max
 import kotlinx.coroutines.launch
+import com.google.firebase.auth.FirebaseAuth
 
 val CubeBlue = Color(0xFF073B7A)
 val CubeBlue2 = Color(0xFF0D4E9B)
@@ -57,6 +58,15 @@ val CubeTypography = Typography(
 
 @Composable
 fun CubeApp(store: Store) {
+    val context = LocalContext.current
+    val auth = remember { FirebaseAuth.getInstance() }
+    val loginPrefs = remember { context.getSharedPreferences("cube_auth", android.content.Context.MODE_PRIVATE) }
+    val rememberLogin = remember { loginPrefs.getBoolean("remember_login", false) }
+
+    if (!rememberLogin && auth.currentUser != null) {
+        auth.signOut()
+    }
+
     MaterialTheme(
         typography = CubeTypography,
         colorScheme = lightColorScheme(
@@ -66,8 +76,17 @@ fun CubeApp(store: Store) {
             surface = Color.White
         )
     ) {
-        var loggedIn by remember { mutableStateOf(false) }
-        if (!loggedIn) CubeLoginScreen { loggedIn = true } else CubeMainShell(store)
+        var loggedIn by remember { mutableStateOf(rememberLogin && auth.currentUser != null) }
+        if (!loggedIn) {
+            CubeLoginScreen(
+                onLoginSuccess = { rememberMe ->
+                    loginPrefs.edit().putBoolean("remember_login", rememberMe).apply()
+                    loggedIn = true
+                }
+            )
+        } else {
+            CubeMainShell(store)
+        }
     }
 }
 
@@ -335,10 +354,13 @@ private fun MockupTruckIllustration(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun CubeLoginScreen(onLogin: () -> Unit) {
+private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
+    val auth = remember { FirebaseAuth.getInstance() }
     var user by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf("") }
+    var loading by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize().background(Color.White)) {
         Canvas(Modifier.fillMaxSize()) {
@@ -531,14 +553,65 @@ private fun CubeLoginScreen(onLogin: () -> Unit) {
                     "Forgot Password?",
                     color = Color(0xFF0A56AE),
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.clickable {
+                        val email = user.trim()
+                        if (email.isBlank()) {
+                            errorMessage = "Enter your email address first."
+                        } else {
+                            loading = true
+                            auth.sendPasswordResetEmail(email)
+                                .addOnSuccessListener {
+                                    loading = false
+                                    errorMessage = "Password reset email sent."
+                                }
+                                .addOnFailureListener {
+                                    loading = false
+                                    errorMessage = it.localizedMessage ?: "Unable to send password reset email."
+                                }
+                        }
+                    }
+                )
+            }
+
+            if (errorMessage.isNotBlank()) {
+                Text(
+                    errorMessage,
+                    color = if (errorMessage == "Password reset email sent.") CubeGreen else MaterialTheme.colorScheme.error,
+                    fontSize = 11.sp,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                 )
             }
 
             Spacer(Modifier.height(21.dp))
 
             Button(
-                onClick = onLogin,
+                onClick = {
+                    val email = user.trim()
+                    errorMessage = when {
+                        email.isBlank() -> "Enter your email address."
+                        pass.isBlank() -> "Enter your password."
+                        else -> ""
+                    }
+                    if (errorMessage.isBlank()) {
+                        loading = true
+                        auth.signInWithEmailAndPassword(email, pass)
+                            .addOnSuccessListener {
+                                loading = false
+                                onLoginSuccess(rememberMe)
+                            }
+                            .addOnFailureListener {
+                                loading = false
+                                errorMessage = when {
+                                    it.message?.contains("password", ignoreCase = true) == true ||
+                                        it.message?.contains("credential", ignoreCase = true) == true ->
+                                        "Invalid email or password."
+                                    else -> it.localizedMessage ?: "Login failed. Please try again."
+                                }
+                            }
+                    }
+                },
+                enabled = !loading,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5C00)),
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier
@@ -546,11 +619,19 @@ private fun CubeLoginScreen(onLogin: () -> Unit) {
                     .height(51.dp)
             ) {
                 Spacer(Modifier.weight(.8f))
-                Text(
-                    "Login",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.sp
-                )
+                if (loading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.dp,
+                        color = Color.White
+                    )
+                } else {
+                    Text(
+                        "Login",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp
+                    )
+                }
                 Spacer(Modifier.width(20.dp))
                 Icon(
                     Icons.Default.ArrowForward,
