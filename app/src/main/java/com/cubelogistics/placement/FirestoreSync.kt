@@ -83,64 +83,63 @@ class FirestoreSync(private val context: Context, private val store: Store) {
             return
         }
 
-        val batch = firestore.batch()
+        val writes = mutableListOf<Pair<com.google.firebase.firestore.DocumentReference, Map<String, Any>>>()
 
         store.vehicles().forEach { vehicle ->
-            val ref = firestore.collection("vehicles").document(idOf(vehicle.number))
-            batch.set(
-                ref,
-                mapOf(
-                    "number" to vehicle.number,
-                    "mileage" to vehicle.mileage,
-                    "active" to vehicle.active,
-                    "updatedAt" to System.currentTimeMillis()
-                ),
-                SetOptions.merge()
+            writes += firestore.collection("vehicles").document(idOf(vehicle.number)) to mapOf(
+                "number" to vehicle.number,
+                "mileage" to vehicle.mileage,
+                "active" to vehicle.active,
+                "updatedAt" to System.currentTimeMillis()
             )
         }
 
         store.vendors().forEach { vendor ->
-            val ref = firestore.collection("vendors").document(idOf(vendor.name))
-            batch.set(
-                ref,
-                mapOf(
-                    "name" to vendor.name,
-                    "active" to vendor.active,
-                    "updatedAt" to System.currentTimeMillis()
-                ),
-                SetOptions.merge()
+            writes += firestore.collection("vendors").document(idOf(vendor.name)) to mapOf(
+                "name" to vendor.name,
+                "active" to vendor.active,
+                "updatedAt" to System.currentTimeMillis()
             )
         }
 
         store.locations().forEach { location ->
-            val ref = firestore.collection("locations").document(idOf(location.name))
-            batch.set(
-                ref,
-                mapOf(
-                    "name" to location.name,
-                    "active" to location.active,
-                    "updatedAt" to System.currentTimeMillis()
-                ),
-                SetOptions.merge()
+            writes += firestore.collection("locations").document(idOf(location.name)) to mapOf(
+                "name" to location.name,
+                "active" to location.active,
+                "updatedAt" to System.currentTimeMillis()
             )
         }
 
         store.trips().forEach { trip ->
-            val ref = firestore.collection("trips").document(trip.id)
-            batch.set(ref, trip.toFirestoreMap(), SetOptions.merge())
+            writes += firestore.collection("trips").document(trip.id) to trip.toFirestoreMap()
         }
 
-        batch.set(
-            firestore.collection("settings").document("fuelRate"),
-            mapOf(
-                "value" to store.fuelRate,
-                "updatedAt" to System.currentTimeMillis()
-            ),
-            SetOptions.merge()
+        writes += firestore.collection("settings").document("fuelRate") to mapOf(
+            "value" to store.fuelRate,
+            "updatedAt" to System.currentTimeMillis()
         )
 
+        commitChunks(firestore, writes.chunked(400), 0, onComplete)
+    }
+
+    private fun commitChunks(
+        firestore: FirebaseFirestore,
+        chunks: List<List<Pair<com.google.firebase.firestore.DocumentReference, Map<String, Any>>>>,
+        index: Int,
+        onComplete: (Result<Unit>) -> Unit
+    ) {
+        if (index >= chunks.size) {
+            onComplete(Result.success(Unit))
+            return
+        }
+
+        val batch = firestore.batch()
+        chunks[index].forEach { (ref, data) ->
+            batch.set(ref, data, SetOptions.merge())
+        }
+
         batch.commit()
-            .addOnSuccessListener { onComplete(Result.success(Unit)) }
+            .addOnSuccessListener { commitChunks(firestore, chunks, index + 1, onComplete) }
             .addOnFailureListener { onComplete(Result.failure(it)) }
     }
 
@@ -158,26 +157,26 @@ class FirestoreSync(private val context: Context, private val store: Store) {
                     val mileage = doc.getDouble("mileage") ?: return@mapNotNull null
                     Vehicle(number, mileage, doc.getBoolean("active") ?: true)
                 }
-                if (vehicles.isNotEmpty()) store.withoutCloudCallback { store.saveVehicles(vehicles) }
+                store.withoutCloudCallback { store.saveVehicles(vehicles) }
 
                 firestore.collection("vendors").get()
                     .addOnSuccessListener { vendorSnap ->
                         val vendors = vendorSnap.documents.mapNotNull { doc ->
                             doc.getString("name")?.let { Vendor(it, doc.getBoolean("active") ?: true) }
                         }
-                        if (vendors.isNotEmpty()) store.withoutCloudCallback { store.saveVendors(vendors) }
+                        store.withoutCloudCallback { store.saveVendors(vendors) }
 
                         firestore.collection("locations").get()
                             .addOnSuccessListener { locationSnap ->
                                 val locations = locationSnap.documents.mapNotNull { doc ->
                                     doc.getString("name")?.let { Location(it, doc.getBoolean("active") ?: true) }
                                 }
-                                if (locations.isNotEmpty()) store.withoutCloudCallback { store.saveLocations(locations) }
+                                store.withoutCloudCallback { store.saveLocations(locations) }
 
                                 firestore.collection("trips").get()
                                     .addOnSuccessListener { tripSnap ->
                                         val trips = tripSnap.documents.mapNotNull { it.toTripOrNull() }
-                                        if (trips.isNotEmpty()) store.withoutCloudCallback { store.saveTrips(trips) }
+                                        store.withoutCloudCallback { store.saveTrips(trips) }
 
                                         firestore.collection("settings").document("fuelRate").get()
                                             .addOnSuccessListener { fuelDoc ->
