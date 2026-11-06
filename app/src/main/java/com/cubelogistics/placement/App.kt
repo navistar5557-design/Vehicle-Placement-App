@@ -848,7 +848,17 @@ private fun UserManagementScreen() {
     LaunchedEffect(Unit) { refresh() }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
-        SectionHeader(Icons.Default.ManageAccounts, "User Management")
+        Surface(
+            color = CubeLightBlue,
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+        ) {
+            Row(Modifier.padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.ManageAccounts, null, tint = CubeOrange)
+                Spacer(Modifier.width(8.dp))
+                Text("User Management", color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 15.sp)
+            }
+        }
         Text(
             "Admin can assign each signed-in user as Admin, Operator or Viewer.",
             fontSize = 11.sp,
