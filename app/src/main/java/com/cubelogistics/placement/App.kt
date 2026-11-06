@@ -730,7 +730,7 @@ private fun CubeMainShell(store: Store, profile: UserProfile) {
                         Spacer(Modifier.height(8.dp))
                         Text("Vehicle Placement App", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Text(profile.username, color = Color.White.copy(alpha = .85f), fontSize = 11.sp)
-                        Text(profile.role.label, color = CubeOrange, fontWeight = FontWeight.Black, fontSize = 11.sp)
+                        Text(profile.role.name, color = CubeOrange, fontWeight = FontWeight.Black, fontSize = 11.sp)
                     }
                 }
                 Spacer(Modifier.height(10.dp))
