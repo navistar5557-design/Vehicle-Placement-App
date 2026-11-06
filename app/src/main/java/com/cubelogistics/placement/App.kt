@@ -60,7 +60,7 @@ val CubeTypography = Typography(
 fun CubeApp(store: Store) {
     val context = LocalContext.current
     val auth = remember { FirebaseAuth.getInstance() }
-    val roleRepo = remember { UserRoleRepository() }
+    val roleRepo = remember { UserRoleRepository(context) }
     val firestoreSync = remember { FirestoreSync(context, store) }
     val loginPrefs = remember { context.getSharedPreferences("cube_auth", android.content.Context.MODE_PRIVATE) }
     val rememberLogin = remember { loginPrefs.getBoolean("remember_login", false) }
@@ -388,7 +388,9 @@ private fun MockupTruckIllustration(modifier: Modifier = Modifier) {
 
 @Composable
 private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
+    val context = LocalContext.current
     val auth = remember { FirebaseAuth.getInstance() }
+    val roleRepo = remember { UserRoleRepository(context) }
     var user by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(true) }
@@ -588,12 +590,14 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.clickable {
-                        val email = user.trim()
-                        if (email.isBlank()) {
-                            errorMessage = "Enter your email address first."
+                        val identity = user.trim()
+                        if (identity.isBlank()) {
+                            errorMessage = "Enter your User ID first."
+                        } else if (!identity.contains("@")) {
+                            errorMessage = "For username accounts, please contact Admin to change the password."
                         } else {
                             loading = true
-                            auth.sendPasswordResetEmail(email)
+                            auth.sendPasswordResetEmail(identity)
                                 .addOnSuccessListener {
                                     loading = false
                                     errorMessage = "Password reset email sent."
@@ -620,15 +624,16 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
 
             Button(
                 onClick = {
-                    val email = user.trim()
+                    val identity = user.trim()
                     errorMessage = when {
-                        email.isBlank() -> "Enter your email address."
+                        identity.isBlank() -> "Enter your User ID."
                         pass.isBlank() -> "Enter your password."
                         else -> ""
                     }
                     if (errorMessage.isBlank()) {
                         loading = true
-                        auth.signInWithEmailAndPassword(email, pass)
+                        val loginEmail = roleRepo.resolveLoginIdentity(identity)
+                        auth.signInWithEmailAndPassword(loginEmail, pass)
                             .addOnSuccessListener {
                                 loading = false
                                 onLoginSuccess(rememberMe)
@@ -724,7 +729,7 @@ private fun CubeMainShell(store: Store, profile: UserProfile) {
                         CubeBrandLogo(large = false)
                         Spacer(Modifier.height(8.dp))
                         Text("Vehicle Placement App", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text(profile.email, color = Color.White.copy(alpha = .85f), fontSize = 11.sp)
+                        Text(profile.username, color = Color.White.copy(alpha = .85f), fontSize = 11.sp)
                         Text(profile.role.label, color = CubeOrange, fontWeight = FontWeight.Black, fontSize = 11.sp)
                     }
                 }
@@ -752,8 +757,10 @@ private fun CubeMainShell(store: Store, profile: UserProfile) {
                         page = "Masters"
                         scope.launch { drawerState.close() }
                     }
-                    DrawerMenuItem("Users", Icons.Default.ManageAccounts) {
-                        page = "Users"
+                }
+                if (profile.role.canManageUsers) {
+                    DrawerMenuItem("Settings", Icons.Default.AdminPanelSettings) {
+                        page = "Settings"
                         scope.launch { drawerState.close() }
                     }
                 }
@@ -829,7 +836,7 @@ private fun CubeMainShell(store: Store, profile: UserProfile) {
                     "Reports" -> StyledReportsHome(store) { page = it }
                     "Vehicle-wise Report" -> StyledVehicleReport(store)
                     "Masters" -> if (profile.role.canManageMasters) StyledMastersScreen(store) else AccessDeniedScreen()
-                    "Users" -> if (profile.role == UserRole.ADMIN) UserManagementScreen() else AccessDeniedScreen()
+                    "Settings" -> if (profile.role.canManageUsers) AdminSettingsScreen() else AccessDeniedScreen()
                 }
             }
         }
@@ -837,18 +844,27 @@ private fun CubeMainShell(store: Store, profile: UserProfile) {
 }
 
 @Composable
-private fun UserManagementScreen() {
-    val repo = remember { UserRoleRepository() }
+private fun AdminSettingsScreen() {
+    val context = LocalContext.current
+    val repo = remember { UserRoleRepository(context) }
+    var tab by remember { mutableStateOf("Users") }
+    var roles by remember { mutableStateOf<List<RoleDefinition>>(emptyList()) }
     var users by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf("") }
 
     fun refresh() {
         loading = true
-        repo.listUsers { result ->
-            users = result.getOrDefault(emptyList())
-            message = result.exceptionOrNull()?.localizedMessage.orEmpty()
-            loading = false
+        repo.ensureDefaultRoles {
+            repo.listRoles { roleResult ->
+                roles = roleResult.getOrDefault(emptyList())
+                repo.listUsers { userResult ->
+                    users = userResult.getOrDefault(emptyList())
+                    message = userResult.exceptionOrNull()?.localizedMessage
+                        ?: roleResult.exceptionOrNull()?.localizedMessage.orEmpty()
+                    loading = false
+                }
+            }
         }
     }
 
@@ -860,54 +876,152 @@ private fun UserManagementScreen() {
             shape = RoundedCornerShape(8.dp),
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
         ) {
-            Row(Modifier.padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.ManageAccounts, null, tint = CubeOrange)
+            Row(Modifier.padding(horizontal = 10.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.AdminPanelSettings, null, tint = CubeOrange)
                 Spacer(Modifier.width(8.dp))
-                Text("User Management", color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                Column {
+                    Text("Admin Settings", color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                    Text("Manage application roles and users", fontSize = 10.sp, color = Color.Gray)
+                }
             }
         }
-        Text(
-            "Admin can assign each signed-in user as Admin, Operator or Viewer.",
-            fontSize = 11.sp,
-            color = Color.Gray
-        )
-        Spacer(Modifier.height(10.dp))
 
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = tab == "Users",
+                onClick = { tab = "Users" },
+                label = { Text("Users") },
+                leadingIcon = { Icon(Icons.Default.ManageAccounts, null, modifier = Modifier.size(18.dp)) }
+            )
+            FilterChip(
+                selected = tab == "Roles",
+                onClick = { tab = "Roles" },
+                label = { Text("Roles") },
+                leadingIcon = { Icon(Icons.Default.Badge, null, modifier = Modifier.size(18.dp)) }
+            )
+        }
+
+        if (message.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(message, fontSize = 11.sp, color = if (message.contains("saved", true) || message.contains("created", true) || message.contains("updated", true)) CubeGreen else MaterialTheme.colorScheme.error)
+        }
+
+        Spacer(Modifier.height(10.dp))
         if (loading) {
             Box(Modifier.fillMaxWidth().padding(30.dp), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = CubeOrange)
             }
+        } else if (tab == "Users") {
+            AdminUsersPanel(repo, roles, users, onMessage = { message = it }, onRefresh = { refresh() })
+        } else {
+            AdminRolesPanel(repo, roles, onMessage = { message = it }, onRefresh = { refresh() })
         }
+        Spacer(Modifier.height(24.dp))
+    }
+}
 
-        if (message.isNotBlank()) {
-            Text(message, color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
+@Composable
+private fun AdminUsersPanel(
+    repo: UserRoleRepository,
+    roles: List<RoleDefinition>,
+    users: List<UserProfile>,
+    onMessage: (String) -> Unit,
+    onRefresh: () -> Unit
+) {
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var roleId by remember(roles) { mutableStateOf(roles.firstOrNull { it.id == "user" }?.id ?: roles.firstOrNull()?.id.orEmpty()) }
+    var roleMenu by remember { mutableStateOf(false) }
+
+    Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp)) {
+            Text("Create User", color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 15.sp)
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = username,
+                onValueChange = { username = it },
+                label = { Text("Username") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
             Spacer(Modifier.height(8.dp))
-        }
-
-        users.forEach { user ->
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Password (minimum 6 characters)") },
+                visualTransformation = PasswordVisualTransformation(),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(8.dp))
+            Box {
+                OutlinedButton(onClick = { roleMenu = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Role: " + (roles.firstOrNull { it.id == roleId }?.name ?: "Select Role"), Modifier.weight(1f))
+                    Icon(Icons.Default.KeyboardArrowDown, null)
+                }
+                DropdownMenu(expanded = roleMenu, onDismissRequest = { roleMenu = false }) {
+                    roles.forEach { role ->
+                        DropdownMenuItem(
+                            text = { Text(role.name) },
+                            onClick = { roleId = role.id; roleMenu = false }
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Button(
+                onClick = {
+                    repo.createUser(username, password, roleId) { result ->
+                        if (result.isSuccess) {
+                            username = ""
+                            password = ""
+                            onMessage("User created successfully")
+                            onRefresh()
+                        } else {
+                            onMessage(result.exceptionOrNull()?.localizedMessage ?: "Unable to create user")
+                        }
+                    }
+                },
+                enabled = username.isNotBlank() && password.length >= 6 && roleId.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = CubeOrange),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(Modifier.padding(12.dp)) {
-                    Text(user.email, fontWeight = FontWeight.Bold, color = CubeBlue)
-                    Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        UserRole.values().forEach { role ->
-                            FilterChip(
-                                selected = user.role == role,
+                Icon(Icons.Default.PersonAdd, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Create User", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+
+    Spacer(Modifier.height(14.dp))
+    Text("Existing Users", color = CubeBlue, fontWeight = FontWeight.Black)
+    Spacer(Modifier.height(6.dp))
+
+    users.forEach { user ->
+        var open by remember(user.uid) { mutableStateOf(false) }
+        Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+            Column(Modifier.padding(12.dp)) {
+                Text(user.username, fontWeight = FontWeight.Black, color = CubeBlue)
+                Text(user.role.name, fontSize = 11.sp, color = CubeOrange, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(7.dp))
+                Box {
+                    OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Change Role", Modifier.weight(1f), fontSize = 11.sp)
+                        Icon(Icons.Default.KeyboardArrowDown, null)
+                    }
+                    DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                        roles.forEach { role ->
+                            DropdownMenuItem(
+                                text = { Text(role.name) },
                                 onClick = {
-                                    repo.updateRole(user.uid, role) { result ->
-                                        message = if (result.isSuccess) "Role updated" else result.exceptionOrNull()?.localizedMessage.orEmpty()
-                                        if (result.isSuccess) refresh()
+                                    open = false
+                                    repo.updateUserRole(user.uid, role.id) { result ->
+                                        if (result.isSuccess) {
+                                            onMessage("User role updated")
+                                            onRefresh()
+                                        } else onMessage(result.exceptionOrNull()?.localizedMessage ?: "Unable to update role")
                                     }
-                                },
-                                label = { Text(role.label, fontSize = 10.sp) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = CubeBlue,
-                                    selectedLabelColor = Color.White
-                                )
+                                }
                             )
                         }
                     }
@@ -916,6 +1030,90 @@ private fun UserManagementScreen() {
         }
     }
 }
+
+@Composable
+private fun AdminRolesPanel(
+    repo: UserRoleRepository,
+    roles: List<RoleDefinition>,
+    onMessage: (String) -> Unit,
+    onRefresh: () -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var createTrips by remember { mutableStateOf(true) }
+    var masters by remember { mutableStateOf(false) }
+    var deleteTrips by remember { mutableStateOf(false) }
+    var reports by remember { mutableStateOf(true) }
+    var users by remember { mutableStateOf(false) }
+
+    fun roleId(value: String): String = value.trim().lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
+
+    Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp)) {
+            Text("Create Role", color = CubeBlue, fontWeight = FontWeight.Black, fontSize = 15.sp)
+            Text("Example: Admin, User, Manager, Accounts", fontSize = 10.sp, color = Color.Gray)
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Role Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+            PermissionCheck("Create / Save Trips", createTrips) { createTrips = it }
+            PermissionCheck("Manage Masters", masters) { masters = it }
+            PermissionCheck("Delete Trips", deleteTrips) { deleteTrips = it }
+            PermissionCheck("View Reports", reports) { reports = it }
+            PermissionCheck("Manage Roles & Users", users) { users = it }
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    val id = roleId(name)
+                    val role = RoleDefinition(id, name.trim(), createTrips, masters, deleteTrips, reports, users)
+                    repo.createRole(role) { result ->
+                        if (result.isSuccess) {
+                            name = ""
+                            onMessage("Role created successfully")
+                            onRefresh()
+                        } else onMessage(result.exceptionOrNull()?.localizedMessage ?: "Unable to create role")
+                    }
+                },
+                enabled = name.trim().length >= 2,
+                colors = ButtonDefaults.buttonColors(containerColor = CubeOrange),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Add, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Create Role", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+
+    Spacer(Modifier.height(14.dp))
+    Text("Available Roles", color = CubeBlue, fontWeight = FontWeight.Black)
+    Spacer(Modifier.height(6.dp))
+    roles.forEach { role ->
+        Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+            Column(Modifier.padding(12.dp)) {
+                Text(role.name, color = CubeBlue, fontWeight = FontWeight.Black)
+                Text(
+                    listOfNotNull(
+                        "Trips".takeIf { role.canCreateTrips },
+                        "Masters".takeIf { role.canManageMasters },
+                        "Delete".takeIf { role.canDeleteTrips },
+                        "Reports".takeIf { role.canViewReports },
+                        "Users".takeIf { role.canManageUsers }
+                    ).joinToString(" • ").ifBlank { "No permissions" },
+                    fontSize = 10.sp,
+                    color = Color.Gray
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PermissionCheck(label: String, checked: Boolean, onChecked: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(checked = checked, onCheckedChange = onChecked)
+        Text(label, fontSize = 12.sp)
+    }
+}
+
 
 @Composable
 private fun AccessDeniedScreen() {
@@ -1005,7 +1203,7 @@ private fun CubeDashboard(
     onCustomStart: (Long) -> Unit,
     onCustomEnd: (Long) -> Unit,
     onBreakdown: (String) -> Unit,
-    role: UserRole,
+    role: RoleDefinition,
     go: (String) -> Unit
 ) {
     val trips = filterTrips(store.trips(), range)
