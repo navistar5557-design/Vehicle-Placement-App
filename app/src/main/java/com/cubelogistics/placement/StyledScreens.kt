@@ -222,7 +222,7 @@ fun StyledTripEntryScreen(store: Store, done: () -> Unit) {
 }
 
 @Composable
-fun StyledTripListScreen(store: Store) {
+fun StyledTripListScreen(store: Store, canDelete: Boolean = false) {
     var trips by remember { mutableStateOf(store.trips()) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
         if (trips.isEmpty()) {
@@ -254,15 +254,17 @@ fun StyledTripListScreen(store: Store) {
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(t.vendor + " • " + t.bookingType, color = CubeText, fontSize = 12.sp)
-                    TextButton(
-                        onClick = {
-                            trips = trips.filterNot { it.id == t.id }.toMutableList()
-                            store.saveTrips(trips)
-                        },
-                        modifier = Modifier.align(Alignment.End)
-                    ) {
-                        Icon(Icons.Default.DeleteOutline, null, tint = Color(0xFFD32F2F))
-                        Text("Delete", color = Color(0xFFD32F2F))
+                    if (canDelete) {
+                        TextButton(
+                            onClick = {
+                                trips = trips.filterNot { it.id == t.id }.toMutableList()
+                                store.saveTrips(trips)
+                            },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Icon(Icons.Default.DeleteOutline, null, tint = Color(0xFFD32F2F))
+                            Text("Delete", color = Color(0xFFD32F2F))
+                        }
                     }
                 }
             }
