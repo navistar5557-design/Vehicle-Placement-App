@@ -745,6 +745,10 @@ private fun CubeMainShell(store: Store, profile: UserProfile) {
                         page = "Masters"
                         scope.launch { drawerState.close() }
                     }
+                    DrawerMenuItem("Users", Icons.Default.ManageAccounts) {
+                        page = "Users"
+                        scope.launch { drawerState.close() }
+                    }
                 }
             }
         }
@@ -818,6 +822,78 @@ private fun CubeMainShell(store: Store, profile: UserProfile) {
                     "Reports" -> StyledReportsHome(store) { page = it }
                     "Vehicle-wise Report" -> StyledVehicleReport(store)
                     "Masters" -> if (profile.role.canManageMasters) StyledMastersScreen(store) else AccessDeniedScreen()
+                    "Users" -> if (profile.role == UserRole.ADMIN) UserManagementScreen() else AccessDeniedScreen()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun UserManagementScreen() {
+    val repo = remember { UserRoleRepository() }
+    var users by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    var message by remember { mutableStateOf("") }
+
+    fun refresh() {
+        loading = true
+        repo.listUsers { result ->
+            users = result.getOrDefault(emptyList())
+            message = result.exceptionOrNull()?.localizedMessage.orEmpty()
+            loading = false
+        }
+    }
+
+    LaunchedEffect(Unit) { refresh() }
+
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
+        SectionHeader(Icons.Default.ManageAccounts, "User Management")
+        Text(
+            "Admin can assign each signed-in user as Admin, Operator or Viewer.",
+            fontSize = 11.sp,
+            color = Color.Gray
+        )
+        Spacer(Modifier.height(10.dp))
+
+        if (loading) {
+            Box(Modifier.fillMaxWidth().padding(30.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = CubeOrange)
+            }
+        }
+
+        if (message.isNotBlank()) {
+            Text(message, color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
+            Spacer(Modifier.height(8.dp))
+        }
+
+        users.forEach { user ->
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            ) {
+                Column(Modifier.padding(12.dp)) {
+                    Text(user.email, fontWeight = FontWeight.Bold, color = CubeBlue)
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        UserRole.values().forEach { role ->
+                            FilterChip(
+                                selected = user.role == role,
+                                onClick = {
+                                    repo.updateRole(user.uid, role) { result ->
+                                        message = if (result.isSuccess) "Role updated" else result.exceptionOrNull()?.localizedMessage.orEmpty()
+                                        if (result.isSuccess) refresh()
+                                    }
+                                },
+                                label = { Text(role.label, fontSize = 10.sp) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = CubeBlue,
+                                    selectedLabelColor = Color.White
+                                )
+                            )
+                        }
+                    }
                 }
             }
         }
