@@ -118,7 +118,17 @@ fun CubeApp(store: Store) {
                     Button(onClick = { loadProfile() }) { Text("Retry") }
                 }
             }
-            else -> CubeMainShell(store, profile!!)
+            else -> CubeMainShell(
+                store = store,
+                profile = profile!!,
+                onLogout = {
+                    loginPrefs.edit().putBoolean("remember_login", false).apply()
+                    auth.signOut()
+                    profile = null
+                    loggedIn = false
+                    profileLoading = false
+                }
+            )
         }
     }
 }
@@ -695,7 +705,11 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CubeMainShell(store: Store, profile: UserProfile) {
+private fun CubeMainShell(
+    store: Store,
+    profile: UserProfile,
+    onLogout: () -> Unit
+) {
     var page by remember { mutableStateOf("Home") }
     var breakdown by remember { mutableStateOf("Trips") }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -788,9 +802,10 @@ private fun CubeMainShell(store: Store, profile: UserProfile) {
                         }
                     },
                     actions = {
-                        if (page == "Home") IconButton(onClick = {}) {
-                            Icon(Icons.Default.Notifications, null, tint = Color.White)
-                        }
+                        UserProfileMenu(
+                            profile = profile,
+                            onLogout = onLogout
+                        )
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = CubeBlue,
@@ -1195,6 +1210,129 @@ private fun AccessDeniedScreen() {
             Spacer(Modifier.height(10.dp))
             Text("Access restricted", fontWeight = FontWeight.Black, color = CubeBlue)
             Text("Your user role does not allow this action.", fontSize = 12.sp, color = Color.Gray)
+        }
+    }
+}
+
+@Composable
+private fun UserProfileMenu(
+    profile: UserProfile,
+    onLogout: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val initial = profile.username.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "U"
+
+    Box {
+        Surface(
+            onClick = { expanded = true },
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White,
+            tonalElevation = 0.dp,
+            shadowElevation = 1.dp,
+            modifier = Modifier
+                .padding(end = 8.dp)
+                .height(42.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(start = 5.dp, end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = Color(0xFF47B9B2),
+                    modifier = Modifier.size(30.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            initial,
+                            color = Color.White,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+                Spacer(Modifier.width(7.dp))
+                Column(
+                    modifier = Modifier.widthIn(min = 72.dp, max = 125.dp),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        profile.username,
+                        color = Color(0xFF333333),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        maxLines = 1
+                    )
+                    Text(
+                        profile.role.name.uppercase(Locale.US),
+                        color = Color(0xFF20A99F),
+                        fontWeight = FontWeight.Black,
+                        fontSize = 8.sp,
+                        maxLines = 1
+                    )
+                }
+                Icon(
+                    Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Open profile menu",
+                    tint = Color(0xFF777777),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            shape = RoundedCornerShape(10.dp),
+            containerColor = Color.White
+        ) {
+            DropdownMenuItem(
+                text = {
+                    Column {
+                        Text(
+                            "App Version",
+                            fontSize = 10.sp,
+                            color = Color.Gray
+                        )
+                        Text(
+                            BuildConfig.VERSION_NAME,
+                            color = CubeBlue,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
+                },
+                onClick = {},
+                enabled = false,
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = null,
+                        tint = CubeBlue
+                    )
+                }
+            )
+            HorizontalDivider()
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        "Log Out",
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFD84315)
+                    )
+                },
+                onClick = {
+                    expanded = false
+                    onLogout()
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Logout,
+                        contentDescription = null,
+                        tint = Color(0xFFD84315)
+                    )
+                }
+            )
         }
     }
 }
