@@ -9,8 +9,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val store = Store(this)
-        val firestoreSync = FirestoreSync(this, store)
-        firestoreSync.startAutomaticSync()
 
         setContent {
             CubeApp(store)
