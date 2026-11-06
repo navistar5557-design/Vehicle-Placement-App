@@ -1,5 +1,7 @@
 package com.cubelogistics.placement
 
+import android.app.DatePickerDialog
+
 import android.content.Intent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -278,11 +280,11 @@ fun StyledTripListScreen(store: Store, canDelete: Boolean = false) {
 @Composable
 fun StyledReportsHome(store: Store, navigate: (String) -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
-        ReportOption(Icons.Default.LocalShipping, "Trip Details Report", "All trip placement details with expenses and margin") {}
-        ReportOption(Icons.Default.Groups, "Vendor-wise Report", "Trips, freight, expenses & margin (Monthly / Date Range)") {}
+        ReportOption(Icons.Default.LocalShipping, "Trip Details Report", "All trip placement details with expenses and margin") { navigate("Trip Details Report") }
+        ReportOption(Icons.Default.Groups, "Vendor-wise Report", "Trips, freight, expenses & margin (Monthly / Date Range)") { navigate("Vendor-wise Report") }
         ReportOption(Icons.Default.LocalShipping, "Vehicle-wise Report", "Trips, freight, expenses & margin (Monthly / Date Range)") { navigate("Vehicle-wise Report") }
-        ReportOption(Icons.Default.Paid, "Expense Summary Report", "Expense head-wise summary (%, amount & total)") {}
-        ReportOption(Icons.Default.BarChart, "Margin / Profitability Report", "Profit, margin % and trip performance") {}
+        ReportOption(Icons.Default.Paid, "Expense Summary Report", "Expense head-wise summary (%, amount & total)") { navigate("Expense Summary Report") }
+        ReportOption(Icons.Default.BarChart, "Margin / Profitability Report", "Profit, margin % and trip performance") { navigate("Margin / Profitability Report") }
     }
 }
 
@@ -291,24 +293,64 @@ fun StyledVehicleReport(store: Store) {
     val ctx = LocalContext.current
     val all = store.trips()
     val vehicles = store.vehicles().map { it.number }
-    var vehicle by remember { mutableStateOf("All") }
+    var selectedVehicles by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var vehicleMenu by remember { mutableStateOf(false) }
     var vendor by remember { mutableStateOf("All Vendors") }
     var from by remember { mutableStateOf("All Locations") }
     var to by remember { mutableStateOf("All Locations") }
     val vendors = store.vendors().map { it.name }
     val locations = store.locations().map { it.name }
+    val initial = remember { currentMonthBounds() }
+    var startDate by remember { mutableLongStateOf(initial.first) }
+    var endDate by remember { mutableLongStateOf(initial.second) }
 
     val shown = all.filter {
-        (vehicle == "All" || it.vehicle == vehicle) &&
+        it.createdAt in startDate..endDate &&
+        (selectedVehicles.isEmpty() || it.vehicle in selectedVehicles) &&
         (vendor == "All Vendors" || it.vendor == vendor) &&
         (from == "All Locations" || it.from == from) &&
         (to == "All Locations" || it.to == to)
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
-        StyledTextBox("Date Range", "Nov 01, 2026 – Nov 30, 2026", Icons.Default.CalendarMonth)
+        ReportDateRange(startDate, endDate, { startDate = it }, { endDate = endOfSelectedDay(it) })
         Spacer(Modifier.height(8.dp))
-        StyledPicker("Vehicles", listOf("All") + vehicles, vehicle) { vehicle = it }
+
+        Box {
+            OutlinedButton(
+                onClick = { vehicleMenu = true },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(9.dp)
+            ) {
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                    Text("Vehicles (Multi-Select)", fontSize = 10.sp, color = Color.Gray)
+                    Text(
+                        if (selectedVehicles.isEmpty()) "All Vehicles" else selectedVehicles.joinToString(", "),
+                        maxLines = 1,
+                        color = Color.Black,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Icon(Icons.Default.KeyboardArrowDown, null, tint = CubeBlue)
+            }
+            DropdownMenu(expanded = vehicleMenu, onDismissRequest = { vehicleMenu = false }) {
+                DropdownMenuItem(
+                    text = { Text("All Vehicles") },
+                    leadingIcon = { Checkbox(checked = selectedVehicles.isEmpty(), onCheckedChange = null) },
+                    onClick = { selectedVehicles = emptySet() }
+                )
+                vehicles.forEach { v ->
+                    DropdownMenuItem(
+                        text = { Text(v) },
+                        leadingIcon = { Checkbox(checked = v in selectedVehicles, onCheckedChange = null) },
+                        onClick = {
+                            selectedVehicles = if (v in selectedVehicles) selectedVehicles - v else selectedVehicles + v
+                        }
+                    )
+                }
+            }
+        }
+
         Spacer(Modifier.height(8.dp))
         StyledPicker("Vendor", listOf("All Vendors") + vendors, vendor) { vendor = it }
         Spacer(Modifier.height(8.dp))
@@ -365,32 +407,206 @@ fun StyledVehicleReport(store: Store) {
         }
 
         Spacer(Modifier.height(14.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SummaryCard("Trips", shown.size.toString(), CubeLightBlue, Modifier.weight(1f))
-            SummaryCard("Freight", "₹" + money0(shown.sumOf { it.freight }), CubeLightGreen, Modifier.weight(1f))
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SummaryCard("Expenses", "₹" + money0(shown.sumOf { it.totalExpenses }), CubeLightOrange, Modifier.weight(1f))
-            SummaryCard("Margin", "₹" + money0(shown.sumOf { it.margin }), CubeLightGreen, Modifier.weight(1f))
-        }
-
+        ReportSummaryCards(shown)
         Spacer(Modifier.height(14.dp))
-        shown.groupBy { it.vehicle }.forEach { (v, rows) ->
-            Card(
-                shape = RoundedCornerShape(10.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-            ) {
-                Column(Modifier.padding(12.dp)) {
-                    Text(v, color = CubeBlue, fontWeight = FontWeight.Black)
-                    Text("Trips: " + rows.size + "   Total KM: " + money0(rows.sumOf { it.totalKm }), fontSize = 12.sp)
-                    Text("Freight ₹" + money0(rows.sumOf { it.freight }) + "   Margin ₹" + money0(rows.sumOf { it.margin }), fontSize = 12.sp)
+
+        if (shown.isEmpty()) {
+            EmptyCard("No matching trips", "Change the report filters or date range.")
+        } else {
+            shown.groupBy { it.vehicle }.forEach { (v, rows) ->
+                Card(
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                ) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(v, color = CubeBlue, fontWeight = FontWeight.Black)
+                        Text("Trips: " + rows.size + "   Total KM: " + money0(rows.sumOf { it.totalKm }), fontSize = 12.sp)
+                        Text("Freight ₹" + money0(rows.sumOf { it.freight }) + "   Margin ₹" + money0(rows.sumOf { it.margin }), fontSize = 12.sp)
+                    }
                 }
             }
         }
         Spacer(Modifier.height(20.dp))
     }
+}
+
+@Composable
+fun StyledGenericReport(store: Store, type: String) {
+    val all = store.trips()
+    val initial = remember { currentMonthBounds() }
+    var startDate by remember { mutableLongStateOf(initial.first) }
+    var endDate by remember { mutableLongStateOf(initial.second) }
+    val shown = all.filter { it.createdAt in startDate..endDate }
+
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
+        ReportDateRange(startDate, endDate, { startDate = it }, { endDate = endOfSelectedDay(it) })
+        Spacer(Modifier.height(12.dp))
+        ReportSummaryCards(shown)
+        Spacer(Modifier.height(14.dp))
+
+        when (type) {
+            "Trip Details Report" -> {
+                shown.sortedByDescending { it.createdAt }.forEach { t ->
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text(t.vehicle + " • " + styledDay(t.createdAt), color = CubeBlue, fontWeight = FontWeight.Black)
+                            Text(t.vendor + " • " + t.from + " → " + t.to, fontSize = 11.sp)
+                            Text("Freight ₹" + money0(t.freight) + "  Expenses ₹" + money0(t.totalExpenses) + "  Margin ₹" + money0(t.margin), fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
+            "Vendor-wise Report" -> {
+                shown.groupBy { it.vendor }.toSortedMap().forEach { (vendor, rows) ->
+                    ReportGroupCard(vendor, rows)
+                }
+            }
+            "Expense Summary Report" -> {
+                val fuel = shown.sumOf { it.fuelExpense }
+                val percent = shown.sumOf { it.percentageExpenses }
+                val fastag = shown.sumOf { it.fastag }
+                val rto = shown.sumOf { it.rtoTarpaulin }
+                val loading = shown.sumOf { it.loadingUnloading }
+                val fixed = shown.sumOf { it.fixedExpenses }
+                ExpenseSummaryRow("Fuel Expense", fuel)
+                ExpenseSummaryRow("Percentage Expenses", percent)
+                ExpenseSummaryRow("FASTag", fastag)
+                ExpenseSummaryRow("RTO / Tarpaulin", rto)
+                ExpenseSummaryRow("Loading & Unloading", loading)
+                ExpenseSummaryRow("Fixed Expenses", fixed)
+            }
+            "Margin / Profitability Report" -> {
+                shown.sortedByDescending { it.margin }.forEach { t ->
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text(t.vehicle + " • " + t.vendor, color = CubeBlue, fontWeight = FontWeight.Black)
+                            Text("Margin ₹" + money0(t.margin) + "  •  " + String.format(Locale.US, "%.2f%%", t.marginPercent), color = if (t.margin >= 0) CubeGreen else Color(0xFFD32F2F), fontWeight = FontWeight.Bold)
+                            Text("Freight ₹" + money0(t.freight) + "  Expenses ₹" + money0(t.totalExpenses), fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        if (shown.isEmpty()) {
+            EmptyCard("No report data", "No trips found for the selected period.")
+        }
+        Spacer(Modifier.height(20.dp))
+    }
+}
+
+@Composable
+private fun ReportDateRange(
+    startDate: Long,
+    endDate: Long,
+    onStart: (Long) -> Unit,
+    onEnd: (Long) -> Unit
+) {
+    val context = LocalContext.current
+    fun pick(initial: Long, picked: (Long) -> Unit) {
+        val cal = Calendar.getInstance().apply { timeInMillis = initial }
+        DatePickerDialog(
+            context,
+            { _, y, m, d ->
+                val value = Calendar.getInstance().apply {
+                    clear()
+                    set(y, m, d, 0, 0, 0)
+                }.timeInMillis
+                picked(value)
+            },
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
+
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = { pick(startDate, onStart) }, modifier = Modifier.weight(1f)) {
+            Icon(Icons.Default.CalendarMonth, null, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+            Text("From " + styledDay(startDate), fontSize = 10.sp)
+        }
+        OutlinedButton(onClick = { pick(endDate, onEnd) }, modifier = Modifier.weight(1f)) {
+            Icon(Icons.Default.CalendarMonth, null, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+            Text("To " + styledDay(endDate), fontSize = 10.sp)
+        }
+    }
+}
+
+@Composable
+private fun ReportSummaryCards(rows: List<Trip>) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        SummaryCard("Trips", rows.size.toString(), CubeLightBlue, Modifier.weight(1f))
+        SummaryCard("Freight", "₹" + money0(rows.sumOf { it.freight }), CubeLightGreen, Modifier.weight(1f))
+    }
+    Spacer(Modifier.height(8.dp))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        SummaryCard("Expenses", "₹" + money0(rows.sumOf { it.totalExpenses }), CubeLightOrange, Modifier.weight(1f))
+        SummaryCard("Margin", "₹" + money0(rows.sumOf { it.margin }), CubeLightGreen, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun ReportGroupCard(title: String, rows: List<Trip>) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        shape = RoundedCornerShape(10.dp)
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Text(title, color = CubeBlue, fontWeight = FontWeight.Black)
+            Text("Trips: " + rows.size + "  Freight ₹" + money0(rows.sumOf { it.freight }), fontSize = 11.sp)
+            Text("Expenses ₹" + money0(rows.sumOf { it.totalExpenses }) + "  Margin ₹" + money0(rows.sumOf { it.margin }), fontSize = 11.sp)
+        }
+    }
+}
+
+@Composable
+private fun ExpenseSummaryRow(label: String, amount: Double) {
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        shape = RoundedCornerShape(10.dp)
+    ) {
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(label, Modifier.weight(1f), color = CubeBlue, fontWeight = FontWeight.Bold)
+            Text("₹" + money0(amount), fontWeight = FontWeight.Black)
+        }
+    }
+}
+
+private fun currentMonthBounds(): Pair<Long, Long> {
+    val start = Calendar.getInstance().apply {
+        set(Calendar.DAY_OF_MONTH, 1)
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+    val end = (start.clone() as Calendar).apply {
+        add(Calendar.MONTH, 1)
+        add(Calendar.MILLISECOND, -1)
+    }
+    return start.timeInMillis to end.timeInMillis
+}
+
+private fun endOfSelectedDay(value: Long): Long {
+    return Calendar.getInstance().apply {
+        timeInMillis = value
+        set(Calendar.HOUR_OF_DAY, 23)
+        set(Calendar.MINUTE, 59)
+        set(Calendar.SECOND, 59)
+        set(Calendar.MILLISECOND, 999)
+    }.timeInMillis
 }
 
 private fun Modifier.holdForTwoSeconds(onHold: () -> Unit): Modifier = pointerInput(onHold) {
