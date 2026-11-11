@@ -13,7 +13,9 @@ data class Trip(
  val mileage:Double,val fuelRate:Double,val fixedExpenses:Double,val fastag:Double,
  val rtoTarpaulin:Double,val loadingUnloading:Double,val expenseRules:List<ExpenseRule>,
  val loadingExpensePerTon:Double=0.0,val unloadingExpensePerTon:Double=0.0,
- val createdBy:String="",val createdByEmail:String=""
+ val createdBy:String="",val createdByEmail:String="",
+ val status:String="Vehicle Placed",val statusUpdatedBy:String="",val statusUpdatedByEmail:String="",
+ val statusUpdatedAt:Long=0L
 ){
  val balance get()=freight-advance
  val advancePercent get()=if(freight>0)advance/freight*100 else 0.0
