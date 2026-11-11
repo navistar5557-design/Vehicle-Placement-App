@@ -11,7 +11,8 @@ data class Trip(
  val freight:Double,val netFreight:Double,val advance:Double,val weightTon:Double,
  val currentToOriginKm:Double,val totalKm:Double,val transitHours:Double,
  val mileage:Double,val fuelRate:Double,val fixedExpenses:Double,val fastag:Double,
- val rtoTarpaulin:Double,val loadingUnloading:Double,val expenseRules:List<ExpenseRule>
+ val rtoTarpaulin:Double,val loadingUnloading:Double,val expenseRules:List<ExpenseRule>,
+ val loadingExpensePerTon:Double=0.0,val unloadingExpensePerTon:Double=0.0
 ){
  val balance get()=freight-advance
  val advancePercent get()=if(freight>0)advance/freight*100 else 0.0
@@ -20,7 +21,9 @@ data class Trip(
  val perKmFreight get()=if(totalKm>0)freight/totalKm else 0.0
  val percentageExpenses get()=expenseRules.sumOf{freight*it.percent/100.0}
  val fuelExpense get()=if(mileage>0)(totalKm/mileage)*fuelRate else 0.0
- val totalExpenses get()=percentageExpenses+fuelExpense+fixedExpenses+fastag+rtoTarpaulin+loadingUnloading
- val margin get()=netFreight-totalExpenses
- val marginPercent get()=if(netFreight>0)margin/netFreight*100 else 0.0
+ val loadingExpense get()=loadingExpensePerTon*weightTon
+ val unloadingExpense get()=unloadingExpensePerTon*weightTon
+ val totalExpenses get()=percentageExpenses+fuelExpense+fixedExpenses+fastag+rtoTarpaulin+loadingUnloading+loadingExpense+unloadingExpense
+ val margin get()=freight-totalExpenses
+ val marginPercent get()=if(freight>0)margin/freight*100 else 0.0
 }
