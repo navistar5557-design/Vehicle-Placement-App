@@ -256,8 +256,11 @@ fun StyledTripEntryScreen(store: Store, createdBy: String = "", createdByEmail: 
 }
 
 @Composable
-fun StyledTripListScreen(store: Store, canDelete: Boolean = false) {
+fun StyledTripListScreen(store: Store, canEdit: Boolean = false, canDelete: Boolean = false) {
     var trips by remember { mutableStateOf(store.trips()) }
+    var editing by remember { mutableStateOf<Trip?>(null) }
+    var deleting by remember { mutableStateOf<Trip?>(null) }
+
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
         if (trips.isEmpty()) {
             EmptyCard("No trips created yet", "Create a trip from the Home screen.")
@@ -299,22 +302,199 @@ fun StyledTripListScreen(store: Store, canDelete: Boolean = false) {
                         fontSize = 9.sp,
                         modifier = Modifier.padding(top = 3.dp)
                     )
-                    if (canDelete) {
-                        TextButton(
-                            onClick = {
-                                trips = trips.filterNot { it.id == t.id }.toMutableList()
-                                store.saveTrips(trips)
-                            },
-                            modifier = Modifier.align(Alignment.End)
+                    if (canEdit || canDelete) {
+                        Row(
+                            modifier = Modifier.align(Alignment.End),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Icon(Icons.Default.DeleteOutline, null, tint = Color(0xFFD32F2F))
-                            Text("Delete", color = Color(0xFFD32F2F))
+                            if (canEdit) {
+                                TextButton(onClick = { editing = t }) {
+                                    Icon(Icons.Default.Edit, null, tint = CubeBlue)
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Edit", color = CubeBlue)
+                                }
+                            }
+                            if (canDelete) {
+                                TextButton(onClick = { deleting = t }) {
+                                    Icon(Icons.Default.DeleteOutline, null, tint = Color(0xFFD32F2F))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Delete", color = Color(0xFFD32F2F))
+                                }
+                            }
                         }
                     }
                 }
             }
         }
     }
+
+    editing?.let { trip ->
+        TripEditDialog(
+            store = store,
+            trip = trip,
+            onDismiss = { editing = null },
+            onSave = { updated ->
+                val updatedTrips = store.trips().map { if (it.id == updated.id) updated else it }.toMutableList()
+                store.saveTrips(updatedTrips)
+                trips = store.trips()
+                editing = null
+            }
+        )
+    }
+
+    deleting?.let { trip ->
+        AlertDialog(
+            onDismissRequest = { deleting = null },
+            title = { Text("Delete Trip", color = Color(0xFFD32F2F), fontWeight = FontWeight.Black) },
+            text = { Text("Delete trip for " + trip.vehicle + " (" + trip.from + " → " + trip.to + ")?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        store.saveTrips(store.trips().filterNot { it.id == trip.id })
+                        trips = store.trips()
+                        deleting = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleting = null }) { Text("Cancel") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun TripEditDialog(
+    store: Store,
+    trip: Trip,
+    onDismiss: () -> Unit,
+    onSave: (Trip) -> Unit
+) {
+    val vehicles = store.vehicles()
+    val vendors = store.vendors()
+    val locations = store.locations()
+
+    var vendor by remember(trip.id) { mutableStateOf(trip.vendor) }
+    var vehicle by remember(trip.id) { mutableStateOf(trip.vehicle) }
+    var current by remember(trip.id) { mutableStateOf(trip.currentLocation) }
+    var from by remember(trip.id) { mutableStateOf(trip.from) }
+    var to by remember(trip.id) { mutableStateOf(trip.to) }
+    var freight by remember(trip.id) { mutableStateOf(trip.freight.toString()) }
+    var advance by remember(trip.id) { mutableStateOf(trip.advance.toString()) }
+    var weight by remember(trip.id) { mutableStateOf(trip.weightTon.toString()) }
+    var originKm by remember(trip.id) { mutableStateOf(trip.currentToOriginKm.toString()) }
+    var km by remember(trip.id) { mutableStateOf(trip.totalKm.toString()) }
+    var hours by remember(trip.id) { mutableStateOf(trip.transitHours.toString()) }
+    var mileage by remember(trip.id) { mutableStateOf(String.format(Locale.US, "%.1f", trip.mileage)) }
+    var fastag by remember(trip.id) { mutableStateOf(trip.fastag.toString()) }
+    var rto by remember(trip.id) { mutableStateOf(trip.rtoTarpaulin.toString()) }
+    var fixed by remember(trip.id) { mutableStateOf(trip.fixedExpenses.toString()) }
+    var loadingPerTon by remember(trip.id) { mutableStateOf(trip.loadingExpensePerTon.toString()) }
+    var unloadingPerTon by remember(trip.id) { mutableStateOf(trip.unloadingExpensePerTon.toString()) }
+    var otherPct by remember(trip.id) { mutableStateOf(trip.expenseRules.firstOrNull()?.percent?.toString() ?: "0") }
+    var error by remember(trip.id) { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Trip", color = CubeBlue, fontWeight = FontWeight.Black) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                StyledPicker("Vendor / Transporter", vendors.map { it.name }, vendor) { vendor = it }
+                Spacer(Modifier.height(6.dp))
+                StyledPicker("Vehicle No", vehicles.map { it.number }, vehicle) { selected ->
+                    vehicle = selected
+                    vehicles.find { it.number == selected }?.mileage?.let {
+                        mileage = String.format(Locale.US, "%.1f", it)
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+                StyledPicker("Current Location", locations.map { it.name }, current) { current = it }
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(Modifier.weight(1f)) { StyledPicker("From", locations.map { it.name }, from) { from = it } }
+                    Box(Modifier.weight(1f)) { StyledPicker("To", locations.map { it.name }, to) { to = it } }
+                }
+                Spacer(Modifier.height(6.dp))
+                StyledNumberField("Freight Amount", freight) { freight = it }
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(Modifier.weight(1f)) { StyledNumberField("Advance", advance) { advance = it } }
+                    Box(Modifier.weight(1f)) { StyledNumberField("Weight (Ton)", weight) { weight = it } }
+                }
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(Modifier.weight(1f)) { StyledNumberField("Trip KM", km) { km = it } }
+                    Box(Modifier.weight(1f)) { StyledNumberField("Origin KM", originKm) { originKm = it } }
+                }
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(Modifier.weight(1f)) { StyledNumberField("Transit Hours", hours) { hours = it } }
+                    Box(Modifier.weight(1f)) { StyledPicker("Mileage", vehicleMileageOptions, mileage) { mileage = it } }
+                }
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(Modifier.weight(1f)) { StyledNumberField("Loading / Ton", loadingPerTon) { loadingPerTon = it } }
+                    Box(Modifier.weight(1f)) { StyledNumberField("Unloading / Ton", unloadingPerTon) { unloadingPerTon = it } }
+                }
+                Spacer(Modifier.height(6.dp))
+                StyledNumberField("Other Expense %", otherPct) { otherPct = it }
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(Modifier.weight(1f)) { StyledNumberField("FASTag", fastag) { fastag = it } }
+                    Box(Modifier.weight(1f)) { StyledNumberField("RTO / Tarpaulin", rto) { rto = it } }
+                }
+                Spacer(Modifier.height(6.dp))
+                StyledNumberField("Fixed Expenses", fixed) { fixed = it }
+                if (error.isNotBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(error, color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val f = freight.num()
+                    error = when {
+                        vendor.isBlank() || vehicle.isBlank() || from.isBlank() || to.isBlank() -> "Vendor, vehicle and locations are required"
+                        f <= 0 -> "Enter a valid freight amount"
+                        mileage.num() < 2.5 || mileage.num() > 6.0 -> "Mileage must be between 2.5 and 6.0"
+                        else -> {
+                            onSave(
+                                trip.copy(
+                                    vendor = vendor,
+                                    vehicle = vehicle,
+                                    currentLocation = current,
+                                    from = from,
+                                    to = to,
+                                    freight = f,
+                                    netFreight = f,
+                                    advance = advance.num(),
+                                    weightTon = weight.num(),
+                                    currentToOriginKm = originKm.num(),
+                                    totalKm = km.num(),
+                                    transitHours = hours.num(),
+                                    mileage = mileage.num(),
+                                    fuelRate = store.fuelRate,
+                                    fixedExpenses = fixed.num(),
+                                    fastag = fastag.num(),
+                                    rtoTarpaulin = rto.num(),
+                                    loadingUnloading = 0.0,
+                                    expenseRules = if (otherPct.num() > 0) listOf(ExpenseRule("Other Expense", otherPct.num())) else emptyList(),
+                                    loadingExpensePerTon = loadingPerTon.num(),
+                                    unloadingExpensePerTon = unloadingPerTon.num()
+                                )
+                            )
+                            ""
+                        }
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = CubeOrange)
+            ) { Text("Update Trip") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
 }
 
 @Composable
@@ -671,7 +851,7 @@ private fun Modifier.holdForTwoSeconds(onHold: () -> Unit): Modifier = pointerIn
 }
 
 @Composable
-fun StyledMastersScreen(store: Store) {
+fun StyledMastersScreen(store: Store, canEditDelete: Boolean = false) {
     var tab by remember { mutableStateOf("Vehicles") }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -687,19 +867,11 @@ fun StyledMastersScreen(store: Store) {
                 )
             }
         }
-        Spacer(Modifier.height(6.dp))
-        if (tab != "Fuel") {
-            Text(
-                "Press and hold an existing " + tab.dropLast(1).lowercase() + " for 2 seconds to edit.",
-                fontSize = 10.sp,
-                color = Color.Gray
-            )
-            Spacer(Modifier.height(8.dp))
-        }
+        Spacer(Modifier.height(8.dp))
         when (tab) {
-            "Vehicles" -> StyledVehicleMaster(store)
-            "Vendors" -> StyledNameMaster("Vendor", store)
-            "Locations" -> StyledNameMaster("Location", store)
+            "Vehicles" -> StyledVehicleMaster(store, canEditDelete)
+            "Vendors" -> StyledNameMaster("Vendor", store, canEditDelete)
+            "Locations" -> StyledNameMaster("Location", store, canEditDelete)
             "Fuel" -> StyledFuelMaster(store)
         }
     }
@@ -708,21 +880,18 @@ fun StyledMastersScreen(store: Store) {
 private val vehicleMileageOptions = (25..60).map { String.format(Locale.US, "%.1f", it / 10.0) }
 
 @Composable
-private fun StyledVehicleMaster(store: Store) {
+private fun StyledVehicleMaster(store: Store, canEditDelete: Boolean) {
     var items by remember { mutableStateOf(store.vehicles()) }
     var number by remember { mutableStateOf("") }
     var mileage by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     var editing by remember { mutableStateOf<Vehicle?>(null) }
+    var deleting by remember { mutableStateOf<Vehicle?>(null) }
 
     SectionHeader(Icons.Default.LocalShipping, "Vehicle Master")
     StyledNumberOrTextField("Vehicle No", number) { number = it.uppercase() }
     Spacer(Modifier.height(8.dp))
-    StyledPicker(
-        "Vehicle Mileage (km/L)",
-        vehicleMileageOptions,
-        mileage
-    ) { mileage = it }
+    StyledPicker("Vehicle Mileage (km/L)", vehicleMileageOptions, mileage) { mileage = it }
     Spacer(Modifier.height(8.dp))
     Button(
         onClick = {
@@ -744,13 +913,7 @@ private fun StyledVehicleMaster(store: Store) {
     if (message.isNotBlank()) Text(message, Modifier.padding(vertical = 8.dp), color = CubeBlue)
 
     items.forEach { v ->
-        OutlinedCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp)
-                .holdForTwoSeconds { editing = v },
-            shape = RoundedCornerShape(10.dp)
-        ) {
+        OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), shape = RoundedCornerShape(10.dp)) {
             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.LocalShipping, null, tint = CubeBlue)
                 Spacer(Modifier.width(10.dp))
@@ -761,8 +924,10 @@ private fun StyledVehicleMaster(store: Store) {
                 TextButton(onClick = {
                     items = items.map { if (it.number == v.number) it.copy(active = !it.active) else it }.toMutableList()
                     store.saveVehicles(items)
-                }) {
-                    Text(if (v.active) "Deactivate" else "Activate")
+                }) { Text(if (v.active) "Deactivate" else "Activate") }
+                if (canEditDelete) {
+                    IconButton(onClick = { editing = v }) { Icon(Icons.Default.Edit, "Edit", tint = CubeBlue) }
+                    IconButton(onClick = { deleting = v }) { Icon(Icons.Default.DeleteOutline, "Delete", tint = Color(0xFFD32F2F)) }
                 }
             }
         }
@@ -770,29 +935,17 @@ private fun StyledVehicleMaster(store: Store) {
 
     editing?.let { old ->
         var editNumber by remember(old) { mutableStateOf(old.number) }
-        var editMileage by remember(old) { mutableStateOf(old.mileage.toString()) }
+        var editMileage by remember(old) { mutableStateOf(String.format(Locale.US, "%.1f", old.mileage)) }
         var editError by remember(old) { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { editing = null },
             title = { Text("Edit Vehicle", color = CubeBlue, fontWeight = FontWeight.Black) },
             text = {
                 Column {
-                    OutlinedTextField(
-                        value = editNumber,
-                        onValueChange = { editNumber = it.uppercase() },
-                        label = { Text("Vehicle No") },
-                        singleLine = true
-                    )
+                    OutlinedTextField(value = editNumber, onValueChange = { editNumber = it.uppercase() }, label = { Text("Vehicle No") }, singleLine = true)
                     Spacer(Modifier.height(8.dp))
-                    StyledPicker(
-                        "Vehicle Mileage (km/L)",
-                        vehicleMileageOptions,
-                        editMileage
-                    ) { editMileage = it }
-                    if (editError.isNotBlank()) {
-                        Spacer(Modifier.height(6.dp))
-                        Text(editError, color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
-                    }
+                    StyledPicker("Vehicle Mileage (km/L)", vehicleMileageOptions, editMileage) { editMileage = it }
+                    if (editError.isNotBlank()) Text(editError, color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
                 }
             },
             confirmButton = {
@@ -808,7 +961,7 @@ private fun StyledVehicleMaster(store: Store) {
                                 store.renameVehicle(old.number, newNo, newMileage)
                                 items = store.vehicles()
                                 editing = null
-                                message = "Vehicle updated"
+                                message = "Vehicle and previous trips updated"
                                 ""
                             }
                         }
@@ -816,21 +969,40 @@ private fun StyledVehicleMaster(store: Store) {
                     colors = ButtonDefaults.buttonColors(containerColor = CubeOrange)
                 ) { Text("Update") }
             },
-            dismissButton = {
-                TextButton(onClick = { editing = null }) { Text("Cancel") }
-            }
+            dismissButton = { TextButton(onClick = { editing = null }) { Text("Cancel") } }
+        )
+    }
+
+    deleting?.let { old ->
+        AlertDialog(
+            onDismissRequest = { deleting = null },
+            title = { Text("Delete Vehicle", color = Color(0xFFD32F2F), fontWeight = FontWeight.Black) },
+            text = { Text("Remove " + old.number + " from the Vehicle Master? Historical trips will be kept.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        items = items.filterNot { it.number == old.number }.toMutableList()
+                        store.saveVehicles(items)
+                        deleting = null
+                        message = "Vehicle deleted from master"
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+                ) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text("Cancel") } }
         )
     }
 }
 
 @Composable
-private fun StyledNameMaster(label: String, store: Store) {
+private fun StyledNameMaster(label: String, store: Store, canEditDelete: Boolean) {
     var items by remember(label) {
         mutableStateOf(if (label == "Vendor") store.vendors().map { it.name } else store.locations().map { it.name })
     }
     var name by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     var editing by remember { mutableStateOf<String?>(null) }
+    var deleting by remember { mutableStateOf<String?>(null) }
 
     fun saveAll(values: List<String>) {
         if (label == "Vendor") store.saveVendors(values.map(::Vendor))
@@ -859,17 +1031,15 @@ private fun StyledNameMaster(label: String, store: Store) {
     if (message.isNotBlank()) Text(message, Modifier.padding(vertical = 8.dp), color = CubeBlue)
 
     items.forEach { item ->
-        OutlinedCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 7.dp)
-                .holdForTwoSeconds { editing = item },
-            shape = RoundedCornerShape(10.dp)
-        ) {
+        OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 7.dp), shape = RoundedCornerShape(10.dp)) {
             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(if (label == "Vendor") Icons.Default.Groups else Icons.Default.LocationOn, null, tint = CubeBlue)
                 Spacer(Modifier.width(10.dp))
-                Text(item, fontWeight = FontWeight.Bold, fontFamily = FontFamily.SansSerif)
+                Text(item, Modifier.weight(1f), fontWeight = FontWeight.Bold, fontFamily = FontFamily.SansSerif)
+                if (canEditDelete) {
+                    IconButton(onClick = { editing = item }) { Icon(Icons.Default.Edit, "Edit", tint = CubeBlue) }
+                    IconButton(onClick = { deleting = item }) { Icon(Icons.Default.DeleteOutline, "Delete", tint = Color(0xFFD32F2F)) }
+                }
             }
         }
     }
@@ -882,16 +1052,8 @@ private fun StyledNameMaster(label: String, store: Store) {
             title = { Text("Edit " + label, color = CubeBlue, fontWeight = FontWeight.Black) },
             text = {
                 Column {
-                    OutlinedTextField(
-                        value = editName,
-                        onValueChange = { editName = it },
-                        label = { Text(label + " Name") },
-                        singleLine = true
-                    )
-                    if (editError.isNotBlank()) {
-                        Spacer(Modifier.height(6.dp))
-                        Text(editError, color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
-                    }
+                    OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text(label + " Name") }, singleLine = true)
+                    if (editError.isNotBlank()) Text(editError, color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
                 }
             },
             confirmButton = {
@@ -905,7 +1067,7 @@ private fun StyledNameMaster(label: String, store: Store) {
                                 if (label == "Vendor") store.renameVendor(old, newName) else store.renameLocation(old, newName)
                                 items = if (label == "Vendor") store.vendors().map { it.name } else store.locations().map { it.name }
                                 editing = null
-                                message = label + " updated"
+                                message = label + " and previous trips updated"
                                 ""
                             }
                         }
@@ -913,9 +1075,27 @@ private fun StyledNameMaster(label: String, store: Store) {
                     colors = ButtonDefaults.buttonColors(containerColor = CubeOrange)
                 ) { Text("Update") }
             },
-            dismissButton = {
-                TextButton(onClick = { editing = null }) { Text("Cancel") }
-            }
+            dismissButton = { TextButton(onClick = { editing = null }) { Text("Cancel") } }
+        )
+    }
+
+    deleting?.let { old ->
+        AlertDialog(
+            onDismissRequest = { deleting = null },
+            title = { Text("Delete " + label, color = Color(0xFFD32F2F), fontWeight = FontWeight.Black) },
+            text = { Text("Remove " + old + " from the " + label + " Master? Historical trips will be kept.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        items = items.filterNot { it == old }
+                        saveAll(items)
+                        deleting = null
+                        message = label + " deleted from master"
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+                ) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text("Cancel") } }
         )
     }
 }
