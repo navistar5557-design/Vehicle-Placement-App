@@ -918,7 +918,13 @@ private fun CubeMainShell(
                         createdBy = profile.username,
                         createdByEmail = profile.loginEmail
                     ) { page = "Trip List" } else AccessDeniedScreen()
-                    "Trip List" -> StyledTripListScreen(store, canEdit = profile.role.isAdmin, canDelete = profile.role.canDeleteTrips)
+                    "Trip List" -> StyledTripListScreen(
+                        store = store,
+                        currentUser = profile.username,
+                        currentUserEmail = profile.loginEmail,
+                        canEdit = profile.role.isAdmin,
+                        canDelete = profile.role.canDeleteTrips
+                    )
                     "Reports" -> StyledReportsHome(store) { page = it }
                     "Trip Details Report" -> StyledGenericReport(store, "Trip Details Report")
                     "Vendor-wise Report" -> StyledGenericReport(store, "Vendor-wise Report")
