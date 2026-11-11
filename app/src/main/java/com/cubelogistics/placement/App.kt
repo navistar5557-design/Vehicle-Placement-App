@@ -918,14 +918,14 @@ private fun CubeMainShell(
                         createdBy = profile.username,
                         createdByEmail = profile.loginEmail
                     ) { page = "Trip List" } else AccessDeniedScreen()
-                    "Trip List" -> StyledTripListScreen(store, canDelete = profile.role.canDeleteTrips)
+                    "Trip List" -> StyledTripListScreen(store, canEdit = profile.role.isAdmin, canDelete = profile.role.canDeleteTrips)
                     "Reports" -> StyledReportsHome(store) { page = it }
                     "Trip Details Report" -> StyledGenericReport(store, "Trip Details Report")
                     "Vendor-wise Report" -> StyledGenericReport(store, "Vendor-wise Report")
                     "Vehicle-wise Report" -> StyledVehicleReport(store)
                     "Expense Summary Report" -> StyledGenericReport(store, "Expense Summary Report")
                     "Margin / Profitability Report" -> StyledGenericReport(store, "Margin / Profitability Report")
-                    "Masters" -> if (profile.role.canManageMasters) StyledMastersScreen(store) else AccessDeniedScreen()
+                    "Masters" -> if (profile.role.canManageMasters) StyledMastersScreen(store, canEditDelete = profile.role.isAdmin) else AccessDeniedScreen()
                     "Settings" -> SettingsScreen(profile)
                         }
                     }
