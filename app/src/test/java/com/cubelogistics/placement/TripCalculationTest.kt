@@ -11,6 +11,8 @@ class TripCalculationTest {
   km: Double = 1000.0,
   mileage: Double = 4.0,
   fuelRate: Double = 100.0,
+  loadingPerTon: Double = 0.0,
+  unloadingPerTon: Double = 0.0,
   rules: List<ExpenseRule> = listOf(ExpenseRule("Commission", 2.0))
  ) = Trip(
   id = "1", createdAt = 0, vendor = "Vendor", vehicle = "TN01AA0001",
@@ -19,7 +21,9 @@ class TripCalculationTest {
   currentToOriginKm = 0.0, totalKm = km, transitHours = 12.0,
   mileage = mileage, fuelRate = fuelRate, fixedExpenses = 1000.0,
   fastag = 2000.0, rtoTarpaulin = 500.0, loadingUnloading = 500.0,
-  expenseRules = rules
+  expenseRules = rules,
+  loadingExpensePerTon = loadingPerTon,
+  unloadingExpensePerTon = unloadingPerTon
  )
 
  @Test fun bookingType90Percent() = assertEquals("90% Advance", trip().bookingType)
@@ -30,8 +34,11 @@ class TripCalculationTest {
  @Test fun percentageExpense() = assertEquals(2100.0, trip().percentageExpenses, 0.01)
  @Test fun fuelExpense() = assertEquals(25000.0, trip().fuelExpense, 0.01)
  @Test fun totalExpense() = assertEquals(31100.0, trip().totalExpenses, 0.01)
- @Test fun marginUsesNetFreight() = assertEquals(71400.0, trip(netFreight = 102500.0).margin, 0.01)
- @Test fun marginDefaultsToFreightWhenEqual() = assertEquals(73900.0, trip().margin, 0.01)
+ @Test fun marginUsesFreightAfterNetFreightRemoval() = assertEquals(73900.0, trip(netFreight = 102500.0).margin, 0.01)
+ @Test fun marginFromFreight() = assertEquals(73900.0, trip().margin, 0.01)
+ @Test fun loadingExpensePerTon() = assertEquals(1000.0, trip(loadingPerTon = 100.0).loadingExpense, 0.01)
+ @Test fun unloadingExpensePerTon() = assertEquals(500.0, trip(unloadingPerTon = 50.0).unloadingExpense, 0.01)
+ @Test fun perTonExpensesReduceMargin() = assertEquals(72400.0, trip(loadingPerTon = 100.0, unloadingPerTon = 50.0).margin, 0.01)
  @Test fun zeroKmSafe() = assertEquals(0.0, trip(km = 0.0).perKmFreight, 0.01)
  @Test fun zeroMileageSafe() = assertEquals(0.0, trip(mileage = 0.0).fuelExpense, 0.01)
 }
