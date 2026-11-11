@@ -32,7 +32,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
-fun StyledTripEntryScreen(store: Store, done: () -> Unit) {
+fun StyledTripEntryScreen(store: Store, createdBy: String = "", createdByEmail: String = "", done: () -> Unit) {
     val vehicles = remember { store.vehicles().filter { it.active } }
     val vendors = remember { store.vendors().filter { it.active } }
     val locations = remember { store.locations().filter { it.active } }
@@ -232,7 +232,9 @@ fun StyledTripEntryScreen(store: Store, done: () -> Unit) {
                             loadingUnloading = 0.0,
                             expenseRules = if (expensePct.num() > 0) listOf(ExpenseRule("Other Expense", expensePct.num())) else emptyList(),
                             loadingExpensePerTon = loadingPerTon.num(),
-                            unloadingExpensePerTon = unloadingPerTon.num()
+                            unloadingExpensePerTon = unloadingPerTon.num(),
+                            createdBy = createdBy,
+                            createdByEmail = createdByEmail
                         )
                         val trips = store.trips()
                         trips.add(trip)
@@ -286,6 +288,17 @@ fun StyledTripListScreen(store: Store, canDelete: Boolean = false) {
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(t.vendor + " • " + t.bookingType, color = CubeText, fontSize = 12.sp)
+                    val creatorLabel = when {
+                        t.createdBy.isNotBlank() -> t.createdBy
+                        t.createdByEmail.isNotBlank() -> t.createdByEmail
+                        else -> "Legacy entry"
+                    }
+                    Text(
+                        "Created by " + creatorLabel + " • " + styledDateTime(t.createdAt),
+                        color = Color.Gray,
+                        fontSize = 9.sp,
+                        modifier = Modifier.padding(top = 3.dp)
+                    )
                     if (canDelete) {
                         TextButton(
                             onClick = {
@@ -1089,4 +1102,5 @@ private fun styledReportCsv(trips: List<Trip>): String = buildString {
         )
         appendLine(row.joinToString(",") { styledCsvCell(it) })
     }
-}
+}fun styledDateTime(value: Long): String = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.US).format(Date(value))
+
