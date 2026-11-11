@@ -92,11 +92,11 @@ class Store(context:Context){
  }
  private fun encodeTrip(t:Trip)=JSONObject().apply{
   put("id",t.id);put("at",t.createdAt);put("vendor",t.vendor);put("vehicle",t.vehicle);put("cur",t.currentLocation);put("from",t.from);put("to",t.to)
-  put("freight",t.freight);put("net",t.netFreight);put("advance",t.advance);put("weight",t.weightTon);put("originKm",t.currentToOriginKm);put("km",t.totalKm);put("hours",t.transitHours);put("mileage",t.mileage);put("fuelRate",t.fuelRate);put("fixed",t.fixedExpenses);put("fastag",t.fastag);put("rto",t.rtoTarpaulin);put("lu",t.loadingUnloading)
+  put("freight",t.freight);put("net",t.netFreight);put("advance",t.advance);put("weight",t.weightTon);put("originKm",t.currentToOriginKm);put("km",t.totalKm);put("hours",t.transitHours);put("mileage",t.mileage);put("fuelRate",t.fuelRate);put("fixed",t.fixedExpenses);put("fastag",t.fastag);put("rto",t.rtoTarpaulin);put("lu",t.loadingUnloading);put("loadingPerTon",t.loadingExpensePerTon);put("unloadingPerTon",t.unloadingExpensePerTon)
   put("rules",JSONArray().apply{t.expenseRules.forEach{put(JSONObject().put("n",it.name).put("p",it.percent))}})
  }
  private fun decodeTrip(o:JSONObject):Trip{
   val r=o.optJSONArray("rules")?:JSONArray();val rules=MutableList(r.length()){i->r.getJSONObject(i).let{ExpenseRule(it.getString("n"),it.getDouble("p"))}}
-  return Trip(o.getString("id"),o.getLong("at"),o.getString("vendor"),o.getString("vehicle"),o.getString("cur"),o.getString("from"),o.getString("to"),o.getDouble("freight"),o.optDouble("net",o.getDouble("freight")),o.getDouble("advance"),o.getDouble("weight"),o.optDouble("originKm",0.0),o.getDouble("km"),o.getDouble("hours"),o.getDouble("mileage"),o.getDouble("fuelRate"),o.getDouble("fixed"),o.getDouble("fastag"),o.getDouble("rto"),o.getDouble("lu"),rules)
+  return Trip(o.getString("id"),o.getLong("at"),o.getString("vendor"),o.getString("vehicle"),o.getString("cur"),o.getString("from"),o.getString("to"),o.getDouble("freight"),o.optDouble("net",o.getDouble("freight")),o.getDouble("advance"),o.getDouble("weight"),o.optDouble("originKm",0.0),o.getDouble("km"),o.getDouble("hours"),o.getDouble("mileage"),o.getDouble("fuelRate"),o.getDouble("fixed"),o.getDouble("fastag"),o.getDouble("rto"),o.getDouble("lu"),rules,o.optDouble("loadingPerTon",0.0),o.optDouble("unloadingPerTon",0.0))
  }
 }
