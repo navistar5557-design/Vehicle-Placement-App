@@ -234,7 +234,11 @@ fun StyledTripEntryScreen(store: Store, createdBy: String = "", createdByEmail: 
                             loadingExpensePerTon = loadingPerTon.num(),
                             unloadingExpensePerTon = unloadingPerTon.num(),
                             createdBy = createdBy,
-                            createdByEmail = createdByEmail
+                            createdByEmail = createdByEmail,
+                            status = "Vehicle Placed",
+                            statusUpdatedBy = createdBy,
+                            statusUpdatedByEmail = createdByEmail,
+                            statusUpdatedAt = System.currentTimeMillis()
                         )
                         val trips = store.trips()
                         trips.add(trip)
@@ -256,10 +260,17 @@ fun StyledTripEntryScreen(store: Store, createdBy: String = "", createdByEmail: 
 }
 
 @Composable
-fun StyledTripListScreen(store: Store, canEdit: Boolean = false, canDelete: Boolean = false) {
+fun StyledTripListScreen(
+    store: Store,
+    currentUser: String = "",
+    currentUserEmail: String = "",
+    canEdit: Boolean = false,
+    canDelete: Boolean = false
+) {
     var trips by remember { mutableStateOf(store.trips()) }
     var editing by remember { mutableStateOf<Trip?>(null) }
     var deleting by remember { mutableStateOf<Trip?>(null) }
+    val statusOptions = listOf("Vehicle Placed", "In Transit", "Completed")
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
         if (trips.isEmpty()) {
@@ -302,6 +313,37 @@ fun StyledTripListScreen(store: Store, canEdit: Boolean = false, canDelete: Bool
                         fontSize = 9.sp,
                         modifier = Modifier.padding(top = 3.dp)
                     )
+
+                    Spacer(Modifier.height(10.dp))
+                    StyledPicker("Trip Status", statusOptions, t.status.ifBlank { "Vehicle Placed" }) { selected ->
+                        if (selected != t.status) {
+                            val now = System.currentTimeMillis()
+                            val updated = t.copy(
+                                status = selected,
+                                statusUpdatedBy = currentUser,
+                                statusUpdatedByEmail = currentUserEmail,
+                                statusUpdatedAt = now
+                            )
+                            store.saveTrips(store.trips().map { if (it.id == t.id) updated else it })
+                            trips = store.trips()
+                        }
+                    }
+
+                    val statusUser = when {
+                        t.statusUpdatedBy.isNotBlank() -> t.statusUpdatedBy
+                        t.statusUpdatedByEmail.isNotBlank() -> t.statusUpdatedByEmail
+                        t.createdBy.isNotBlank() -> t.createdBy
+                        t.createdByEmail.isNotBlank() -> t.createdByEmail
+                        else -> "Legacy entry"
+                    }
+                    val statusTime = if (t.statusUpdatedAt > 0L) t.statusUpdatedAt else t.createdAt
+                    Text(
+                        "Status updated by " + statusUser + " • " + styledDateTime(statusTime),
+                        color = Color.Gray,
+                        fontSize = 9.sp,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+
                     if (canEdit || canDelete) {
                         Row(
                             modifier = Modifier.align(Alignment.End),
@@ -1273,12 +1315,14 @@ private fun styledCsvCell(value: String): String {
 }
 
 private fun styledReportCsv(trips: List<Trip>): String = buildString {
-    appendLine("Date,Vendor,Vehicle,Current Location,From,To,Booking Type,Freight,Net Freight,Advance,Balance,Weight Ton,Trip KM,Fuel Expense,Total Expenses,Margin")
+    appendLine("Date,Vendor,Vehicle,Current Location,From,To,Trip Status,Booking Type,Freight,Net Freight,Advance,Balance,Weight Ton,Trip KM,Fuel Expense,Total Expenses,Margin,Status Updated By,Status Updated At")
     trips.forEach { t ->
         val row = listOf(
-            styledDay(t.createdAt), t.vendor, t.vehicle, t.currentLocation, t.from, t.to, t.bookingType,
+            styledDay(t.createdAt), t.vendor, t.vehicle, t.currentLocation, t.from, t.to, t.status, t.bookingType,
             t.freight.toString(), t.netFreight.toString(), t.advance.toString(), t.balance.toString(),
-            t.weightTon.toString(), t.totalKm.toString(), t.fuelExpense.toString(), t.totalExpenses.toString(), t.margin.toString()
+            t.weightTon.toString(), t.totalKm.toString(), t.fuelExpense.toString(), t.totalExpenses.toString(), t.margin.toString(),
+            (t.statusUpdatedBy.ifBlank { t.statusUpdatedByEmail }),
+            (if (t.statusUpdatedAt > 0L) styledDateTime(t.statusUpdatedAt) else "")
         )
         appendLine(row.joinToString(",") { styledCsvCell(it) })
     }
