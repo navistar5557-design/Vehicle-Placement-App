@@ -1,6 +1,7 @@
 package com.cubelogistics.placement
 
 import android.app.DatePickerDialog
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.platform.LocalContext
 import java.text.SimpleDateFormat
@@ -81,6 +82,42 @@ fun CubeApp(store: Store) {
         var loggedIn by remember { mutableStateOf(rememberLogin && auth.currentUser != null) }
         var profile by remember { mutableStateOf<UserProfile?>(null) }
         var profileLoading by remember { mutableStateOf(loggedIn) }
+        var syncInProgress by remember { mutableStateOf(false) }
+        var syncVersion by remember { mutableIntStateOf(0) }
+
+        fun finishSync(result: Result<Unit>, successMessage: String) {
+            syncInProgress = false
+            if (result.isSuccess) {
+                syncVersion++
+                Toast.makeText(context, successMessage, Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "Sync failed: " + (result.exceptionOrNull()?.localizedMessage ?: "Please check internet connection"), Toast.LENGTH_LONG).show()
+            }
+        }
+
+        fun runAutomaticSync() {
+            if (syncInProgress) return
+            syncInProgress = true
+            firestoreSync.startAutomaticSync { result -> finishSync(result, "Sync completed") }
+        }
+
+        fun updateFromDatabase() {
+            if (syncInProgress) return
+            syncInProgress = true
+            firestoreSync.downloadCloudSnapshot { result -> finishSync(result, "Data updated from database") }
+        }
+
+        fun syncNow() {
+            if (syncInProgress) return
+            syncInProgress = true
+            firestoreSync.uploadLocalSnapshot { uploadResult ->
+                if (uploadResult.isFailure) {
+                    finishSync(uploadResult, "Sync completed")
+                } else {
+                    firestoreSync.downloadCloudSnapshot { downloadResult -> finishSync(downloadResult, "Sync completed") }
+                }
+            }
+        }
 
         fun loadProfile() {
             profileLoading = true
@@ -96,7 +133,7 @@ fun CubeApp(store: Store) {
 
         LaunchedEffect(profile?.uid) {
             if (profile != null && auth.currentUser != null) {
-                firestoreSync.startAutomaticSync()
+                runAutomaticSync()
             }
         }
 
@@ -121,6 +158,10 @@ fun CubeApp(store: Store) {
             else -> CubeMainShell(
                 store = store,
                 profile = profile!!,
+                syncInProgress = syncInProgress,
+                syncVersion = syncVersion,
+                onUpdateData = { updateFromDatabase() },
+                onSyncNow = { syncNow() },
                 onLogout = {
                     loginPrefs.edit().putBoolean("remember_login", false).apply()
                     auth.signOut()
@@ -708,6 +749,10 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
 private fun CubeMainShell(
     store: Store,
     profile: UserProfile,
+    syncInProgress: Boolean,
+    syncVersion: Int,
+    onUpdateData: () -> Unit,
+    onSyncNow: () -> Unit,
     onLogout: () -> Unit
 ) {
     var page by remember { mutableStateOf("Home") }
@@ -804,6 +849,9 @@ private fun CubeMainShell(
                     actions = {
                         UserProfileMenu(
                             profile = profile,
+                            syncInProgress = syncInProgress,
+                            onUpdateData = onUpdateData,
+                            onSyncNow = onSyncNow,
                             onLogout = onLogout
                         )
                     },
@@ -826,8 +874,29 @@ private fun CubeMainShell(
                 }
             }
         ) { pad ->
-            Box(Modifier.padding(pad)) {
-                when (page) {
+            Column(Modifier.padding(pad).fillMaxSize()) {
+                if (syncInProgress) {
+                    Surface(
+                        color = CubeLightBlue,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = CubeOrange
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Data is updating...", color = CubeBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    key(syncVersion) {
+                        when (page) {
                     "Home" -> CubeDashboard(
                         store = store,
                         range = range,
@@ -844,7 +913,11 @@ private fun CubeMainShell(
                         go = { page = it }
                     )
                     "Dashboard Breakdown" -> DashboardBreakdownScreen(store, range, breakdown)
-                    "New Trip" -> if (profile.role.canCreateTrips) StyledTripEntryScreen(store) { page = "Trip List" } else AccessDeniedScreen()
+                    "New Trip" -> if (profile.role.canCreateTrips) StyledTripEntryScreen(
+                        store = store,
+                        createdBy = profile.username,
+                        createdByEmail = profile.loginEmail
+                    ) { page = "Trip List" } else AccessDeniedScreen()
                     "Trip List" -> StyledTripListScreen(store, canDelete = profile.role.canDeleteTrips)
                     "Reports" -> StyledReportsHome(store) { page = it }
                     "Trip Details Report" -> StyledGenericReport(store, "Trip Details Report")
@@ -854,6 +927,8 @@ private fun CubeMainShell(
                     "Margin / Profitability Report" -> StyledGenericReport(store, "Margin / Profitability Report")
                     "Masters" -> if (profile.role.canManageMasters) StyledMastersScreen(store) else AccessDeniedScreen()
                     "Settings" -> SettingsScreen(profile)
+                        }
+                    }
                 }
             }
         }
@@ -1221,6 +1296,9 @@ private fun AccessDeniedScreen() {
 @Composable
 private fun UserProfileMenu(
     profile: UserProfile,
+    syncInProgress: Boolean,
+    onUpdateData: () -> Unit,
+    onSyncNow: () -> Unit,
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
@@ -1322,6 +1400,39 @@ private fun UserProfileMenu(
                         contentDescription = null,
                         tint = CubeBlue
                     )
+                }
+            )
+            HorizontalDivider()
+            DropdownMenuItem(
+                text = {
+                    Column {
+                        Text("Update Data", fontWeight = FontWeight.Bold, color = CubeBlue)
+                        Text("Download latest data from database", fontSize = 9.sp, color = Color.Gray)
+                    }
+                },
+                enabled = !syncInProgress,
+                onClick = {
+                    expanded = false
+                    onUpdateData()
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.Refresh, contentDescription = null, tint = CubeBlue)
+                }
+            )
+            DropdownMenuItem(
+                text = {
+                    Column {
+                        Text("Sync Now", fontWeight = FontWeight.Bold, color = CubeGreen)
+                        Text("Upload and sync with database", fontSize = 9.sp, color = Color.Gray)
+                    }
+                },
+                enabled = !syncInProgress,
+                onClick = {
+                    expanded = false
+                    onSyncNow()
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.Sync, contentDescription = null, tint = CubeGreen)
                 }
             )
             HorizontalDivider()
