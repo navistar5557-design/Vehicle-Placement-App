@@ -69,7 +69,7 @@ class Store(context:Context){
  fun renameVehicle(oldNumber:String,newNumber:String,newMileage:Double){
   val vs=vehicles().map{if(it.number==oldNumber)it.copy(number=newNumber,mileage=newMileage)else it}
   saveVehicles(vs)
-  val ts=trips().map{if(it.vehicle==oldNumber)it.copy(vehicle=newNumber)else it}
+  val ts=trips().map{if(it.vehicle==oldNumber)it.copy(vehicle=newNumber,mileage=newMileage)else it}
   saveTrips(ts)
  }
  fun renameVendor(oldName:String,newName:String){
