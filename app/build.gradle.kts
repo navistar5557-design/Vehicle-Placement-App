@@ -1,7 +1,7 @@
 plugins { id("com.android.application"); id("org.jetbrains.kotlin.android"); id("org.jetbrains.kotlin.plugin.compose"); id("com.google.gms.google-services") }
 android {
  namespace = "com.cubelogistics.placement"; compileSdk = 35
- defaultConfig { applicationId = "com.cubelogistics.placement"; minSdk = 24; targetSdk = 35; versionCode = 2; versionName = "1.0.1" }
+ defaultConfig { applicationId = "com.cubelogistics.placement"; minSdk = 24; targetSdk = 35; versionCode = 3; versionName = "1.0.2" }
  compileOptions {
    sourceCompatibility = JavaVersion.VERSION_17
    targetCompatibility = JavaVersion.VERSION_17
