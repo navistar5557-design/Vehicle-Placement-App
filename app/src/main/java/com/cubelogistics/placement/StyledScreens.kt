@@ -498,13 +498,17 @@ fun StyledGenericReport(store: Store, type: String) {
                 val percent = shown.sumOf { it.percentageExpenses }
                 val fastag = shown.sumOf { it.fastag }
                 val rto = shown.sumOf { it.rtoTarpaulin }
-                val loading = shown.sumOf { it.loadingUnloading }
+                val loading = shown.sumOf { it.loadingExpense }
+                val unloading = shown.sumOf { it.unloadingExpense }
+                val legacyLoading = shown.sumOf { it.loadingUnloading }
                 val fixed = shown.sumOf { it.fixedExpenses }
                 ExpenseSummaryRow("Fuel Expense", fuel)
                 ExpenseSummaryRow("Percentage Expenses", percent)
                 ExpenseSummaryRow("FASTag", fastag)
                 ExpenseSummaryRow("RTO / Tarpaulin", rto)
-                ExpenseSummaryRow("Loading & Unloading", loading)
+                ExpenseSummaryRow("Loading Expense", loading)
+                ExpenseSummaryRow("Unloading Expense", unloading)
+                if (legacyLoading > 0) ExpenseSummaryRow("Loading & Unloading (Old Trips)", legacyLoading)
                 ExpenseSummaryRow("Fixed Expenses", fixed)
             }
             "Margin / Profitability Report" -> {
