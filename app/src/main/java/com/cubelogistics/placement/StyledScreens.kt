@@ -43,7 +43,11 @@ fun StyledTripEntryScreen(store: Store, done: () -> Unit) {
     var from by remember { mutableStateOf(locations.firstOrNull()?.name ?: "") }
     var to by remember { mutableStateOf(locations.getOrNull(1)?.name ?: "") }
     var freight by remember { mutableStateOf("") }
-    var net by remember { mutableStateOf("") }
+    var mileageSelection by remember {
+        mutableStateOf(
+            vehicles.firstOrNull()?.mileage?.let { String.format(Locale.US, "%.1f", it) } ?: ""
+        )
+    }
     var advance by remember { mutableStateOf("") }
     var weight by remember { mutableStateOf("") }
     var originKm by remember { mutableStateOf("") }
@@ -52,21 +56,23 @@ fun StyledTripEntryScreen(store: Store, done: () -> Unit) {
     var expensePct by remember { mutableStateOf("") }
     var fastag by remember { mutableStateOf("") }
     var rto by remember { mutableStateOf("") }
-    var loading by remember { mutableStateOf("") }
+    var loadingPerTon by remember { mutableStateOf("") }
+    var unloadingPerTon by remember { mutableStateOf("") }
     var fixed by remember { mutableStateOf("") }
     var expensesOpen by remember { mutableStateOf(false) }
     var fuelOpen by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
 
-    val mileage = vehicles.find { it.number == vehicle }?.mileage ?: 0.0
+    val mileage = mileageSelection.num()
     val f = freight.num()
     val a = advance.num()
-    val netValue = if (net.num() > 0) net.num() else f
     val booking = if (a <= 0) "To Pay at Unloading" else if (f > 0) ((a / f) * 100).toInt().toString() + "% Advance" else "-"
     val fuelExpense = if (mileage > 0) (km.num() / mileage) * store.fuelRate else 0.0
     val percentExpense = f * expensePct.num() / 100.0
-    val totalExpense = percentExpense + fuelExpense + fastag.num() + rto.num() + loading.num() + fixed.num()
-    val margin = netValue - totalExpense
+    val loadingExpense = loadingPerTon.num() * weight.num()
+    val unloadingExpense = unloadingPerTon.num() * weight.num()
+    val totalExpense = percentExpense + fuelExpense + fastag.num() + rto.num() + loadingExpense + unloadingExpense + fixed.num()
+    val margin = f - totalExpense
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)
@@ -76,17 +82,19 @@ fun StyledTripEntryScreen(store: Store, done: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.weight(1f)) {
-                StyledPicker("Vehicle No", vehicles.map { it.number }, vehicle) { vehicle = it }
-            }
-            Surface(
-                color = Color(0xFFFFF4C7),
-                shape = RoundedCornerShape(10.dp),
-                border = BorderStroke(1.dp, Color(0xFFF2D66B))
-            ) {
-                Column(Modifier.padding(horizontal = 10.dp, vertical = 7.dp)) {
-                    Text("Vehicle Mileage", fontSize = 9.sp, color = Color(0xFF6A6A6A), fontWeight = FontWeight.SemiBold)
-                    Text(fmt(mileage) + " km/L", fontSize = 12.sp, fontWeight = FontWeight.Black, color = CubeBlue)
+                StyledPicker("Vehicle No", vehicles.map { it.number }, vehicle) { selected ->
+                    vehicle = selected
+                    vehicles.find { it.number == selected }?.mileage?.let {
+                        mileageSelection = String.format(Locale.US, "%.1f", it)
+                    }
                 }
+            }
+            Box(Modifier.weight(.72f)) {
+                StyledPicker(
+                    "Vehicle Mileage (km/L)",
+                    vehicleMileageOptions,
+                    mileageSelection
+                ) { mileageSelection = it }
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -99,7 +107,24 @@ fun StyledTripEntryScreen(store: Store, done: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         StyledNumberField("Including Expenses Freight Amount (₹)", freight) { freight = it }
         Spacer(Modifier.height(8.dp))
-        StyledNumberField("Net Freight Amount (₹)", net) { net = it }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.weight(1f)) {
+                StyledNumberField("Loading Expense / Ton (₹)", loadingPerTon) { loadingPerTon = it }
+            }
+            Box(Modifier.weight(1f)) {
+                StyledNumberField("Unloading Expense / Ton (₹)", unloadingPerTon) { unloadingPerTon = it }
+            }
+        }
+        if (weight.num() > 0 && (loadingPerTon.num() > 0 || unloadingPerTon.num() > 0)) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Loading ₹" + money0(loadingExpense) + "  •  Unloading ₹" + money0(unloadingExpense) +
+                    "  •  Included in Total Expenses",
+                fontSize = 10.sp,
+                color = CubeBlue,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) { StyledNumberField("Advance Amount (₹)", advance) { advance = it } }
@@ -133,8 +158,6 @@ fun StyledTripEntryScreen(store: Store, done: () -> Unit) {
             StyledNumberField("FASTag Expense", fastag) { fastag = it }
             Spacer(Modifier.height(6.dp))
             StyledNumberField("RTO / Tarpaulin", rto) { rto = it }
-            Spacer(Modifier.height(6.dp))
-            StyledNumberField("Loading & Unloading", loading) { loading = it }
             Spacer(Modifier.height(6.dp))
             StyledNumberField("Fixed Expenses", fixed) { fixed = it }
         }
@@ -170,8 +193,9 @@ fun StyledTripEntryScreen(store: Store, done: () -> Unit) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             OutlinedButton(
                 onClick = {
-                    freight = ""; net = ""; advance = ""; weight = ""; originKm = ""; km = ""; hours = ""
-                    expensePct = ""; fastag = ""; rto = ""; loading = ""; fixed = ""; message = ""
+                    freight = ""; advance = ""; weight = ""; originKm = ""; km = ""; hours = ""
+                    loadingPerTon = ""; unloadingPerTon = ""
+                    expensePct = ""; fastag = ""; rto = ""; fixed = ""; message = ""
                 },
                 modifier = Modifier.weight(1f).height(50.dp),
                 shape = RoundedCornerShape(10.dp)
@@ -194,7 +218,7 @@ fun StyledTripEntryScreen(store: Store, done: () -> Unit) {
                             from = from,
                             to = to,
                             freight = f,
-                            netFreight = netValue,
+                            netFreight = f,
                             advance = a,
                             weightTon = weight.num(),
                             currentToOriginKm = originKm.num(),
@@ -205,8 +229,10 @@ fun StyledTripEntryScreen(store: Store, done: () -> Unit) {
                             fixedExpenses = fixed.num(),
                             fastag = fastag.num(),
                             rtoTarpaulin = rto.num(),
-                            loadingUnloading = loading.num(),
-                            expenseRules = if (expensePct.num() > 0) listOf(ExpenseRule("Other Expense", expensePct.num())) else emptyList()
+                            loadingUnloading = 0.0,
+                            expenseRules = if (expensePct.num() > 0) listOf(ExpenseRule("Other Expense", expensePct.num())) else emptyList(),
+                            loadingExpensePerTon = loadingPerTon.num(),
+                            unloadingExpensePerTon = unloadingPerTon.num()
                         )
                         val trips = store.trips()
                         trips.add(trip)
