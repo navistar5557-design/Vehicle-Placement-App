@@ -225,6 +225,10 @@ private fun Trip.toFirestoreMap(): Map<String, Any> = mapOf(
     "unloadingExpensePerTon" to unloadingExpensePerTon,
     "createdBy" to createdBy,
     "createdByEmail" to createdByEmail,
+    "status" to status,
+    "statusUpdatedBy" to statusUpdatedBy,
+    "statusUpdatedByEmail" to statusUpdatedByEmail,
+    "statusUpdatedAt" to statusUpdatedAt,
     "expenseRules" to expenseRules.map { mapOf("name" to it.name, "percent" to it.percent) },
     "updatedAt" to System.currentTimeMillis()
 )
@@ -265,7 +269,11 @@ private fun com.google.firebase.firestore.DocumentSnapshot.toTripOrNull(): Trip?
             loadingExpensePerTon = getDouble("loadingExpensePerTon") ?: 0.0,
             unloadingExpensePerTon = getDouble("unloadingExpensePerTon") ?: 0.0,
             createdBy = getString("createdBy") ?: "",
-            createdByEmail = getString("createdByEmail") ?: ""
+            createdByEmail = getString("createdByEmail") ?: "",
+            status = getString("status") ?: "Vehicle Placed",
+            statusUpdatedBy = getString("statusUpdatedBy") ?: "",
+            statusUpdatedByEmail = getString("statusUpdatedByEmail") ?: "",
+            statusUpdatedAt = getLong("statusUpdatedAt") ?: 0L
         )
     } catch (_: Exception) {
         null
