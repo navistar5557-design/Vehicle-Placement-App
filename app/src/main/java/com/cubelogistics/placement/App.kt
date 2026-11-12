@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -442,9 +443,11 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
     val context = LocalContext.current
     val auth = remember { FirebaseAuth.getInstance() }
     val roleRepo = remember { UserRoleRepository(context) }
-    var user by remember { mutableStateOf("") }
+    val loginPrefs = remember { context.getSharedPreferences("cube_auth", android.content.Context.MODE_PRIVATE) }
+    var user by remember { mutableStateOf(loginPrefs.getString("saved_username", "") ?: "") }
     var pass by remember { mutableStateOf("") }
-    var rememberMe by remember { mutableStateOf(true) }
+    var passwordVisible by remember { mutableStateOf(false) }
+    var rememberMe by remember { mutableStateOf(loginPrefs.getBoolean("remember_username", true)) }
     var errorMessage by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
 
@@ -592,14 +595,16 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
                     )
                 },
                 trailingIcon = {
-                    Icon(
-                        Icons.Default.Visibility,
-                        contentDescription = null,
-                        tint = Color(0xFF123F82),
-                        modifier = Modifier.size(20.dp)
-                    )
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                            tint = Color(0xFF123F82),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 },
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 singleLine = true,
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -687,6 +692,17 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
                         auth.signInWithEmailAndPassword(loginEmail, pass)
                             .addOnSuccessListener {
                                 loading = false
+                                if (rememberMe) {
+                                    loginPrefs.edit()
+                                        .putString("saved_username", identity)
+                                        .putBoolean("remember_username", true)
+                                        .apply()
+                                } else {
+                                    loginPrefs.edit()
+                                        .remove("saved_username")
+                                        .putBoolean("remember_username", false)
+                                        .apply()
+                                }
                                 onLoginSuccess(rememberMe)
                             }
                             .addOnFailureListener {
