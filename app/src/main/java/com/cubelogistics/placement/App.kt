@@ -136,6 +136,7 @@ fun CubeApp(store: Store) {
             if (profile != null && auth.currentUser != null) {
                 runAutomaticSync()
                 NotificationRegistrar.registerCurrentDevice(profile!!.username)
+                LiveNotificationCenter.start(context, profile!!.uid)
             }
         }
 
@@ -166,6 +167,7 @@ fun CubeApp(store: Store) {
                 onSyncNow = { syncNow() },
                 onLogout = {
                     loginPrefs.edit().putBoolean("remember_login", false).apply()
+                    LiveNotificationCenter.stop()
                     auth.signOut()
                     profile = null
                     loggedIn = false
