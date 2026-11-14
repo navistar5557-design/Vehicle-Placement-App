@@ -374,7 +374,7 @@ function dashboardHtml(){
       <div class="quick-grid">
         <button class="quick-action green" onclick="document.querySelector('[data-page=newtrip]').click()"><b>＋</b><span>New Trip</span></button>
         <button class="quick-action cyan" onclick="document.querySelector('[data-page=vehicles]').click()"><b>🚚</b><span>Add Vehicle</span></button>
-        <button class="quick-action purple" onclick="document.querySelector('[data-page=locations]').click()"><b class="location-pin" aria-hidden="true"><span></span></b><span>Add Location</span></button>
+        <button class="quick-action red" onclick="document.querySelector('[data-page=locations]').click()"><b class="location-pin" aria-hidden="true"><span></span></b><span>Add Location</span></button>
         <button class="quick-action orange" onclick="document.querySelector('[data-page=reports]').click()"><b>▥</b><span>View Reports</span></button>
       </div>
     </article>
@@ -382,8 +382,16 @@ function dashboardHtml(){
     <article class="neo-panel utilization-panel">
       <div class="panel-title"><span>◎</span><h3>Fleet Utilization</h3></div>
       <div class="util-body">
-        <div class="gauge" style="--pct:${utilization}"><div><strong>${utilization}%</strong><span>Utilization</span></div></div>
-        <div class="util-list"><p><i class="cyan-dot"></i><span>In Trip</span><b>${inTrip}</b></p><p><i class="orange-dot"></i><span>Available</span><b>${idle}</b></p></div>
+        <div class="gauge" data-target="${utilization}" style="--target:${utilization};--gauge-progress:0">
+          <span class="gauge-orbit orbit-one"></span>
+          <span class="gauge-orbit orbit-two"></span>
+          <span class="gauge-sheen"></span>
+          <div><strong class="util-counter" data-target="${utilization}">0%</strong><span>Utilization</span></div>
+        </div>
+        <div class="util-list">
+          <p class="util-row in-trip"><i class="cyan-dot"></i><span>In Trip</span><b class="util-number" data-target="${inTrip}">0</b></p>
+          <p class="util-row available"><i class="orange-dot"></i><span>Available</span><b class="util-number" data-target="${idle}">0</b></p>
+        </div>
       </div>
     </article>
 
@@ -452,6 +460,33 @@ function wireDashboard(){
       ${rows.length?`<div class="mini-list">${rows.map(t=>`<div class="mini-row"><div><strong>${esc(t.vehicle||"-")}</strong><small>${esc(t.from||"-")} → ${esc(t.to||"-")}</small></div><span>${statusBadge(t.status)}</span></div>`).join("")}</div>`:'<div class="empty">No trips for this day.</div>'}
     `);
   };
+  const gauge=document.querySelector(".gauge[data-target]");
+  if(gauge){
+    const target=Math.max(0,Math.min(100,Number(gauge.dataset.target||0)));
+    requestAnimationFrame(()=>requestAnimationFrame(()=>gauge.style.setProperty("--gauge-progress",String(target))));
+    const start=performance.now(),duration=1100;
+    const tick=now=>{
+      const p=Math.min(1,(now-start)/duration);
+      const eased=1-Math.pow(1-p,3);
+      const value=Math.round(target*eased);
+      const counter=gauge.querySelector(".util-counter");
+      if(counter) counter.textContent=value+"%";
+      if(p<1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+  document.querySelectorAll(".util-number[data-target]").forEach(el=>{
+    const target=Math.max(0,Number(el.dataset.target||0));
+    const start=performance.now(),duration=850;
+    const tick=now=>{
+      const p=Math.min(1,(now-start)/duration);
+      const eased=1-Math.pow(1-p,3);
+      el.textContent=String(Math.round(target*eased));
+      if(p<1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+
   document.querySelectorAll(".trend-svg-day").forEach(group=>{
     group.addEventListener("mouseenter",()=>setTrendFocus(group,false));
     group.addEventListener("mouseleave",()=>clearTrendHover(group));
