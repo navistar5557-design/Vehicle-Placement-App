@@ -1288,3 +1288,45 @@ body{animation:pearlDrift 22s ease-in-out infinite}
 @media(max-width:560px){
   .day-summary{grid-template-columns:1fr}
 }
+
+
+/* v0.3.8 trend day depth focus */
+.trend-svg-day{
+  transform-box:fill-box;
+  transform-origin:center center;
+  transition:opacity .18s ease, filter .2s ease;
+}
+.trend-svg-day .trend-svg-bar,
+.trend-svg-day .trend-svg-dot,
+.trend-svg-day .trend-svg-label{
+  transition:transform .22s var(--ease-spring), opacity .18s ease, filter .22s ease;
+  transform-box:fill-box;
+  transform-origin:center;
+}
+.trend-svg-day.trend-active .trend-svg-bar{
+  transform:translateY(-5px) scale(1.10);
+  filter:drop-shadow(0 10px 14px rgba(13,78,155,.34));
+}
+.trend-svg-day.trend-active .trend-svg-dot{
+  transform:translateY(-5px) scale(1.45);
+  filter:drop-shadow(0 0 8px rgba(255,122,0,.48));
+}
+.trend-svg-day.trend-active .trend-svg-label{
+  transform:translateY(2px) scale(1.08);
+  font-weight:900;
+  fill:#0b1d43;
+}
+.trend-svg-day.trend-active .trend-svg-hit{
+  fill:rgba(31,112,215,.055);
+}
+.trend-svg-day.trend-muted{
+  opacity:.38;
+}
+.trend-svg-day.trend-muted .trend-svg-bar,
+.trend-svg-day.trend-muted .trend-svg-dot{
+  filter:saturate(.45);
+}
+.trend-svg-day:hover,
+.trend-svg-day:focus-visible{
+  opacity:1;
+}
