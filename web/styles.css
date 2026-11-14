@@ -1138,3 +1138,73 @@ body{animation:pearlDrift 22s ease-in-out infinite}
     text-overflow:ellipsis;
   }
 }
+
+
+/* v0.3.6 dashboard filter alignment */
+.dashboard-filterbar{
+  align-items:flex-end;
+}
+.filter-controls{
+  display:grid;
+  grid-template-columns:150px auto;
+  align-items:end;
+  gap:10px;
+  margin-left:auto;
+}
+#dashboardRange{
+  height:40px;
+  min-width:150px;
+  margin:0;
+}
+.custom-range-fields{
+  display:grid;
+  grid-template-columns:128px 128px auto;
+  align-items:end;
+  gap:8px;
+}
+.custom-range-fields label{
+  display:grid;
+  grid-template-rows:auto 40px;
+  gap:4px;
+  margin:0;
+}
+.custom-range-fields input{
+  width:128px;
+  height:40px;
+  margin:0;
+  padding:7px 9px;
+}
+.custom-range-fields .primary{
+  height:40px;
+  margin:0;
+  align-self:end;
+  padding:0 14px;
+}
+@media(max-width:980px){
+  .filter-controls{
+    width:100%;
+    grid-template-columns:150px 1fr;
+  }
+  .custom-range-fields{
+    grid-template-columns:1fr 1fr auto;
+  }
+  .custom-range-fields input{
+    width:100%;
+  }
+}
+@media(max-width:640px){
+  .filter-controls{
+    grid-template-columns:1fr;
+  }
+  #dashboardRange{
+    width:100%;
+  }
+  .custom-range-fields{
+    grid-template-columns:1fr 1fr;
+    width:100%;
+  }
+  .custom-range-fields .primary{
+    grid-column:1/-1;
+    width:100%;
+  }
+}
