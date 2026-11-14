@@ -224,7 +224,8 @@ function dashboardHtml(){
     const y=yCount(d.count);
     const h=Math.max(2,plot.bottom-y);
     const dotY=yMargin(d.margin);
-    return `<g class="trend-svg-day">
+    return `<g class="trend-svg-day" tabindex="0" role="button" data-start="${Math.floor(range.start+i*((range.end-range.start+1)/days.length))}" data-end="${Math.floor(i===days.length-1?range.end:range.start+(i+1)*((range.end-range.start+1)/days.length)-1)}" aria-label="${esc(d.label)}: ${d.count} trips">
+      <rect class="trend-svg-hit" x="${Math.max(0,x-16)}" y="8" width="66" height="172" rx="8"></rect>
       <rect class="trend-svg-bar" x="${x}" y="${plot.bottom-h}" width="34" height="${h}" rx="7">
         <title>${esc(d.label)} — ${d.count} trips</title>
       </rect>
@@ -304,7 +305,7 @@ function dashboardHtml(){
       <div class="quick-grid">
         <button class="quick-action green" onclick="document.querySelector('[data-page=newtrip]').click()"><b>＋</b><span>New Trip</span></button>
         <button class="quick-action cyan" onclick="document.querySelector('[data-page=vehicles]').click()"><b>🚚</b><span>Add Vehicle</span></button>
-        <button class="quick-action purple" onclick="document.querySelector('[data-page=locations]').click()"><b>●</b><span>Add Location</span></button>
+        <button class="quick-action purple" onclick="document.querySelector('[data-page=locations]').click()"><b class="location-pin" aria-hidden="true"><span></span></b><span>Add Location</span></button>
         <button class="quick-action orange" onclick="document.querySelector('[data-page=reports]').click()"><b>▥</b><span>View Reports</span></button>
       </div>
     </article>
@@ -352,6 +353,26 @@ function wireDashboard(){
     if(new Date(from)>new Date(to)){toast("From date cannot be after To date");return;}
     state.dashboardFrom=from;state.dashboardTo=to;state.dashboardFilter="custom";render();
   });
+  const openTrendDay=(group)=>{
+    const start=Number(group.dataset.start||0),end=Number(group.dataset.end||0);
+    const rows=state.trips.filter(t=>Number(t.createdAt||0)>=start&&Number(t.createdAt||0)<=end).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
+    const freight=rows.reduce((s,t)=>s+Number(t.freight||0),0);
+    const margin=rows.reduce((s,t)=>s+Number(t.margin||0),0);
+    const label=group.getAttribute("aria-label")?.split(":")[0]||"Selected Period";
+    modal(label+" Details", `
+      <div class="mini-summary day-summary">
+        <div><span>Trips</span><strong>${rows.length}</strong></div>
+        <div><span>Freight</span><strong>₹ ${money(freight)}</strong></div>
+        <div><span>Margin</span><strong>₹ ${money(margin)}</strong></div>
+      </div>
+      ${rows.length?`<div class="mini-list">${rows.map(t=>`<div class="mini-row"><div><strong>${esc(t.vehicle||"-")}</strong><small>${esc(t.from||"-")} → ${esc(t.to||"-")}</small></div><span>${statusBadge(t.status)}</span></div>`).join("")}</div>`:'<div class="empty">No trips for this day.</div>'}
+    `);
+  };
+  document.querySelectorAll(".trend-svg-day").forEach(group=>{
+    group.addEventListener("click",()=>openTrendDay(group));
+    group.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openTrendDay(group);}});
+  });
+
   const openKpi=(type)=>{
     const trips=state.trips;
     if(type==="vehicles"){
