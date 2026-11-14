@@ -84,3 +84,123 @@ input,select{width:100%;border:1px solid #B9C8DA;border-radius:10px;padding:12px
   .topbar .secondary { padding-inline:9px; }
   .login-card h1 { font-size:20px; }
 }
+
+
+/* --- CUBE motion system v0.2 --- */
+:root{
+  --ease-out:cubic-bezier(.22,1,.36,1);
+  --ease-spring:cubic-bezier(.16,1.25,.3,1);
+  --shadow-soft:0 10px 30px rgba(16,42,86,.08);
+  --shadow-hover:0 16px 34px rgba(16,42,86,.14);
+}
+html{scroll-behavior:smooth}
+body{overflow-x:hidden}
+button,.kpi,.card,.list-row,.table-wrap,#nav button,.badge,input,select{
+  transition:
+    transform .24s var(--ease-out),
+    box-shadow .24s var(--ease-out),
+    background-color .24s ease,
+    border-color .24s ease,
+    color .24s ease,
+    opacity .24s ease;
+}
+button:not(:disabled):active{transform:scale(.97)}
+.primary:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(255,92,0,.24)}
+.secondary:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(13,78,155,.12)}
+.danger:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(180,35,24,.12)}
+
+.login-card{animation:loginRise .65s var(--ease-out) both}
+.login-card .brand-mark{animation:brandPop .75s .08s var(--ease-spring) both}
+.login-card form>*{animation:fieldRise .5s var(--ease-out) both}
+.login-card form>*:nth-child(1){animation-delay:.12s}
+.login-card form>*:nth-child(2){animation-delay:.18s}
+.login-card form>*:nth-child(3){animation-delay:.24s}
+.login-card form>*:nth-child(4){animation-delay:.30s}
+.login-card form>*:nth-child(5){animation-delay:.36s}
+.password-wrap .icon-btn:hover{transform:scale(1.08)}
+
+.sidebar{transition:left .28s var(--ease-out),visibility .28s ease,box-shadow .28s ease}
+.sidebar-brand .brand-mark img{animation:logoFloat 4.5s ease-in-out infinite}
+#nav button{position:relative;overflow:hidden}
+#nav button::before{
+  content:"";position:absolute;left:4px;top:50%;width:4px;height:0;border-radius:8px;
+  background:var(--orange);transform:translateY(-50%);transition:height .24s var(--ease-out);
+}
+#nav button.active::before{height:22px}
+#nav button:hover{transform:translateX(3px)}
+#nav button.active{transform:translateX(2px)}
+
+.topbar{transition:box-shadow .25s ease}
+.topbar:hover{box-shadow:0 8px 24px rgba(7,59,122,.12)}
+.topbar h2,.topbar p{animation:headerSlide .42s var(--ease-out) both}
+.topbar p{animation-delay:.05s}
+
+.content.page-enter>*{animation:sectionRise .48s var(--ease-out) both}
+.content.page-enter>*:nth-child(2){animation-delay:.05s}
+.content.page-enter>*:nth-child(3){animation-delay:.10s}
+.content.page-enter>*:nth-child(4){animation-delay:.15s}
+.content.page-enter>*:nth-child(5){animation-delay:.20s}
+
+.kpi,.card,.list-row,.table-wrap{will-change:transform}
+.kpi:hover,.status-overview .card:hover,.list-row:hover{
+  transform:translateY(-4px);
+  box-shadow:var(--shadow-hover);
+}
+.dashboard-kpis .kpi{animation:kpiPop .55s var(--ease-spring) both}
+.dashboard-kpis .kpi:nth-child(1){animation-delay:.03s}
+.dashboard-kpis .kpi:nth-child(2){animation-delay:.09s}
+.dashboard-kpis .kpi:nth-child(3){animation-delay:.15s}
+.dashboard-kpis .kpi:nth-child(4){animation-delay:.21s}
+.dashboard-kpis .kpi:nth-child(5){animation-delay:.27s}
+.status-overview .card{animation:statusSlide .5s var(--ease-out) both}
+.status-overview .card:nth-child(1){animation-delay:.08s}
+.status-overview .card:nth-child(2){animation-delay:.14s}
+.status-overview .card:nth-child(3){animation-delay:.20s}
+.status-overview .card strong{font-size:20px;color:var(--blue)}
+.badge{transform-origin:center}
+.badge:hover{transform:scale(1.05)}
+
+.table-wrap{box-shadow:var(--shadow-soft)}
+tbody tr{transition:background-color .2s ease,transform .2s var(--ease-out)}
+tbody tr:hover{background:#F7FAFF}
+tbody tr:hover td:first-child{box-shadow:inset 3px 0 0 var(--orange)}
+tbody tr td:first-child{transition:box-shadow .2s ease}
+
+.form-grid label{animation:fieldRise .4s var(--ease-out) both}
+.form-grid label:nth-child(2n){animation-delay:.035s}
+input:focus,select:focus{transform:translateY(-1px)}
+.summary{transition:transform .22s var(--ease-out),box-shadow .22s ease}
+.summary:hover{transform:translateY(-2px);box-shadow:var(--shadow-soft)}
+
+.modal-backdrop{animation:backdropFade .22s ease both}
+.modal{animation:modalPop .34s var(--ease-spring) both}
+.toast{transition:opacity .25s ease,transform .35s var(--ease-spring)}
+.toast.show{transform:translateY(0) scale(1)}
+.toast:not(.show){transform:translateY(12px) scale(.96)}
+
+.sync-state{position:relative;padding-left:2px}
+.sync-state::after{
+  content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#22C55E;margin-left:6px;
+  animation:syncPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes loginRise{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes brandPop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+@keyframes fieldRise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes headerSlide{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+@keyframes sectionRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes kpiPop{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes statusSlide{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+@keyframes modalPop{from{opacity:0;transform:translateY(16px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes backdropFade{from{opacity:0}to{opacity:1}}
+@keyframes logoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes syncPulse{0%,100%{opacity:.45;transform:scale(.8)}50%{opacity:1;transform:scale(1.25)}}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+    scroll-behavior:auto!important;
+  }
+}
