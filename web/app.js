@@ -124,29 +124,125 @@ function render(){
 }
 
 function dashboardHtml(){
-  const placed=state.trips.filter(t=>(t.status||"Vehicle Placed")==="Vehicle Placed").length;
-  const transit=state.trips.filter(t=>t.status==="In Transit").length, completed=state.trips.filter(t=>t.status==="Completed").length;
-  const freight=state.trips.reduce((s,t)=>s+Number(t.freight||0),0), exp=state.trips.reduce((s,t)=>s+t.totalExpenses,0), margin=state.trips.reduce((s,t)=>s+t.margin,0);
+  const trips=state.trips;
+  const activeVehicles=state.vehicles.filter(v=>v.active!==false);
+  const placed=trips.filter(t=>(t.status||"Vehicle Placed")==="Vehicle Placed").length;
+  const transit=trips.filter(t=>t.status==="In Transit").length;
+  const completed=trips.filter(t=>t.status==="Completed").length;
+  const freight=trips.reduce((s,t)=>s+Number(t.freight||0),0);
+  const margin=trips.reduce((s,t)=>s+Number(t.margin||0),0);
+  const marginPct=freight?margin/freight*100:0;
+
+  const activeVehicleNos=new Set(
+    trips.filter(t=>["Vehicle Placed","In Transit"].includes(t.status||"Vehicle Placed"))
+      .map(t=>t.vehicle).filter(Boolean)
+  );
+  const inTrip=Math.min(activeVehicleNos.size,activeVehicles.length);
+  const idle=Math.max(activeVehicles.length-inTrip,0);
+  const utilization=activeVehicles.length?Math.round(inTrip/activeVehicles.length*100):0;
+
+  const today=new Date(); today.setHours(0,0,0,0);
+  const completedToday=trips.filter(t=>t.status==="Completed" && Number(t.statusUpdatedAt||0)>=today.getTime()).length;
+  const delayed=trips.filter(t=>{
+    if(t.status==="Completed") return false;
+    const hrs=Number(t.transitHours||0);
+    return hrs>0 && Number(t.createdAt||0)+hrs*3600000 < Date.now();
+  }).length;
+
+  const compact=n=>{
+    n=Number(n||0);
+    if(Math.abs(n)>=10000000)return "₹ "+(n/10000000).toFixed(2)+" Cr";
+    if(Math.abs(n)>=100000)return "₹ "+(n/100000).toFixed(2)+" L";
+    return "₹ "+money(n);
+  };
+
+  const days=Array.from({length:7},(_,i)=>{
+    const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-(6-i));
+    const next=new Date(d); next.setDate(next.getDate()+1);
+    const rows=trips.filter(t=>Number(t.createdAt||0)>=d.getTime()&&Number(t.createdAt||0)<next.getTime());
+    return {label:d.toLocaleDateString("en-IN",{day:"2-digit",month:"short"}),count:rows.length,margin:rows.reduce((s,t)=>s+Number(t.margin||0),0)};
+  });
+  const maxCount=Math.max(1,...days.map(d=>d.count));
+  const maxMargin=Math.max(1,...days.map(d=>Math.abs(d.margin)));
+  const chartBars=days.map(d=>`<div class="trend-day">
+      <div class="trend-bars"><span class="trip-bar" style="height:${Math.max(10,d.count/maxCount*100)}%"></span><span class="margin-dot" style="bottom:${Math.max(6,Math.abs(d.margin)/maxMargin*88)}%"></span></div>
+      <small>${esc(d.label)}</small></div>`).join("");
+
+  const hour=new Date().getHours();
+  const greeting=hour<12?"Good Morning":hour<17?"Good Afternoon":"Good Evening";
+
   return `
-  <div class="dashboard-intro">
-    <h2>Hello, ${esc(state.profile.username)}</h2>
-    <p>Transport Operations Dashboard</p>
-  </div>
-  <div class="grid dashboard-kpis">
-    <div class="kpi blue"><div class="label">Trips</div><div class="value">${state.trips.length}</div></div>
-    <div class="kpi green"><div class="label">Freight Amount</div><div class="value">₹ ${money(freight)}</div></div>
-    <div class="kpi orange"><div class="label">Total Expenses</div><div class="value">₹ ${money(exp)}</div></div>
-    <div class="kpi green"><div class="label">Margin</div><div class="value">₹ ${money(margin)}</div></div>
-    <div class="kpi green margin-percent"><div class="label">Margin %</div><div class="value">${freight?(margin/freight*100).toFixed(2):"0.00"}%</div></div>
-  </div>
-  <div class="section-head"><h3>Trip Status</h3></div>
-  <div class="grid status-overview">
-    <div class="card">${statusBadge("Vehicle Placed")} <strong>${placed}</strong></div>
-    <div class="card">${statusBadge("In Transit")} <strong>${transit}</strong></div>
-    <div class="card">${statusBadge("Completed")} <strong>${completed}</strong></div>
-  </div>
-  <div class="section-head"><h3>Latest Trips</h3><button class="secondary" onclick="document.querySelector('[data-page=trips]').click()">View all</button></div>
-  ${tripTable(state.trips.slice(0,8),false)}`;
+  <section class="neo-hero">
+    <div class="hero-copy">
+      <span class="eyebrow">LIVE FLEET CONTROL</span>
+      <h2>${greeting}, ${esc(state.profile.username)} <span class="wave">👋</span></h2>
+      <p>Here is your fleet & placement overview for today.</p>
+    </div>
+    <img class="hero-truck" src="./hero-truck.svg" alt="Neon logistics truck" />
+    <div class="hero-date">◫ ${new Date().toLocaleDateString("en-IN",{weekday:"short",day:"2-digit",month:"short",year:"numeric"})}</div>
+  </section>
+
+  <section class="neo-kpis">
+    <article class="neo-kpi cyan">
+      <img src="./icon-vehicle.svg" alt="" />
+      <div><span>Total Vehicles</span><strong>${activeVehicles.length}</strong><small>Active fleet</small></div>
+    </article>
+    <article class="neo-kpi purple">
+      <img src="./icon-trips.svg" alt="" />
+      <div><span>Total Trips</span><strong>${trips.length}</strong><small>${placed+transit} currently active</small></div>
+    </article>
+    <article class="neo-kpi orange">
+      <img src="./icon-revenue.svg" alt="" />
+      <div><span>Total Revenue</span><strong>${compact(freight)}</strong><small>Freight amount</small></div>
+    </article>
+    <article class="neo-kpi green">
+      <img src="./icon-margin.svg" alt="" />
+      <div><span>Vehicle Margin</span><strong>${compact(margin)}</strong><small>${marginPct.toFixed(1)}% of revenue</small></div>
+    </article>
+  </section>
+
+  <section class="neo-dashboard-grid">
+    <article class="neo-panel trend-panel">
+      <div class="panel-title"><span>▥</span><h3>Vehicle Placement Trend</h3><div class="legend"><i class="cyan-dot"></i> Trips <i class="purple-dot"></i> Margin</div></div>
+      <div class="trend-chart">${chartBars}</div>
+    </article>
+
+    <article class="neo-panel quick-panel">
+      <div class="panel-title"><span>⚡</span><h3>Quick Actions</h3></div>
+      <div class="quick-grid">
+        <button class="quick-action green" onclick="document.querySelector('[data-page=newtrip]').click()"><b>＋</b><span>New Trip</span></button>
+        <button class="quick-action cyan" onclick="document.querySelector('[data-page=vehicles]').click()"><b>🚚</b><span>Add Vehicle</span></button>
+        <button class="quick-action purple" onclick="document.querySelector('[data-page=locations]').click()"><b>●</b><span>Add Location</span></button>
+        <button class="quick-action orange" onclick="document.querySelector('[data-page=reports]').click()"><b>▥</b><span>View Reports</span></button>
+      </div>
+    </article>
+
+    <article class="neo-panel utilization-panel">
+      <div class="panel-title"><span>◎</span><h3>Fleet Utilization</h3></div>
+      <div class="util-body">
+        <div class="gauge" style="--pct:${utilization}"><div><strong>${utilization}%</strong><span>Utilization</span></div></div>
+        <div class="util-list"><p><i class="cyan-dot"></i><span>In Trip</span><b>${inTrip}</b></p><p><i class="orange-dot"></i><span>Available</span><b>${idle}</b></p></div>
+      </div>
+    </article>
+
+    <article class="neo-panel recent-panel">
+      <div class="panel-title"><span>🚚</span><h3>Recent Trips</h3><button class="text-link" onclick="document.querySelector('[data-page=trips]').click()">View All →</button></div>
+      <div class="neo-trip-table">
+        <div class="neo-trip-head"><span>Vehicle No.</span><span>From</span><span>To</span><span>Load (T)</span><span>Status</span><span>Margin</span></div>
+        ${trips.slice(0,5).map(t=>`<div class="neo-trip-row"><span class="vehicle-cell">🚚 ${esc(t.vehicle||"-")}</span><span>${esc(t.from||"-")}</span><span>${esc(t.to||"-")}</span><span>${Number(t.weightTon||0).toFixed(1)}</span><span>${statusBadge(t.status)}</span><strong>₹ ${money(t.margin)}</strong></div>`).join("") || '<div class="empty">No recent trips</div>'}
+      </div>
+    </article>
+
+    <article class="neo-panel alerts-panel">
+      <div class="panel-title"><span>🔔</span><h3>Alerts & Updates</h3></div>
+      <div class="alerts-list">
+        <div class="alert-row green"><b>✓</b><span>${completedToday} Trips Completed Today</span><em>›</em></div>
+        <div class="alert-row orange"><b>🚚</b><span>${placed} Vehicles Placed</span><em>›</em></div>
+        <div class="alert-row cyan"><b>➜</b><span>${transit} Vehicles In Transit</span><em>›</em></div>
+        ${delayed? `<div class="alert-row purple"><b>!</b><span>${delayed} Trip${delayed>1?"s":""} Delayed</span><em>›</em></div>`:""}
+      </div>
+    </article>
+  </section>`;
 }
 
 function statusBadge(s){const c=s==="Completed"?"completed":s==="In Transit"?"transit":"placed";return `<span class="badge ${c}">${esc(s||"Vehicle Placed")}</span>`;}
