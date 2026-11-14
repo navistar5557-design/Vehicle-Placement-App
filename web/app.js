@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 import { getMessaging, getToken, onMessage, isSupported as messagingSupported } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-messaging.js";
 import {
   getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc,
@@ -159,6 +159,19 @@ $("#loginForm").addEventListener("submit",async e=>{
   }catch(err){ $("#loginError").textContent="Login failed. Please check your User ID and password."; console.error(err); }
 });
 $("#loginUser").value=localStorage.getItem("cube_web_username")||"";
+
+document.querySelector(".forgot-password-web")?.addEventListener("click",async()=>{
+  const identity=$("#loginUser").value.trim();
+  if(!identity){ $("#loginError").textContent="Enter your User ID first."; $("#loginUser").focus(); return; }
+  if(!identity.includes("@")){ $("#loginError").textContent="For username accounts, please contact Admin to change the password."; return; }
+  try{
+    await sendPasswordResetEmail(auth,identity);
+    $("#loginError").textContent="Password reset email sent.";
+  }catch(err){
+    console.error(err);
+    $("#loginError").textContent="Unable to send password reset email.";
+  }
+});
 
 onAuthStateChanged(auth,async user=>{
   state.user=user;
