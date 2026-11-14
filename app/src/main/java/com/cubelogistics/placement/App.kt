@@ -379,127 +379,175 @@ private fun MockupTruckIllustration(modifier: Modifier = Modifier) {
     Canvas(modifier) {
         val w = size.width
         val h = size.height
-        val blue = Color(0xFF154E9D)
-        val deepBlue = Color(0xFF073B7A)
-        val lightBlue = Color(0xFFD9E9FA)
+        val blue = Color(0xFF0C5DB4)
+        val deepBlue = Color(0xFF0B2E63)
         val orange = CubeOrange
+        val steel = Color(0xFFDAE4F0)
 
-        // Soft hero halo
+        // Soft circular hero backdrop
         drawCircle(
-            color = Color(0xFFEAF3FF),
-            radius = h * .46f,
-            center = androidx.compose.ui.geometry.Offset(w * .48f, h * .48f)
+            brush = Brush.radialGradient(
+                colors = listOf(Color(0xFFCFE6FF), Color(0xFFEFF7FF), Color.Transparent),
+                center = androidx.compose.ui.geometry.Offset(w * .46f, h * .48f),
+                radius = h * .55f
+            ),
+            radius = h * .52f,
+            center = androidx.compose.ui.geometry.Offset(w * .46f, h * .48f)
         )
 
-        // Skyline
-        val skyline = listOf(
-            .66f to .42f, .71f to .32f, .76f to .39f, .81f to .26f, .86f to .36f
+        // Distant skyline
+        val buildings = listOf(
+            Triple(.70f,.34f,.055f), Triple(.76f,.27f,.050f), Triple(.82f,.39f,.045f),
+            Triple(.87f,.22f,.060f), Triple(.94f,.33f,.045f)
         )
-        skyline.forEachIndexed { index, pair ->
-            val x = w * pair.first
-            val top = h * pair.second
-            val bw = w * .045f
+        buildings.forEach { (x, top, bw) ->
             drawRoundRect(
-                color = Color(0xFFBDD3F2).copy(alpha = .62f),
-                topLeft = androidx.compose.ui.geometry.Offset(x, top),
-                size = androidx.compose.ui.geometry.Size(bw, h * .28f),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(3f, 3f)
+                color = Color(0xFFBFD6F3).copy(alpha = .64f),
+                topLeft = androidx.compose.ui.geometry.Offset(w * x, h * top),
+                size = androidx.compose.ui.geometry.Size(w * bw, h * (.66f-top)),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(5f,5f)
             )
-            repeat(3) { row ->
-                repeat(2) { col ->
-                    drawRect(
-                        color = Color.White.copy(alpha = .85f),
-                        topLeft = androidx.compose.ui.geometry.Offset(
-                            x + bw * (.22f + col * .40f),
-                            top + h * (.035f + row * .065f)
-                        ),
-                        size = androidx.compose.ui.geometry.Size(bw * .12f, h * .025f)
-                    )
-                }
-            }
         }
 
-        // Road ribbons
-        val road1 = Path().apply {
-            moveTo(w * .04f, h * .76f)
-            cubicTo(w * .20f, h * .60f, w * .50f, h * .66f, w * .82f, h * .76f)
+        // Curved road
+        val road = Path().apply {
+            moveTo(w * .03f, h * .78f)
+            cubicTo(w * .20f, h * .60f, w * .46f, h * .61f, w * .82f, h * .76f)
         }
-        drawPath(road1, Color(0xFF8FB6E7), style = androidx.compose.ui.graphics.drawscope.Stroke(width = h * .025f))
-        val road2 = Path().apply {
-            moveTo(w * .02f, h * .84f)
-            cubicTo(w * .22f, h * .68f, w * .50f, h * .73f, w * .86f, h * .82f)
-        }
-        drawPath(road2, Color.White, style = androidx.compose.ui.graphics.drawscope.Stroke(width = h * .010f))
+        drawPath(
+            road,
+            Color(0xFFAFC6E4),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = h * .105f)
+        )
+        drawPath(
+            road,
+            Color.White,
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = h * .018f)
+        )
 
-        // Trailer
+        // Blue container with depth and ribs
         drawRoundRect(
-            color = Color(0xFFECF4FF),
-            topLeft = androidx.compose.ui.geometry.Offset(w * .17f, h * .34f),
-            size = androidx.compose.ui.geometry.Size(w * .42f, h * .26f),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(10f, 10f)
+            brush = Brush.linearGradient(
+                colors = listOf(Color(0xFF123A7E), Color(0xFF0875D1), Color(0xFF0A438E)),
+                start = androidx.compose.ui.geometry.Offset(w * .12f, h * .28f),
+                end = androidx.compose.ui.geometry.Offset(w * .58f, h * .63f)
+            ),
+            topLeft = androidx.compose.ui.geometry.Offset(w * .14f, h * .30f),
+            size = androidx.compose.ui.geometry.Size(w * .43f, h * .33f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(10f,10f)
         )
-        drawRoundRect(
-            color = Color(0xFF2D6EC3),
-            topLeft = androidx.compose.ui.geometry.Offset(w * .18f, h * .36f),
-            size = androidx.compose.ui.geometry.Size(w * .40f, h * .21f),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f, 8f)
-        )
-        repeat(7) { i ->
+        repeat(8) { i ->
+            val x = w * (.17f + i * .048f)
             drawLine(
-                color = Color(0xFF8FC8FF).copy(alpha = .55f),
-                start = androidx.compose.ui.geometry.Offset(w * (.205f + i * .052f), h * .37f),
-                end = androidx.compose.ui.geometry.Offset(w * (.205f + i * .052f), h * .56f),
+                color = Color(0xFF8FC9FF).copy(alpha = .50f),
+                start = androidx.compose.ui.geometry.Offset(x, h * .33f),
+                end = androidx.compose.ui.geometry.Offset(x, h * .59f),
                 strokeWidth = 2f
             )
         }
+        drawLine(
+            color = orange,
+            start = androidx.compose.ui.geometry.Offset(w * .15f, h * .60f),
+            end = androidx.compose.ui.geometry.Offset(w * .57f, h * .60f),
+            strokeWidth = 4f
+        )
 
-        // Cab
+        // White detailed cab
         val cab = Path().apply {
-            moveTo(w * .56f, h * .36f)
-            lineTo(w * .69f, h * .36f)
-            lineTo(w * .76f, h * .46f)
-            lineTo(w * .75f, h * .60f)
-            lineTo(w * .56f, h * .60f)
+            moveTo(w * .55f, h * .34f)
+            lineTo(w * .70f, h * .34f)
+            cubicTo(w * .735f, h * .34f, w * .755f, h * .38f, w * .765f, h * .43f)
+            lineTo(w * .80f, h * .58f)
+            cubicTo(w * .81f, h * .62f, w * .78f, h * .65f, w * .74f, h * .65f)
+            lineTo(w * .55f, h * .65f)
             close()
         }
-        drawPath(cab, Color(0xFFF8FBFF))
+        drawPath(
+            cab,
+            brush = Brush.linearGradient(
+                colors = listOf(Color.White, Color(0xFFEAF0F7), Color(0xFFC8D5E5)),
+                start = androidx.compose.ui.geometry.Offset(w*.55f,h*.34f),
+                end = androidx.compose.ui.geometry.Offset(w*.80f,h*.65f)
+            )
+        )
+        drawPath(
+            cab,
+            Color(0xFF9FB0C4),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.2f)
+        )
+
+        // Windshield + side glass
+        val glass = Path().apply {
+            moveTo(w * .595f, h * .38f)
+            lineTo(w * .69f, h * .38f)
+            lineTo(w * .735f, h * .47f)
+            lineTo(w * .585f, h * .47f)
+            close()
+        }
+        drawPath(
+            glass,
+            brush = Brush.linearGradient(
+                colors = listOf(Color(0xFF476C95), Color(0xFF0A203F))
+            )
+        )
+        drawRoundRect(
+            color = Color(0xFF2A4668),
+            topLeft = androidx.compose.ui.geometry.Offset(w * .585f, h * .51f),
+            size = androidx.compose.ui.geometry.Size(w * .17f, h * .055f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(5f,5f)
+        )
+        drawLine(
+            color = Color(0xFF9FB0C4),
+            start = androidx.compose.ui.geometry.Offset(w * .60f, h * .53f),
+            end = androidx.compose.ui.geometry.Offset(w * .735f, h * .53f),
+            strokeWidth = 2f
+        )
+        drawRoundRect(
+            color = orange,
+            topLeft = androidx.compose.ui.geometry.Offset(w * .735f, h * .58f),
+            size = androidx.compose.ui.geometry.Size(w * .035f, h * .025f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f,4f)
+        )
+        drawRoundRect(
+            color = Color(0xFFF5FAFF),
+            topLeft = androidx.compose.ui.geometry.Offset(w * .57f, h * .58f),
+            size = androidx.compose.ui.geometry.Size(w * .035f, h * .025f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f,4f)
+        )
+
+        // Mirrors
         drawRoundRect(
             color = deepBlue,
-            topLeft = androidx.compose.ui.geometry.Offset(w * .60f, h * .39f),
-            size = androidx.compose.ui.geometry.Size(w * .105f, h * .085f),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(5f, 5f)
+            topLeft = androidx.compose.ui.geometry.Offset(w * .79f, h * .42f),
+            size = androidx.compose.ui.geometry.Size(w * .014f, h * .075f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(3f,3f)
         )
-        drawRoundRect(
-            color = Color(0xFF1A4E93),
-            topLeft = androidx.compose.ui.geometry.Offset(w * .58f, h * .50f),
-            size = androidx.compose.ui.geometry.Size(w * .16f, h * .055f),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f, 6f)
-        )
-        drawCircle(orange, radius = h * .018f, center = androidx.compose.ui.geometry.Offset(w * .735f, h * .555f))
 
         // Wheels
-        listOf(.27f, .49f, .64f, .71f).forEach { cx ->
-            drawCircle(deepBlue, radius = h * .055f, center = androidx.compose.ui.geometry.Offset(w * cx, h * .62f))
-            drawCircle(Color(0xFFB8D6FA), radius = h * .022f, center = androidx.compose.ui.geometry.Offset(w * cx, h * .62f))
+        listOf(.22f,.43f,.60f,.735f).forEachIndexed { index, cx ->
+            val cy = if (index < 2) .665f else .675f
+            drawCircle(deepBlue, radius = h * .064f, center = androidx.compose.ui.geometry.Offset(w*cx,h*cy))
+            drawCircle(Color(0xFFB9CBE0), radius = h * .027f, center = androidx.compose.ui.geometry.Offset(w*cx,h*cy))
+            drawCircle(Color(0xFF6F8298), radius = h * .010f, center = androidx.compose.ui.geometry.Offset(w*cx,h*cy))
         }
 
-        // Orange location pin
-        val pinX = w * .86f
-        val pinY = h * .51f
-        drawCircle(orange, radius = h * .075f, center = androidx.compose.ui.geometry.Offset(pinX, pinY))
-        val pinTail = Path().apply {
-            moveTo(pinX - h * .042f, pinY + h * .040f)
-            lineTo(pinX + h * .042f, pinY + h * .040f)
-            lineTo(pinX, pinY + h * .14f)
+        // Orange location pin and target ring
+        val pinX = w * .89f
+        val pinY = h * .48f
+        drawCircle(orange, radius = h * .075f, center = androidx.compose.ui.geometry.Offset(pinX,pinY))
+        val tail = Path().apply {
+            moveTo(pinX - h*.042f, pinY + h*.040f)
+            lineTo(pinX + h*.042f, pinY + h*.040f)
+            lineTo(pinX, pinY + h*.145f)
             close()
         }
-        drawPath(pinTail, orange)
-        drawCircle(Color.White, radius = h * .028f, center = androidx.compose.ui.geometry.Offset(pinX, pinY))
+        drawPath(tail, orange)
+        drawCircle(Color.White, radius = h*.027f, center = androidx.compose.ui.geometry.Offset(pinX,pinY))
         drawOval(
-            color = orange.copy(alpha = .75f),
-            topLeft = androidx.compose.ui.geometry.Offset(pinX - h * .08f, pinY + h * .13f),
-            size = androidx.compose.ui.geometry.Size(h * .16f, h * .035f),
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.5f)
+            color = orange.copy(alpha=.82f),
+            topLeft = androidx.compose.ui.geometry.Offset(pinX-h*.09f,pinY+h*.14f),
+            size = androidx.compose.ui.geometry.Size(h*.18f,h*.038f),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width=2.6f)
         )
     }
 }
