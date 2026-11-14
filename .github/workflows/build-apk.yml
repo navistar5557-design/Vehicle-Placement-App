@@ -57,6 +57,7 @@ jobs:
           disable-animations: true
           script: |
             adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb shell pm grant com.cubelogistics.placement android.permission.POST_NOTIFICATIONS || true
             adb logcat -c
             adb shell am start -W -n com.cubelogistics.placement/.MainActivity
             sleep 5
