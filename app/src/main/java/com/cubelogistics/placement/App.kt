@@ -135,6 +135,7 @@ fun CubeApp(store: Store) {
         LaunchedEffect(profile?.uid) {
             if (profile != null && auth.currentUser != null) {
                 runAutomaticSync()
+                NotificationRegistrar.registerCurrentDevice(profile!!.username)
             }
         }
 
