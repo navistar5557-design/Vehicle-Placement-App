@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
@@ -30,6 +31,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.max
@@ -375,68 +379,127 @@ private fun MockupTruckIllustration(modifier: Modifier = Modifier) {
     Canvas(modifier) {
         val w = size.width
         val h = size.height
-        val blue = Color(0xFF2367B2)
-        val dark = Color(0xFF0E4B8F)
-        val light = Color(0xFFDDEBFA)
+        val blue = Color(0xFF154E9D)
+        val deepBlue = Color(0xFF073B7A)
+        val lightBlue = Color(0xFFD9E9FA)
+        val orange = CubeOrange
 
-        // trailer
+        // Soft hero halo
+        drawCircle(
+            color = Color(0xFFEAF3FF),
+            radius = h * .46f,
+            center = androidx.compose.ui.geometry.Offset(w * .48f, h * .48f)
+        )
+
+        // Skyline
+        val skyline = listOf(
+            .66f to .42f, .71f to .32f, .76f to .39f, .81f to .26f, .86f to .36f
+        )
+        skyline.forEachIndexed { index, pair ->
+            val x = w * pair.first
+            val top = h * pair.second
+            val bw = w * .045f
+            drawRoundRect(
+                color = Color(0xFFBDD3F2).copy(alpha = .62f),
+                topLeft = androidx.compose.ui.geometry.Offset(x, top),
+                size = androidx.compose.ui.geometry.Size(bw, h * .28f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(3f, 3f)
+            )
+            repeat(3) { row ->
+                repeat(2) { col ->
+                    drawRect(
+                        color = Color.White.copy(alpha = .85f),
+                        topLeft = androidx.compose.ui.geometry.Offset(
+                            x + bw * (.22f + col * .40f),
+                            top + h * (.035f + row * .065f)
+                        ),
+                        size = androidx.compose.ui.geometry.Size(bw * .12f, h * .025f)
+                    )
+                }
+            }
+        }
+
+        // Road ribbons
+        val road1 = Path().apply {
+            moveTo(w * .04f, h * .76f)
+            cubicTo(w * .20f, h * .60f, w * .50f, h * .66f, w * .82f, h * .76f)
+        }
+        drawPath(road1, Color(0xFF8FB6E7), style = androidx.compose.ui.graphics.drawscope.Stroke(width = h * .025f))
+        val road2 = Path().apply {
+            moveTo(w * .02f, h * .84f)
+            cubicTo(w * .22f, h * .68f, w * .50f, h * .73f, w * .86f, h * .82f)
+        }
+        drawPath(road2, Color.White, style = androidx.compose.ui.graphics.drawscope.Stroke(width = h * .010f))
+
+        // Trailer
         drawRoundRect(
-            color = Color.White,
-            topLeft = androidx.compose.ui.geometry.Offset(w * .08f, h * .20f),
-            size = androidx.compose.ui.geometry.Size(w * .56f, h * .42f),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(5f, 5f)
+            color = Color(0xFFECF4FF),
+            topLeft = androidx.compose.ui.geometry.Offset(w * .17f, h * .34f),
+            size = androidx.compose.ui.geometry.Size(w * .42f, h * .26f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(10f, 10f)
         )
-        drawRect(
-            color = light,
-            topLeft = androidx.compose.ui.geometry.Offset(w * .10f, h * .23f),
-            size = androidx.compose.ui.geometry.Size(w * .52f, h * .05f)
+        drawRoundRect(
+            color = Color(0xFF2D6EC3),
+            topLeft = androidx.compose.ui.geometry.Offset(w * .18f, h * .36f),
+            size = androidx.compose.ui.geometry.Size(w * .40f, h * .21f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f, 8f)
         )
-        drawLine(
-            color = blue,
-            start = androidx.compose.ui.geometry.Offset(w * .10f, h * .60f),
-            end = androidx.compose.ui.geometry.Offset(w * .64f, h * .60f),
-            strokeWidth = 3f
-        )
+        repeat(7) { i ->
+            drawLine(
+                color = Color(0xFF8FC8FF).copy(alpha = .55f),
+                start = androidx.compose.ui.geometry.Offset(w * (.205f + i * .052f), h * .37f),
+                end = androidx.compose.ui.geometry.Offset(w * (.205f + i * .052f), h * .56f),
+                strokeWidth = 2f
+            )
+        }
 
-        // cab
+        // Cab
         val cab = Path().apply {
-            moveTo(w * .63f, h * .28f)
-            lineTo(w * .79f, h * .28f)
-            lineTo(w * .90f, h * .46f)
-            lineTo(w * .90f, h * .62f)
-            lineTo(w * .63f, h * .62f)
+            moveTo(w * .56f, h * .36f)
+            lineTo(w * .69f, h * .36f)
+            lineTo(w * .76f, h * .46f)
+            lineTo(w * .75f, h * .60f)
+            lineTo(w * .56f, h * .60f)
             close()
         }
-        drawPath(cab, blue)
-        drawRect(
-            color = Color.White,
-            topLeft = androidx.compose.ui.geometry.Offset(w * .68f, h * .33f),
-            size = androidx.compose.ui.geometry.Size(w * .11f, h * .12f)
+        drawPath(cab, Color(0xFFF8FBFF))
+        drawRoundRect(
+            color = deepBlue,
+            topLeft = androidx.compose.ui.geometry.Offset(w * .60f, h * .39f),
+            size = androidx.compose.ui.geometry.Size(w * .105f, h * .085f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(5f, 5f)
         )
-        drawRect(
-            color = dark,
-            topLeft = androidx.compose.ui.geometry.Offset(w * .81f, h * .34f),
-            size = androidx.compose.ui.geometry.Size(w * .07f, h * .10f)
+        drawRoundRect(
+            color = Color(0xFF1A4E93),
+            topLeft = androidx.compose.ui.geometry.Offset(w * .58f, h * .50f),
+            size = androidx.compose.ui.geometry.Size(w * .16f, h * .055f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f, 6f)
         )
+        drawCircle(orange, radius = h * .018f, center = androidx.compose.ui.geometry.Offset(w * .735f, h * .555f))
 
-        // wheels
-        drawCircle(dark, radius = h * .085f, center = androidx.compose.ui.geometry.Offset(w * .25f, h * .66f))
-        drawCircle(dark, radius = h * .085f, center = androidx.compose.ui.geometry.Offset(w * .73f, h * .66f))
-        drawCircle(Color.White, radius = h * .035f, center = androidx.compose.ui.geometry.Offset(w * .25f, h * .66f))
-        drawCircle(Color.White, radius = h * .035f, center = androidx.compose.ui.geometry.Offset(w * .73f, h * .66f))
+        // Wheels
+        listOf(.27f, .49f, .64f, .71f).forEach { cx ->
+            drawCircle(deepBlue, radius = h * .055f, center = androidx.compose.ui.geometry.Offset(w * cx, h * .62f))
+            drawCircle(Color(0xFFB8D6FA), radius = h * .022f, center = androidx.compose.ui.geometry.Offset(w * cx, h * .62f))
+        }
 
-        // road / motion lines
-        drawLine(
-            color = Color(0xFF7DB1E6),
-            start = androidx.compose.ui.geometry.Offset(w * .04f, h * .80f),
-            end = androidx.compose.ui.geometry.Offset(w * .62f, h * .68f),
-            strokeWidth = 3f
-        )
-        drawLine(
-            color = Color(0xFFB2D0EF),
-            start = androidx.compose.ui.geometry.Offset(w * .00f, h * .92f),
-            end = androidx.compose.ui.geometry.Offset(w * .70f, h * .74f),
-            strokeWidth = 2f
+        // Orange location pin
+        val pinX = w * .86f
+        val pinY = h * .51f
+        drawCircle(orange, radius = h * .075f, center = androidx.compose.ui.geometry.Offset(pinX, pinY))
+        val pinTail = Path().apply {
+            moveTo(pinX - h * .042f, pinY + h * .040f)
+            lineTo(pinX + h * .042f, pinY + h * .040f)
+            lineTo(pinX, pinY + h * .14f)
+            close()
+        }
+        drawPath(pinTail, orange)
+        drawCircle(Color.White, radius = h * .028f, center = androidx.compose.ui.geometry.Offset(pinX, pinY))
+        drawOval(
+            color = orange.copy(alpha = .75f),
+            topLeft = androidx.compose.ui.geometry.Offset(pinX - h * .08f, pinY + h * .13f),
+            size = androidx.compose.ui.geometry.Size(h * .16f, h * .035f),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.5f)
         )
     }
 }
@@ -456,145 +519,117 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
 
     Box(Modifier.fillMaxSize().background(Color.White)) {
         Canvas(Modifier.fillMaxSize()) {
-            // Top blue band
             val topBlue = Path().apply {
                 moveTo(0f, 0f)
-                lineTo(size.width, 0f)
-                lineTo(size.width, size.height * .075f)
-                cubicTo(
-                    size.width * .74f, size.height * .060f,
-                    size.width * .33f, size.height * .072f,
-                    0f, size.height * .185f
-                )
+                lineTo(size.width * .46f, 0f)
+                cubicTo(size.width * .35f, size.height * .025f, size.width * .22f, size.height * .045f, 0f, size.height * .10f)
                 close()
             }
-            drawPath(topBlue, Color(0xFF124783))
-
-            // Thin white separator
-            val topWhite = Path().apply {
-                moveTo(0f, size.height * .178f)
-                cubicTo(
-                    size.width * .32f, size.height * .069f,
-                    size.width * .74f, size.height * .055f,
-                    size.width, size.height * .070f
-                )
-                lineTo(size.width, size.height * .080f)
-                cubicTo(
-                    size.width * .74f, size.height * .064f,
-                    size.width * .32f, size.height * .079f,
-                    0f, size.height * .190f
-                )
-                close()
-            }
-            drawPath(topWhite, Color.White)
-
-            // Orange accent
+            drawPath(topBlue, Color(0xFF6EA8F3).copy(alpha = .35f))
             val topOrange = Path().apply {
-                moveTo(0f, size.height * .165f)
-                cubicTo(
-                    size.width * .32f, size.height * .060f,
-                    size.width * .74f, size.height * .046f,
-                    size.width, size.height * .064f
-                )
-                lineTo(size.width, size.height * .076f)
-                cubicTo(
-                    size.width * .74f, size.height * .058f,
-                    size.width * .32f, size.height * .072f,
-                    0f, size.height * .180f
-                )
+                moveTo(0f, size.height * .055f)
+                cubicTo(size.width * .16f, size.height * .015f, size.width * .27f, size.height * .020f, size.width * .39f, 0f)
+                lineTo(size.width * .28f, 0f)
+                cubicTo(size.width * .18f, size.height * .015f, size.width * .09f, size.height * .035f, 0f, size.height * .075f)
                 close()
             }
-            drawPath(topOrange, CubeOrange)
+            drawPath(topOrange, CubeOrange.copy(alpha = .18f))
 
-            // Bottom blue sweep
-            val bottomBlue = Path().apply {
-                moveTo(0f, size.height * .905f)
-                cubicTo(
-                    size.width * .28f, size.height * .815f,
-                    size.width * .67f, size.height * .915f,
-                    size.width, size.height * .760f
-                )
+            val wave1 = Path().apply {
+                moveTo(0f, size.height * .94f)
+                cubicTo(size.width * .25f, size.height * .90f, size.width * .55f, size.height * .98f, size.width, size.height * .88f)
                 lineTo(size.width, size.height)
                 lineTo(0f, size.height)
                 close()
             }
-            drawPath(bottomBlue, Color(0xFF124783))
-
-            // Bottom orange sweep
-            val bottomOrange = Path().apply {
-                moveTo(0f, size.height * .890f)
-                cubicTo(
-                    size.width * .28f, size.height * .805f,
-                    size.width * .67f, size.height * .900f,
-                    size.width, size.height * .748f
-                )
-                lineTo(size.width, size.height * .764f)
-                cubicTo(
-                    size.width * .67f, size.height * .920f,
-                    size.width * .28f, size.height * .825f,
-                    0f, size.height * .918f
-                )
+            drawPath(wave1, Color(0xFF86B6F5).copy(alpha = .55f))
+            val wave2 = Path().apply {
+                moveTo(0f, size.height * .965f)
+                cubicTo(size.width * .32f, size.height * .91f, size.width * .62f, size.height * .99f, size.width, size.height * .91f)
+                lineTo(size.width, size.height)
+                lineTo(0f, size.height)
                 close()
             }
-            drawPath(bottomOrange, CubeOrange)
+            drawPath(wave2, CubeBlue)
+            val wave3 = Path().apply {
+                moveTo(0f, size.height * .925f)
+                cubicTo(size.width * .42f, size.height * .98f, size.width * .72f, size.height * .92f, size.width, size.height * .86f)
+                lineTo(size.width, size.height * .90f)
+                cubicTo(size.width * .70f, size.height * .96f, size.width * .40f, size.height, 0f, size.height * .94f)
+                close()
+            }
+            drawPath(wave3, CubeOrange.copy(alpha = .22f))
         }
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 34.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 30.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(132.dp))
-
+            Spacer(Modifier.height(54.dp))
             MockupLoginLogo()
 
-            Spacer(Modifier.height(26.dp))
-            Text(
-                "Transport Operations",
-                color = Color(0xFF102A63),
-                fontWeight = FontWeight.Black,
-                fontSize = 18.sp
+            Spacer(Modifier.height(18.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.width(38.dp).height(1.dp).background(CubeOrange))
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    "Vehicle Placement",
+                    color = Color(0xFF153A78),
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 21.sp
+                )
+                Spacer(Modifier.width(10.dp))
+                Box(Modifier.width(38.dp).height(1.dp).background(CubeOrange))
+            }
+
+            Spacer(Modifier.height(18.dp))
+            MockupTruckIllustration(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(205.dp)
             )
 
-            Spacer(Modifier.height(22.dp))
+            Spacer(Modifier.height(8.dp))
 
             OutlinedTextField(
                 value = user,
                 onValueChange = { user = it },
-                placeholder = { Text("User ID", fontSize = 14.sp, color = Color(0xFF404040)) },
+                placeholder = { Text("Username", fontSize = 15.sp, color = Color(0xFF606A7A)) },
                 leadingIcon = {
                     Icon(
                         Icons.Default.PersonOutline,
                         contentDescription = null,
-                        tint = Color(0xFF123F82),
-                        modifier = Modifier.size(22.dp)
+                        tint = Color(0xFF313844),
+                        modifier = Modifier.size(24.dp)
                     )
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(15.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFFABC2E3),
-                    unfocusedBorderColor = Color(0xFFABC2E3),
-                    cursorColor = CubeBlue
+                    focusedBorderColor = Color(0xFF9EBBE4),
+                    unfocusedBorderColor = Color(0xFFB7C9E5),
+                    cursorColor = CubeBlue,
+                    focusedContainerColor = Color.White.copy(alpha = .96f),
+                    unfocusedContainerColor = Color.White.copy(alpha = .96f)
                 ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp)
+                modifier = Modifier.fillMaxWidth().height(62.dp)
             )
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
 
             OutlinedTextField(
                 value = pass,
                 onValueChange = { pass = it },
-                placeholder = { Text("Password", fontSize = 14.sp, color = Color(0xFF404040)) },
+                placeholder = { Text("Password", fontSize = 15.sp, color = Color(0xFF606A7A)) },
                 leadingIcon = {
                     Icon(
                         Icons.Default.Lock,
                         contentDescription = null,
-                        tint = Color(0xFF123F82),
-                        modifier = Modifier.size(22.dp)
+                        tint = Color(0xFF313844),
+                        modifier = Modifier.size(23.dp)
                     )
                 },
                 trailingIcon = {
@@ -602,25 +637,25 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
                         Icon(
                             if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                             contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                            tint = Color(0xFF123F82),
-                            modifier = Modifier.size(20.dp)
+                            tint = Color(0xFF313844),
+                            modifier = Modifier.size(21.dp)
                         )
                     }
                 },
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 singleLine = true,
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(15.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFFABC2E3),
-                    unfocusedBorderColor = Color(0xFFABC2E3),
-                    cursorColor = CubeBlue
+                    focusedBorderColor = Color(0xFF9EBBE4),
+                    unfocusedBorderColor = Color(0xFFB7C9E5),
+                    cursorColor = CubeBlue,
+                    focusedContainerColor = Color.White.copy(alpha = .96f),
+                    unfocusedContainerColor = Color.White.copy(alpha = .96f)
                 ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp)
+                modifier = Modifier.fillMaxWidth().height(62.dp)
             )
 
-            Spacer(Modifier.height(7.dp))
+            Spacer(Modifier.height(8.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -630,24 +665,24 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
                     checked = rememberMe,
                     onCheckedChange = { rememberMe = it },
                     colors = CheckboxDefaults.colors(
-                        checkedColor = Color(0xFF17488B),
-                        uncheckedColor = Color(0xFF17488B),
+                        checkedColor = CubeOrange,
+                        uncheckedColor = CubeOrange,
                         checkmarkColor = Color.White
                     ),
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(34.dp)
                 )
                 Text(
                     "Remember Me",
-                    color = Color(0xFF111111),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
+                    color = Color(0xFF142A58),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.weight(1f))
                 Text(
                     "Forgot Password?",
-                    color = Color(0xFF0A56AE),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
+                    color = CubeOrange,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.clickable {
                         val identity = user.trim()
                         if (identity.isBlank()) {
@@ -675,58 +710,61 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
                     errorMessage,
                     color = if (errorMessage == "Password reset email sent.") CubeGreen else MaterialTheme.colorScheme.error,
                     fontSize = 11.sp,
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
                 )
             }
 
-            Spacer(Modifier.height(21.dp))
+            Spacer(Modifier.height(16.dp))
 
-            Button(
-                onClick = {
-                    val identity = user.trim()
-                    errorMessage = when {
-                        identity.isBlank() -> "Enter your User ID."
-                        pass.isBlank() -> "Enter your password."
-                        else -> ""
-                    }
-                    if (errorMessage.isBlank()) {
-                        loading = true
-                        val loginEmail = roleRepo.resolveLoginIdentity(identity)
-                        auth.signInWithEmailAndPassword(loginEmail, pass)
-                            .addOnSuccessListener {
-                                loading = false
-                                if (rememberMe) {
-                                    loginPrefs.edit()
-                                        .putString("saved_username", identity)
-                                        .putBoolean("remember_username", true)
-                                        .apply()
-                                } else {
-                                    loginPrefs.edit()
-                                        .remove("saved_username")
-                                        .putBoolean("remember_username", false)
-                                        .apply()
-                                }
-                                onLoginSuccess(rememberMe)
-                            }
-                            .addOnFailureListener {
-                                loading = false
-                                errorMessage = when {
-                                    it.message?.contains("password", ignoreCase = true) == true ||
-                                        it.message?.contains("credential", ignoreCase = true) == true ->
-                                        "Invalid email or password."
-                                    else -> it.localizedMessage ?: "Login failed. Please try again."
-                                }
-                            }
-                    }
-                },
-                enabled = !loading,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5C00)),
-                shape = RoundedCornerShape(10.dp),
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(51.dp)
+                    .height(58.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(Color(0xFF1458C8), Color(0xFF073B7A))
+                        )
+                    )
+                    .clickable(enabled = !loading) {
+                        val identity = user.trim()
+                        errorMessage = when {
+                            identity.isBlank() -> "Enter your User ID."
+                            pass.isBlank() -> "Enter your password."
+                            else -> ""
+                        }
+                        if (errorMessage.isBlank()) {
+                            loading = true
+                            val loginEmail = roleRepo.resolveLoginIdentity(identity)
+                            auth.signInWithEmailAndPassword(loginEmail, pass)
+                                .addOnSuccessListener {
+                                    loading = false
+                                    if (rememberMe) {
+                                        loginPrefs.edit()
+                                            .putString("saved_username", identity)
+                                            .putBoolean("remember_username", true)
+                                            .apply()
+                                    } else {
+                                        loginPrefs.edit()
+                                            .remove("saved_username")
+                                            .putBoolean("remember_username", false)
+                                            .apply()
+                                    }
+                                    onLoginSuccess(rememberMe)
+                                }
+                                .addOnFailureListener {
+                                    loading = false
+                                    errorMessage = when {
+                                        it.message?.contains("password", ignoreCase = true) == true ||
+                                            it.message?.contains("credential", ignoreCase = true) == true ->
+                                            "Invalid email or password."
+                                        else -> it.localizedMessage ?: "Login failed. Please try again."
+                                    }
+                                }
+                        }
+                    },
+                contentAlignment = Alignment.Center
             ) {
-                Spacer(Modifier.weight(.8f))
                 if (loading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(22.dp),
@@ -734,31 +772,40 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
                         color = Color.White
                     )
                 } else {
-                    Text(
-                        "Login",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Spacer(Modifier.weight(1f))
+                        Text("Login", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Spacer(Modifier.weight(1f))
+                        Icon(Icons.Default.ArrowForward, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                    }
                 }
-                Spacer(Modifier.width(20.dp))
-                Icon(
-                    Icons.Default.ArrowForward,
-                    contentDescription = null,
-                    modifier = Modifier.size(23.dp)
-                )
-                Spacer(Modifier.weight(.55f))
             }
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(28.dp))
 
-            MockupTruckIllustration(
-                modifier = Modifier
-                    .width(205.dp)
-                    .height(92.dp)
-                    .align(Alignment.Start)
+            Text(
+                buildAnnotatedString {
+                    append("C.U.B.E. - ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) { append("Customers") }
+                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(" who inspire us. ") }
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) { append("Universe") }
+                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(" that enables us.\n") }
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) { append("Business partners") }
+                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(" who support us. ") }
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) { append("Employees") }
+                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(" who make it all possible.") }
+                },
+                color = Color(0xFF14213D),
+                fontFamily = FontFamily.SansSerif,
+                fontSize = 11.sp,
+                lineHeight = 17.sp,
+                modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.height(48.dp))
+            Spacer(Modifier.height(110.dp))
         }
     }
 }
