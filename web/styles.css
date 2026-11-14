@@ -688,3 +688,210 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   .hero-truck-art{width:72%;opacity:.72}
   .hero-copy{max-width:70%}
 }
+
+
+/* v0.3.2 interaction and usability corrections */
+.top-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-left:10px;
+}
+.top-user{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:5px 7px 5px 5px;
+  border-radius:16px;
+  background:rgba(255,255,255,.78);
+  border:1px solid rgba(57,87,145,.13);
+  box-shadow:0 8px 22px rgba(44,62,110,.08),inset 0 1px 0 rgba(255,255,255,.95);
+}
+.top-user-meta{
+  min-width:72px;
+  display:flex;
+  flex-direction:column;
+  line-height:1.05;
+}
+.top-user-meta strong{
+  color:#0d1c3d;
+  font-size:11px;
+  max-width:120px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.top-user-meta span{
+  margin-top:3px;
+  color:#66738e;
+  font-size:9px;
+  font-weight:700;
+}
+.top-logout{
+  border:0;
+  border-radius:10px;
+  padding:7px 9px;
+  background:#fff1f1;
+  color:#bd2c2c;
+  font-size:10px;
+  font-weight:900;
+  cursor:pointer;
+}
+.top-logout:hover{
+  background:#ffe7e7;
+  box-shadow:0 7px 16px rgba(190,45,45,.10);
+}
+.sidebar-bottom{
+  padding-bottom:270px;
+}
+.sidebar-bottom .sync-state{
+  padding:8px 10px;
+  border-radius:12px;
+  background:rgba(255,255,255,.72);
+  border:1px solid rgba(45,124,90,.08);
+}
+
+.neo-kpi[role="button"]{
+  cursor:pointer;
+  outline:none;
+}
+.neo-kpi[role="button"]:focus-visible{
+  box-shadow:
+    0 0 0 3px rgba(255,255,255,.95),
+    0 0 0 6px color-mix(in srgb,var(--glow) 48%,transparent),
+    0 18px 38px rgba(46,60,108,.12);
+}
+.neo-kpi[role="button"]::before{
+  transition:opacity .22s ease;
+}
+.neo-kpi[role="button"]:hover::before{
+  opacity:.54;
+}
+
+.trend-chart{
+  height:205px;
+  padding:0;
+  background:
+    linear-gradient(180deg,rgba(248,251,255,.42),rgba(255,255,255,.1));
+  border-top:1px solid rgba(65,83,136,.07);
+  overflow:hidden;
+}
+.trend-svg{
+  display:block;
+  width:100%;
+  height:100%;
+  overflow:visible;
+}
+.trend-gridline{
+  stroke:rgba(66,88,145,.10);
+  stroke-width:1;
+}
+.trend-y-label,
+.trend-svg-label{
+  fill:#66738e;
+  font-size:10px;
+  font-weight:700;
+}
+.trend-svg-bar{
+  fill:url(#tripBarGradient);
+  filter:drop-shadow(0 5px 7px rgba(0,187,255,.20));
+  transform-box:fill-box;
+  transform-origin:center bottom;
+  animation:svgBarRise .7s var(--ease-out) both;
+}
+.trend-svg-line{
+  fill:none;
+  stroke:#9a3dff;
+  stroke-width:3;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  filter:url(#trendGlow);
+  vector-effect:non-scaling-stroke;
+  stroke-dasharray:900;
+  stroke-dashoffset:900;
+  animation:trendDraw .9s .12s var(--ease-out) forwards;
+}
+.trend-svg-dot{
+  fill:#a645ff;
+  stroke:#fff;
+  stroke-width:2;
+  filter:url(#trendGlow);
+}
+.mini-list{
+  display:grid;
+  gap:8px;
+}
+.mini-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:10px 11px;
+  border-radius:12px;
+  background:linear-gradient(135deg,#fbfdff,#f8f6ff);
+  border:1px solid rgba(75,96,153,.09);
+}
+.mini-row>div{
+  min-width:0;
+}
+.mini-row strong{
+  display:block;
+  color:#122348;
+  font-size:12px;
+}
+.mini-row small{
+  display:block;
+  margin-top:3px;
+  color:#74809a;
+  font-size:9px;
+}
+.mini-row>span{
+  flex:0 0 auto;
+  color:#173562;
+  font-size:11px;
+  font-weight:900;
+}
+.mini-summary{
+  margin-bottom:12px;
+  padding:14px 15px;
+  border-radius:14px;
+  background:
+    radial-gradient(circle at 85% 20%,rgba(0,220,255,.12),transparent 40%),
+    linear-gradient(135deg,#f8fbff,#fbf7ff);
+  border:1px solid rgba(83,109,177,.10);
+}
+.mini-summary span{
+  display:block;
+  color:#68758f;
+  font-size:10px;
+  font-weight:800;
+}
+.mini-summary strong{
+  display:block;
+  margin-top:4px;
+  color:#0a193c;
+  font-size:24px;
+}
+.mini-summary strong small{
+  font-size:12px;
+  color:#26885c;
+}
+
+#tripForm input,
+#tripForm select{
+  autocomplete:off;
+}
+
+@keyframes svgBarRise{
+  from{transform:scaleY(0);opacity:.15}
+  to{transform:scaleY(1);opacity:1}
+}
+@keyframes trendDraw{
+  to{stroke-dashoffset:0}
+}
+
+@media(max-width:980px){
+  .top-user-meta{display:none}
+  .top-logout{display:none}
+  .sidebar-bottom{padding-bottom:10px}
+}
