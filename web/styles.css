@@ -1408,3 +1408,16 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   color:#8a95a9;
   font-size:8px;
 }
+
+
+/* v0.3.10 free live notification mode */
+.notification-center-note{
+  margin-bottom:10px;
+  padding:9px 11px;
+  border-radius:10px;
+  background:#f5f9ff;
+  border:1px solid rgba(45,96,170,.10);
+  color:#5e6e8a;
+  font-size:10px;
+  line-height:1.4;
+}
