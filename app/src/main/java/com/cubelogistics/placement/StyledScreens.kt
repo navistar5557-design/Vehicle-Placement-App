@@ -243,6 +243,13 @@ fun StyledTripEntryScreen(store: Store, createdBy: String = "", createdByEmail: 
                         val trips = store.trips()
                         trips.add(trip)
                         store.saveTrips(trips)
+                        LiveNotificationCenter.create(
+                            title = "New Trip Created",
+                            body = trip.vehicle + " — " + trip.from + " → " + trip.to,
+                            tripId = trip.id,
+                            type = "trip_created",
+                            createdBy = createdBy
+                        )
                         done()
                     }
                 },
@@ -325,6 +332,13 @@ fun StyledTripListScreen(
                                 statusUpdatedAt = now
                             )
                             store.saveTrips(store.trips().map { if (it.id == t.id) updated else it })
+                            LiveNotificationCenter.create(
+                                title = "Trip Status: " + selected,
+                                body = (t.vehicle.ifBlank { "Vehicle" }) + " updated by " + currentUser.ifBlank { currentUserEmail.ifBlank { "User" } },
+                                tripId = t.id,
+                                type = "trip_status",
+                                createdBy = currentUser.ifBlank { currentUserEmail }
+                            )
                             trips = store.trips()
                         }
                     }
