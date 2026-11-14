@@ -895,3 +895,105 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   .top-logout{display:none}
   .sidebar-bottom{padding-bottom:10px}
 }
+
+
+/* v0.3.3 compact pearl cards + full-width trend chart */
+.neo-kpis{
+  gap:12px;
+  margin-bottom:14px;
+}
+.neo-kpi,
+.neo-kpi.cyan,
+.neo-kpi.purple,
+.neo-kpi.orange,
+.neo-kpi.green{
+  min-height:104px;
+  padding:12px 14px;
+  gap:11px;
+  background:linear-gradient(145deg,rgba(255,255,255,.97),rgba(249,250,253,.94));
+  border:1px solid rgba(196,205,224,.72);
+  box-shadow:0 8px 20px rgba(42,58,101,.07),inset 0 1px 0 rgba(255,255,255,1);
+}
+.neo-kpi::before{
+  opacity:.07;
+  background:radial-gradient(circle at 10% 20%,var(--glow),transparent 46%);
+}
+.neo-kpi::after{
+  height:2px;
+  opacity:.72;
+  box-shadow:none;
+  filter:none;
+}
+.neo-kpi:hover{
+  transform:translateY(-4px);
+  background:#fff;
+  box-shadow:0 12px 26px rgba(42,58,101,.10),0 0 10px color-mix(in srgb,var(--glow) 10%,transparent),inset 0 1px 0 #fff;
+}
+.neo-kpi img{
+  width:64px;
+  height:64px;
+  flex:0 0 64px;
+}
+.neo-kpi span{font-size:11px}
+.neo-kpi strong{
+  margin:2px 0;
+  font-size:clamp(20px,1.8vw,27px);
+}
+.neo-kpi small{font-size:9px}
+
+.trend-panel{
+  min-height:250px;
+}
+.trend-chart{
+  display:block !important;
+  grid-template-columns:none !important;
+  gap:0 !important;
+  align-items:initial !important;
+  height:188px;
+  width:100%;
+  padding:0 4px 2px;
+  overflow:visible;
+  background:
+    linear-gradient(180deg,rgba(251,252,255,.65),rgba(255,255,255,.25));
+}
+.trend-svg{
+  display:block;
+  width:100% !important;
+  height:100% !important;
+  min-width:0;
+  overflow:visible;
+}
+.trend-svg-bar{
+  opacity:.92;
+}
+.trend-svg-line{
+  stroke-width:2.6;
+}
+.trend-svg-dot{
+  r:4;
+}
+.panel-title{
+  margin-bottom:8px;
+}
+.panel-title h3{
+  font-size:14px;
+}
+.legend{
+  font-size:9px;
+}
+.neo-panel{
+  box-shadow:0 8px 22px rgba(48,60,105,.065),inset 0 1px 0 rgba(255,255,255,.98);
+}
+
+@media(max-width:760px){
+  .neo-kpi{
+    min-height:96px;
+    padding:10px 12px;
+  }
+  .neo-kpi img{
+    width:58px;
+    height:58px;
+    flex-basis:58px;
+  }
+  .trend-chart{height:176px}
+}
