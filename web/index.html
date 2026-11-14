@@ -29,7 +29,7 @@
         <button class="primary wide" type="submit">Login</button>
         <div id="loginError" class="error"></div>
       </form>
-      <div class="version">Web v0.2.0</div>
+      <div class="version">Web v0.3.0</div>
     </div>
   </section>
 
@@ -40,13 +40,13 @@
         <span>Vehicle Placement</span>
       </div>
       <nav id="nav">
-        <button data-page="dashboard" class="active">Dashboard</button>
-        <button data-page="trips">Trips</button>
-        <button data-page="newtrip">Create Trip</button>
-        <button data-page="vehicles">Vehicles</button>
-        <button data-page="vendors">Vendors</button>
-        <button data-page="locations">Locations</button>
-        <button data-page="reports">Reports</button>
+        <button data-page="dashboard" class="active"><span class="nav-ico">⌂</span>Dashboard</button>
+        <button data-page="trips"><span class="nav-ico">🚚</span>Trips / Placements</button>
+        <button data-page="newtrip"><span class="nav-ico">＋</span>Create Trip</button>
+        <button data-page="vehicles"><span class="nav-ico">▰</span>Vehicles</button>
+        <button data-page="vendors"><span class="nav-ico">▱</span>Vendors</button>
+        <button data-page="locations"><span class="nav-ico">●</span>Locations</button>
+        <button data-page="reports"><span class="nav-ico">▥</span>Reports</button>
       </nav>
       <div class="sidebar-bottom">
         <div id="syncState" class="sync-state">● Live Sync</div>
@@ -62,8 +62,13 @@
           <h2 id="pageTitle">Dashboard</h2>
           <p id="pageSubtitle">Transport operations overview</p>
         </div>
+        <div class="top-search-wrap">
+          <span>⌕</span><input id="globalSearch" placeholder="Search by vehicle, vendor, route..." aria-label="Global trip search" />
+          <kbd>Ctrl + K</kbd>
+        </div>
         <div class="top-actions">
-          <button id="refreshBtn" class="secondary">↻ Refresh</button>
+          <button id="refreshBtn" class="secondary">↻</button>
+          <div id="topAvatar" class="top-avatar">CU</div>
         </div>
       </header>
 
