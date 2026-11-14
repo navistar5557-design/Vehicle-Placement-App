@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
@@ -67,7 +68,7 @@ object LiveNotificationCenter {
                 "target" to "all",
                 "createdAt" to System.currentTimeMillis(),
                 "createdBy" to createdBy,
-                "createdByUid" to createdByUid
+                "createdByUid" to createdByUid.ifBlank { FirebaseAuth.getInstance().currentUser?.uid.orEmpty() }
             )
         )
     }
