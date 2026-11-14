@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 260">
+<defs>
+ <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#eefdff"/><stop offset=".52" stop-color="#f2eaff"/><stop offset="1" stop-color="#fff0e1"/></linearGradient>
+ <linearGradient id="body" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#19e8ff"/><stop offset=".45" stop-color="#1476ff"/><stop offset="1" stop-color="#5b36d6"/></linearGradient>
+ <linearGradient id="cab" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1df7ff"/><stop offset=".6" stop-color="#0a64e8"/><stop offset="1" stop-color="#3220a6"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<rect width="720" height="260" rx="28" fill="url(#sky)" opacity=".72"/>
+<path d="M0 196 C120 160 220 205 330 168 S575 140 720 170" fill="none" stroke="#6d58ff" stroke-width="3" opacity=".28"/>
+<path d="M80 215 C220 180 410 220 650 180" fill="none" stroke="#ff5fa2" stroke-width="8" opacity=".28" filter="url(#glow)"/>
+<path d="M120 226 C300 196 460 228 690 198" fill="none" stroke="#1ce6ff" stroke-width="6" opacity=".35" filter="url(#glow)"/>
+<g transform="translate(258 58)" filter="url(#glow)">
+ <rect x="0" y="52" width="260" height="95" rx="14" fill="url(#body)" stroke="#69f8ff" stroke-width="3"/>
+ <rect x="226" y="70" width="115" height="77" rx="16" fill="url(#cab)" stroke="#75f4ff" stroke-width="3"/>
+ <path d="M249 70h56l24 31h-80z" fill="#c8f6ff" opacity=".72"/>
+ <rect x="257" y="106" width="60" height="19" rx="5" fill="#092d63"/>
+ <rect x="272" y="92" width="35" height="9" rx="4" fill="#63f5ff"/>
+ <circle cx="62" cy="154" r="25" fill="#102041"/><circle cx="62" cy="154" r="12" fill="#8defff"/>
+ <circle cx="253" cy="154" r="25" fill="#102041"/><circle cx="253" cy="154" r="12" fill="#8defff"/>
+ <circle cx="313" cy="154" r="25" fill="#102041"/><circle cx="313" cy="154" r="12" fill="#ffb43b"/>
+ <rect x="16" y="68" width="70" height="8" rx="4" fill="#90fbff" opacity=".75"/>
+ <rect x="96" y="68" width="90" height="8" rx="4" fill="#b58cff" opacity=".72"/>
+ <rect x="15" y="123" width="175" height="5" rx="3" fill="#ff74d4" opacity=".9"/>
+</g>
+</svg>
