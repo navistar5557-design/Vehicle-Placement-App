@@ -119,6 +119,8 @@ function render(){
   if(state.page==="vendors"){root.innerHTML=masterHtml("vendors");wireMaster("vendors");}
   if(state.page==="locations"){root.innerHTML=masterHtml("locations");wireMaster("locations");}
   if(state.page==="reports")root.innerHTML=reportsHtml();
+  root.classList.remove("page-enter");
+  requestAnimationFrame(()=>requestAnimationFrame(()=>root.classList.add("page-enter")));
 }
 
 function dashboardHtml(){
