@@ -29,7 +29,7 @@
         <button class="primary wide" type="submit">Login</button>
         <div id="loginError" class="error"></div>
       </form>
-      <div class="version">Web v0.3.1</div>
+      <div class="version">Web v0.3.2</div>
     </div>
   </section>
 
@@ -50,8 +50,6 @@
       </nav>
       <div class="sidebar-bottom">
         <div id="syncState" class="sync-state">● Live Sync</div>
-        <div id="userSummary" class="user-summary"></div>
-        <button id="logoutBtn" class="logout">Logout</button>
       </div>
     </aside>
 
@@ -67,8 +65,15 @@
           <kbd>Ctrl + K</kbd>
         </div>
         <div class="top-actions">
-          <button id="refreshBtn" class="secondary">↻</button>
-          <div id="topAvatar" class="top-avatar">CU</div>
+          <button id="refreshBtn" class="secondary" aria-label="Refresh">↻</button>
+          <div class="top-user">
+            <div id="topAvatar" class="top-avatar">CU</div>
+            <div class="top-user-meta">
+              <strong id="topUserName">User</strong>
+              <span id="topUserRole">Role</span>
+            </div>
+            <button id="logoutBtn" class="top-logout" type="button">Logout</button>
+          </div>
         </div>
       </header>
 
