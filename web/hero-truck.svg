@@ -32,7 +32,7 @@
   </filter>
 </defs>
 
-<rect width="760" height="330" rx="34" fill="url(#sky)"/>
+
 <ellipse cx="160" cy="242" rx="170" ry="54" fill="#ffc997" opacity=".14" filter="url(#soft)"/>
 <path d="M0 248 C145 204 318 216 490 236 S660 272 760 248" fill="none" stroke="url(#road)" stroke-width="42" opacity=".95"/>
 <path d="M0 248 C150 212 330 226 480 240 S650 266 760 248" fill="none" stroke="#fff" stroke-width="4" stroke-dasharray="54 34" opacity=".85"/>
