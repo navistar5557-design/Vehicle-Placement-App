@@ -72,8 +72,9 @@ function startLiveSync(){
 
 function showApp(){
   $("#loginView").classList.add("hidden"); $("#appView").classList.remove("hidden");
-  $("#userSummary").innerHTML=`<strong>${esc(state.profile.username)}</strong><br>${esc(state.role.name||state.profile.roleId)}`;
   const avatar=$("#topAvatar"); if(avatar) avatar.textContent=(state.profile.username||"CU").trim().slice(0,2).toUpperCase();
+  const topUserName=$("#topUserName"); if(topUserName) topUserName.textContent=state.profile.username||"User";
+  const topUserRole=$("#topUserRole"); if(topUserRole) topUserRole.textContent=state.role.name||state.profile.roleId||"User";
   const newTripBtn=document.querySelector('[data-page="newtrip"]'); if(newTripBtn) newTripBtn.style.display=canCreateTrips()?"":"none";
   ["vehicles","vendors","locations"].forEach(p=>{const b=document.querySelector(`[data-page="${p}"]`);if(b)b.style.display=canManageMasters()?"":"none";});
   startLiveSync(); navigate("dashboard");
@@ -123,7 +124,7 @@ function navigate(page){
 function render(){
   if(!state.profile)return;
   const root=$("#pageContent");
-  if(state.page==="dashboard")root.innerHTML=dashboardHtml();
+  if(state.page==="dashboard"){root.innerHTML=dashboardHtml();wireDashboard();}
   if(state.page==="trips"){root.innerHTML=tripsHtml();wireTrips();}
   if(state.page==="newtrip"){root.innerHTML=newTripHtml();wireNewTrip();}
   if(state.page==="vehicles"){root.innerHTML=masterHtml("vehicles");wireMaster("vehicles");}
@@ -175,9 +176,42 @@ function dashboardHtml(){
   });
   const maxCount=Math.max(1,...days.map(d=>d.count));
   const maxMargin=Math.max(1,...days.map(d=>Math.abs(d.margin)));
-  const chartBars=days.map(d=>`<div class="trend-day">
-      <div class="trend-bars"><span class="trip-bar" style="height:${Math.max(10,d.count/maxCount*100)}%"></span><span class="margin-dot" style="bottom:${Math.max(6,Math.abs(d.margin)/maxMargin*88)}%"></span></div>
-      <small>${esc(d.label)}</small></div>`).join("");
+  const plot={left:48,right:680,top:18,bottom:158};
+  const step=(plot.right-plot.left)/(days.length-1);
+  const yCount=v=>plot.bottom-(v/maxCount)*(plot.bottom-plot.top);
+  const yMargin=v=>plot.bottom-(Math.abs(v)/maxMargin)*(plot.bottom-plot.top);
+  const linePoints=days.map((d,i)=>`${plot.left+i*step},${yMargin(d.margin)}`).join(" ");
+  const countTicks=[0,.25,.5,.75,1].map(p=>Math.round(maxCount*p));
+  const chartBars=days.map((d,i)=>{
+    const x=plot.left+i*step-17;
+    const y=yCount(d.count);
+    const h=Math.max(2,plot.bottom-y);
+    const dotY=yMargin(d.margin);
+    return `<g class="trend-svg-day">
+      <rect class="trend-svg-bar" x="${x}" y="${plot.bottom-h}" width="34" height="${h}" rx="7">
+        <title>${esc(d.label)} — ${d.count} trips</title>
+      </rect>
+      <circle class="trend-svg-dot" cx="${plot.left+i*step}" cy="${dotY}" r="5">
+        <title>${esc(d.label)} — Margin ₹${money(d.margin)}</title>
+      </circle>
+      <text class="trend-svg-label" x="${plot.left+i*step}" y="178" text-anchor="middle">${esc(d.label)}</text>
+    </g>`;
+  }).join("");
+  const chartGrid=countTicks.map(v=>{
+    const y=yCount(v);
+    return `<g><line class="trend-gridline" x1="48" x2="680" y1="${y}" y2="${y}"/><text class="trend-y-label" x="40" y="${y+4}" text-anchor="end">${v}</text></g>`;
+  }).join("");
+  const chartHtml=`<svg class="trend-svg" viewBox="0 0 700 190" preserveAspectRatio="none" role="img" aria-label="Seven day trip and margin trend">
+      <defs>
+        <linearGradient id="tripBarGradient" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#43e8ff"/><stop offset="100%" stop-color="#1686ff"/>
+        </linearGradient>
+        <filter id="trendGlow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+      ${chartGrid}
+      <polyline class="trend-svg-line" points="${linePoints}"/>
+      ${chartBars}
+    </svg>`;
 
   const hour=new Date().getHours();
   const greeting=hour<12?"Good Morning":hour<17?"Good Afternoon":"Good Evening";
@@ -194,19 +228,19 @@ function dashboardHtml(){
   </section>
 
   <section class="neo-kpis">
-    <article class="neo-kpi cyan">
+    <article class="neo-kpi cyan" role="button" tabindex="0" data-kpi="vehicles" aria-label="View vehicle details">
       <img src="./icon-vehicle.svg" alt="" />
       <div><span>Total Vehicles</span><strong>${activeVehicles.length}</strong><small>Active fleet</small></div>
     </article>
-    <article class="neo-kpi purple">
+    <article class="neo-kpi purple" role="button" tabindex="0" data-kpi="trips" aria-label="View trip details">
       <img src="./icon-trips.svg" alt="" />
       <div><span>Total Trips</span><strong>${trips.length}</strong><small>${placed+transit} currently active</small></div>
     </article>
-    <article class="neo-kpi orange">
+    <article class="neo-kpi orange" role="button" tabindex="0" data-kpi="revenue" aria-label="View revenue details">
       <img src="./icon-revenue.svg" alt="" />
       <div><span>Total Revenue</span><strong>${compact(freight)}</strong><small>Freight amount</small></div>
     </article>
-    <article class="neo-kpi green">
+    <article class="neo-kpi green" role="button" tabindex="0" data-kpi="margin" aria-label="View margin details">
       <img src="./icon-margin.svg" alt="" />
       <div><span>Vehicle Margin</span><strong>${compact(margin)}</strong><small>${marginPct.toFixed(1)}% of revenue</small></div>
     </article>
@@ -215,7 +249,7 @@ function dashboardHtml(){
   <section class="neo-dashboard-grid">
     <article class="neo-panel trend-panel">
       <div class="panel-title"><span>▥</span><h3>Vehicle Placement Trend</h3><div class="legend"><i class="cyan-dot"></i> Trips <i class="purple-dot"></i> Margin</div></div>
-      <div class="trend-chart">${chartBars}</div>
+      <div class="trend-chart">${chartHtml}</div>
     </article>
 
     <article class="neo-panel quick-panel">
@@ -254,6 +288,39 @@ function dashboardHtml(){
       </div>
     </article>
   </section>`;
+}
+
+function wireDashboard(){
+  const openKpi=(type)=>{
+    const trips=state.trips;
+    if(type==="vehicles"){
+      const rows=state.vehicles.filter(v=>v.active!==false).slice(0,10);
+      modal("Active Vehicles", rows.length ? `<div class="mini-list">${rows.map(v=>`<div class="mini-row"><strong>${esc(v.number)}</strong><span>${Number(v.mileage||0).toFixed(1)} km/L</span></div>`).join("")}</div><p class="note">Showing ${rows.length} of ${state.vehicles.filter(v=>v.active!==false).length} active vehicles.</p>` : '<div class="empty">No active vehicles.</div>');
+      return;
+    }
+    if(type==="trips"){
+      const rows=trips.slice(0,8);
+      modal("Trip Overview", rows.length ? `<div class="mini-list">${rows.map(t=>`<div class="mini-row"><div><strong>${esc(t.vehicle||"-")}</strong><small>${esc(t.from||"-")} → ${esc(t.to||"-")}</small></div><span>${statusBadge(t.status)}</span></div>`).join("")}</div>` : '<div class="empty">No trips available.</div>');
+      return;
+    }
+    if(type==="revenue"){
+      const total=trips.reduce((s,t)=>s+Number(t.freight||0),0);
+      const rows=[...trips].sort((a,b)=>Number(b.freight||0)-Number(a.freight||0)).slice(0,8);
+      modal("Revenue Details", `<div class="mini-summary"><span>Total Freight Revenue</span><strong>₹ ${money(total)}</strong></div><div class="mini-list">${rows.map(t=>`<div class="mini-row"><div><strong>${esc(t.vehicle||"-")}</strong><small>${esc(t.from||"-")} → ${esc(t.to||"-")}</small></div><span>₹ ${money(t.freight)}</span></div>`).join("")}</div>`);
+      return;
+    }
+    if(type==="margin"){
+      const total=trips.reduce((s,t)=>s+Number(t.margin||0),0);
+      const freight=trips.reduce((s,t)=>s+Number(t.freight||0),0);
+      const pct=freight?total/freight*100:0;
+      const rows=[...trips].sort((a,b)=>Number(b.margin||0)-Number(a.margin||0)).slice(0,8);
+      modal("Margin Details", `<div class="mini-summary"><span>Total Vehicle Margin</span><strong>₹ ${money(total)} <small>(${pct.toFixed(1)}%)</small></strong></div><div class="mini-list">${rows.map(t=>`<div class="mini-row"><div><strong>${esc(t.vehicle||"-")}</strong><small>${esc(t.from||"-")} → ${esc(t.to||"-")}</small></div><span>₹ ${money(t.margin)}</span></div>`).join("")}</div>`);
+    }
+  };
+  document.querySelectorAll(".neo-kpi[data-kpi]").forEach(card=>{
+    card.addEventListener("click",()=>openKpi(card.dataset.kpi));
+    card.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openKpi(card.dataset.kpi);}});
+  });
 }
 
 function statusBadge(s){const c=s==="Completed"?"completed":s==="In Transit"?"transit":"placed";return `<span class="badge ${c}">${esc(s||"Vehicle Placed")}</span>`;}
@@ -295,7 +362,7 @@ function active(arr){return arr.filter(x=>x.active!==false)}
 function picker(opts,selected=""){return opts.map(x=>`<option ${x===selected?"selected":""}>${esc(x)}</option>`).join("")}
 function newTripHtml(){
  if(!canCreateTrips())return '<div class="card empty">You do not have permission to create trips.</div>';
- return `<form id="tripForm" class="card">
+ return `<form id="tripForm" class="card" autocomplete="off">
  <div class="form-grid">
   <label><span>Vendor / Transporter</span><select id="fVendor" required>${picker(active(state.vendors).map(x=>x.name))}</select></label>
   <label><span>Vehicle No</span><select id="fVehicle" required>${picker(active(state.vehicles).map(x=>x.number))}</select></label>
@@ -303,24 +370,29 @@ function newTripHtml(){
   <label><span>From</span><select id="fFrom" required>${picker(active(state.locations).map(x=>x.name))}</select></label>
   <label><span>To</span><select id="fTo" required>${picker(active(state.locations).map(x=>x.name))}</select></label>
   <label><span>Freight Amount (₹)</span><input id="fFreight" type="number" min="0" step="0.01" required></label>
-  <label><span>Advance (₹)</span><input id="fAdvance" type="number" min="0" step="0.01" value="0"></label>
-  <label><span>Weight (Ton)</span><input id="fWeight" type="number" min="0" step="0.01" value="0"></label>
-  <label><span>Trip Total KM</span><input id="fKm" type="number" min="0" step="0.01" value="0"></label>
-  <label><span>Transit Hours</span><input id="fHours" type="number" min="0" step="0.01" value="0"></label>
-  <label><span>Current Location to Origin KM</span><input id="fOriginKm" type="number" min="0" step="0.01" value="0"></label>
+  <label><span>Advance (₹)</span><input id="fAdvance" type="number" min="0" step="0.01"></label>
+  <label><span>Weight (Ton)</span><input id="fWeight" type="number" min="0" step="0.01"></label>
+  <label><span>Trip Total KM</span><input id="fKm" type="number" min="0" step="0.01"></label>
+  <label><span>Transit Hours</span><input id="fHours" type="number" min="0" step="0.01"></label>
+  <label><span>Current Location to Origin KM</span><input id="fOriginKm" type="number" min="0" step="0.01"></label>
   <label><span>Vehicle Mileage (km/L)</span><select id="fMileage">${(Array.from({length:36},(_,i)=>(2.5+i/10).toFixed(1))).map(x=>`<option>${x}</option>`).join("")}</select></label>
-  <label><span>Loading Expense / Ton</span><input id="fLoad" type="number" min="0" step="0.01" value="0"></label>
-  <label><span>Unloading Expense / Ton</span><input id="fUnload" type="number" min="0" step="0.01" value="0"></label>
-  <label><span>Other Expense %</span><input id="fPct" type="number" min="0" step="0.01" value="0"></label>
-  <label><span>FASTag</span><input id="fFastag" type="number" min="0" step="0.01" value="0"></label>
-  <label><span>RTO / Tarpaulin</span><input id="fRto" type="number" min="0" step="0.01" value="0"></label>
-  <label><span>Fixed Expenses</span><input id="fFixed" type="number" min="0" step="0.01" value="0"></label>
+  <label><span>Loading Expense / Ton</span><input id="fLoad" type="number" min="0" step="0.01"></label>
+  <label><span>Unloading Expense / Ton</span><input id="fUnload" type="number" min="0" step="0.01"></label>
+  <label><span>Other Expense %</span><input id="fPct" type="number" min="0" step="0.01"></label>
+  <label><span>FASTag</span><input id="fFastag" type="number" min="0" step="0.01"></label>
+  <label><span>RTO / Tarpaulin</span><input id="fRto" type="number" min="0" step="0.01"></label>
+  <label><span>Fixed Expenses</span><input id="fFixed" type="number" min="0" step="0.01"></label>
  </div>
  <div class="summary-row"><div class="summary"><span>Fuel Rate</span><strong>₹ ${money(state.fuelRate)}/L</strong></div><div class="summary"><span>Initial Status</span><strong>Vehicle Placed</strong></div><div class="summary"><span>Created By</span><strong>${esc(state.profile.username)}</strong></div></div>
  <button class="primary" style="margin-top:16px" type="submit">Save Trip</button>
  </form>`;
 }
 function wireNewTrip(){
+ const form=$("#tripForm");
+ if(form){
+   form.reset();
+   ["fFreight","fAdvance","fWeight","fKm","fHours","fOriginKm","fLoad","fUnload","fPct","fFastag","fRto","fFixed"].forEach(id=>{const el=$("#"+id);if(el)el.value="";});
+ }
  const v=$("#fVehicle");const setMileage=()=>{const rec=state.vehicles.find(x=>x.number===v.value);if(rec)$("#fMileage").value=Number(rec.mileage).toFixed(1)};v.addEventListener("change",setMileage);setMileage();
  $("#tripForm").addEventListener("submit",async e=>{e.preventDefault();const n=id=>Number($("#"+id).value||0),now=Date.now(),id=uid();const freight=n("fFreight"),pct=n("fPct");
  const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:$("#fVehicle").value,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:n("fAdvance"),weightTon:n("fWeight"),currentToOriginKm:n("fOriginKm"),totalKm:n("fKm"),transitHours:n("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:n("fFixed"),fastag:n("fFastag"),rtoTarpaulin:n("fRto"),loadingUnloading:0,loadingExpensePerTon:n("fLoad"),unloadingExpensePerTon:n("fUnload"),expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Vehicle Placed",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
