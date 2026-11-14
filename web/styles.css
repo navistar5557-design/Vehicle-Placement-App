@@ -1778,3 +1778,37 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   .login-card{margin-top:120px;padding:28px 24px 24px!important}
   .cube-statement{bottom:58px;font-size:10px;white-space:normal;width:88vw}
 }
+
+
+/* v0.3.13 login fidelity corrections */
+.login-truck-art{
+  left:1.5%!important;
+  top:40.5%!important;
+  width:min(36vw,610px)!important;
+  opacity:.82!important;
+  filter:drop-shadow(0 18px 28px rgba(24,52,92,.12))!important;
+}
+.login-warehouse{
+  top:35.5%!important;
+  width:37vw!important;
+  height:255px!important;
+  opacity:.19!important;
+}
+.login-card{
+  width:min(525px,92vw)!important;
+  padding:32px 47px 27px!important;
+}
+.login-brand-area{top:35px!important}
+.login-portal-title{margin-top:13px!important}
+.cube-statement{bottom:73px!important}
+@media (min-width:1100px) and (max-height:760px){
+  .login-page{padding-top:144px!important;padding-bottom:128px!important}
+  .login-brand-area{top:30px!important}
+  .login-brand .wordmark strong{font-size:46px!important}
+  .login-brand .wordmark span{font-size:17px!important}
+  .login-brand img{width:52px!important;height:52px!important}
+  .login-portal-title{font-size:12px!important;letter-spacing:6px!important}
+  .login-card{transform:translateY(4px)}
+  .login-truck-art{top:42%!important;width:min(35vw,585px)!important}
+  .cube-statement{bottom:70px!important}
+}
