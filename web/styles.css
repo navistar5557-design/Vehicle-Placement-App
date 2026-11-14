@@ -997,3 +997,26 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   }
   .trend-chart{height:176px}
 }
+
+
+/* v0.3.4 trend color refinement */
+.trend-svg-bar{
+  filter:drop-shadow(0 5px 7px rgba(13,78,155,.18));
+}
+.trend-svg-line{
+  filter:drop-shadow(0 0 5px rgba(255,122,0,.28));
+}
+.trend-svg-dot{
+  fill:#ff7a00;
+  stroke:#fff;
+  stroke-width:2;
+  filter:drop-shadow(0 0 5px rgba(255,122,0,.32));
+}
+.legend .purple-dot{
+  background:#ff7a00;
+  box-shadow:0 0 8px rgba(255,122,0,.35);
+}
+.legend .cyan-dot{
+  background:#0d4e9b;
+  box-shadow:0 0 8px rgba(13,78,155,.28);
+}
