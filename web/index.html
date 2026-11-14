@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#073B7A" />
+  <title>CUBE Logistics | Vehicle Placement</title>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <section id="loginView" class="login-page">
+    <div class="login-card">
+      <div class="brand-mark">
+        <div class="brand-cube">◆</div>
+        <div><strong>CUBE Logistics</strong><span>Vehicle Placement</span></div>
+      </div>
+      <h1>Transport Operations</h1>
+      <form id="loginForm">
+        <label>User ID
+          <input id="loginUser" autocomplete="username" placeholder="Username or email" required />
+        </label>
+        <label>Password
+          <div class="password-wrap">
+            <input id="loginPass" type="password" autocomplete="current-password" required />
+            <button id="togglePassword" type="button" class="icon-btn" aria-label="Show password">👁</button>
+          </div>
+        </label>
+        <label class="remember"><input id="rememberUser" type="checkbox" checked /> Remember username</label>
+        <button class="primary wide" type="submit">Login</button>
+        <div id="loginError" class="error"></div>
+      </form>
+      <div class="version">Web v0.1.0</div>
+    </div>
+  </section>
+
+  <div id="appView" class="app hidden">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <strong>CUBE Logistics</strong>
+        <span>Vehicle Placement</span>
+      </div>
+      <nav id="nav">
+        <button data-page="dashboard" class="active">Dashboard</button>
+        <button data-page="trips">Trips</button>
+        <button data-page="newtrip">Create Trip</button>
+        <button data-page="vehicles">Vehicles</button>
+        <button data-page="vendors">Vendors</button>
+        <button data-page="locations">Locations</button>
+        <button data-page="reports">Reports</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div id="syncState" class="sync-state">● Live Sync</div>
+        <div id="userSummary" class="user-summary"></div>
+        <button id="logoutBtn" class="logout">Logout</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button id="menuBtn" class="mobile-menu">☰</button>
+        <div>
+          <h2 id="pageTitle">Dashboard</h2>
+          <p id="pageSubtitle">Transport operations overview</p>
+        </div>
+        <div class="top-actions">
+          <button id="refreshBtn" class="secondary">↻ Refresh</button>
+        </div>
+      </header>
+
+      <section id="pageContent" class="content"></section>
+    </main>
+  </div>
+
+  <template id="modalTemplate">
+    <div class="modal-backdrop">
+      <div class="modal">
+        <div class="modal-head">
+          <h3></h3>
+          <button class="icon-btn modal-close">✕</button>
+        </div>
+        <div class="modal-body"></div>
+      </div>
+    </div>
+  </template>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
