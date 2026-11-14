@@ -56,6 +56,15 @@ function updateNotificationBadge(){
   badge.textContent=String(Math.min(unread,99));
   badge.classList.toggle("hidden",unread===0);
 }
+async function createLiveNotification(title,body,tripId="",type="general"){
+  const id=uid();
+  await setDoc(doc(db,"notifications",id),{
+    id,title,body,tripId,type,target:"all",
+    createdAt:Date.now(),
+    createdBy:state.profile?.username||"User",
+    createdByUid:state.profile?.uid||""
+  });
+}
 
 function calcTrip(t){
   const freight=Number(t.freight||0), weight=Number(t.weightTon||0), km=Number(t.totalKm||0), mileage=Number(t.mileage||0), fuelRate=Number(t.fuelRate||0);
@@ -131,16 +140,13 @@ function openNotificationCenter(){
   updateNotificationBadge();
   const rows=state.notifications.slice(0,20);
   const body=`
-    <div class="notification-center-actions">
-      <button id="enablePushBtn" class="primary" type="button">Enable Browser Push</button>
-    </div>
+    <div class="notification-center-note">Live notifications are synced through Firebase while you are signed in.</div>
     ${rows.length?`<div class="notification-list">${rows.map(n=>`<div class="notification-item">
       <div class="notification-item-icon">🔔</div>
       <div><strong>${esc(n.title||"CUBE Logistics")}</strong><p>${esc(n.body||"")}</p><small>${esc(dateTime(n.createdAt))}</small></div>
     </div>`).join("")}</div>`:'<div class="empty">No notifications yet.</div>'}
   `;
-  const m=modal("Notifications",body);
-  m.querySelector("#enablePushBtn")?.addEventListener("click",()=>enableBrowserPush().catch(e=>{console.error(e);toast("Unable to enable browser push");}));
+  modal("Notifications",body);
 }
 
 $("#togglePassword").addEventListener("click",()=>{ const p=$("#loginPass"); p.type=p.type==="password"?"text":"password"; $("#togglePassword").setAttribute("aria-label", p.type==="password"?"Show password":"Hide password"); });
@@ -518,7 +524,15 @@ function openStatus(id){
  const t=state.trips.find(x=>x.id===id);if(!t)return;
  const m=modal("Update Trip Status",`<label>Trip Status<select id="statusSelect"><option>Vehicle Placed</option><option>In Transit</option><option>Completed</option></select></label><p class="note">Current: ${esc(t.status||"Vehicle Placed")}</p><button id="saveStatus" class="primary wide">Update Status</button>`);
  m.querySelector("#statusSelect").value=t.status||"Vehicle Placed";
- m.querySelector("#saveStatus").onclick=async()=>{const status=m.querySelector("#statusSelect").value;await setDoc(doc(db,"trips",id),{status,statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:Date.now(),updatedAt:Date.now()},{merge:true});m.remove();toast("Trip status updated");};
+ m.querySelector("#saveStatus").onclick=async()=>{
+   const status=m.querySelector("#statusSelect").value;
+   const oldStatus=t.status||"Vehicle Placed";
+   await setDoc(doc(db,"trips",id),{status,statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:Date.now(),updatedAt:Date.now()},{merge:true});
+   if(status!==oldStatus){
+     await createLiveNotification("Trip Status: "+status,(t.vehicle||"Vehicle")+" updated by "+state.profile.username,id,"trip_status");
+   }
+   m.remove();toast("Trip status updated");
+ };
 }
 async function deleteTrip(id){if(!confirm("Delete this trip permanently?"))return;await deleteDoc(doc(db,"trips",id));toast("Trip deleted");}
 
@@ -563,7 +577,9 @@ function wireNewTrip(){
  const v=$("#fVehicle");const setMileage=()=>{const rec=state.vehicles.find(x=>x.number===v.value);$("#fMileage").value=rec?Number(rec.mileage).toFixed(1):""};v.addEventListener("change",setMileage);
  $("#tripForm").addEventListener("submit",async e=>{e.preventDefault();const n=id=>Number($("#"+id).value||0),now=Date.now(),id=uid();const freight=n("fFreight"),pct=n("fPct");
  const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:$("#fVehicle").value,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:n("fAdvance"),weightTon:n("fWeight"),currentToOriginKm:n("fOriginKm"),totalKm:n("fKm"),transitHours:n("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:n("fFixed"),fastag:n("fFastag"),rtoTarpaulin:n("fRto"),loadingUnloading:0,loadingExpensePerTon:n("fLoad"),unloadingExpensePerTon:n("fUnload"),expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Vehicle Placed",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
- await setDoc(doc(db,"trips",id),trip);toast("Trip created");navigate("trips");});
+ await setDoc(doc(db,"trips",id),trip);
+ await createLiveNotification("New Trip Created",trip.vehicle+" — "+trip.from+" → "+trip.to,id,"trip_created");
+ toast("Trip created");navigate("trips");});
 }
 
 function openEditTrip(id){
