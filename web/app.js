@@ -73,6 +73,7 @@ function startLiveSync(){
 function showApp(){
   $("#loginView").classList.add("hidden"); $("#appView").classList.remove("hidden");
   $("#userSummary").innerHTML=`<strong>${esc(state.profile.username)}</strong><br>${esc(state.role.name||state.profile.roleId)}`;
+  const avatar=$("#topAvatar"); if(avatar) avatar.textContent=(state.profile.username||"CU").trim().slice(0,2).toUpperCase();
   const newTripBtn=document.querySelector('[data-page="newtrip"]'); if(newTripBtn) newTripBtn.style.display=canCreateTrips()?"":"none";
   ["vehicles","vendors","locations"].forEach(p=>{const b=document.querySelector(`[data-page="${p}"]`);if(b)b.style.display=canManageMasters()?"":"none";});
   startLiveSync(); navigate("dashboard");
@@ -97,6 +98,16 @@ onAuthStateChanged(auth,async user=>{
 });
 $("#logoutBtn").addEventListener("click",()=>signOut(auth));
 $("#refreshBtn").addEventListener("click",()=>{setSync("Refreshing...");state.unsubs.forEach(f=>f());startLiveSync();toast("Live data refreshed");});
+$("#globalSearch")?.addEventListener("keydown",e=>{
+  if(e.key==="Enter" && e.currentTarget.value.trim()){
+    const q=e.currentTarget.value.trim();
+    navigate("trips");
+    setTimeout(()=>{const box=$("#tripSearch");if(box){box.value=q;box.dispatchEvent(new Event("input"));}},0);
+  }
+});
+document.addEventListener("keydown",e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();$("#globalSearch")?.focus();}
+});
 $("#menuBtn").addEventListener("click",()=>$("#menuBtn").setAttribute("aria-expanded",$(".sidebar").classList.toggle("open")));
 $("#nav").addEventListener("click",e=>{const b=e.target.closest("[data-page]");if(b)navigate(b.dataset.page);});
 
