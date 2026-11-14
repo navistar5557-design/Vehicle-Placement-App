@@ -189,7 +189,7 @@ function dashboardHtml(){
       <h2>${greeting}, ${esc(state.profile.username)} <span class="wave">👋</span></h2>
       <p>Here is your fleet & placement overview for today.</p>
     </div>
-    <img class="hero-truck" src="./hero-truck.svg" alt="Neon logistics truck" />
+    <div class="hero-truck-art" role="img" aria-label="Neon logistics truck"></div>
     <div class="hero-date">◫ ${new Date().toLocaleDateString("en-IN",{weekday:"short",day:"2-digit",month:"short",year:"numeric"})}</div>
   </section>
 
