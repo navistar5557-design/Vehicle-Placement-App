@@ -1,7 +1,7 @@
 plugins { id("com.android.application"); id("org.jetbrains.kotlin.android"); id("org.jetbrains.kotlin.plugin.compose"); id("com.google.gms.google-services") }
 android {
  namespace = "com.cubelogistics.placement"; compileSdk = 35
- defaultConfig { applicationId = "com.cubelogistics.placement"; minSdk = 24; targetSdk = 35; versionCode = 4; versionName = "1.0.3" }
+ defaultConfig { applicationId = "com.cubelogistics.placement"; minSdk = 24; targetSdk = 35; versionCode = 5; versionName = "1.0.4" }
  compileOptions {
    sourceCompatibility = JavaVersion.VERSION_17
    targetCompatibility = JavaVersion.VERSION_17
@@ -14,6 +14,8 @@ dependencies {
  implementation(platform("com.google.firebase:firebase-bom:33.13.0"))
  implementation("com.google.firebase:firebase-firestore")
  implementation("com.google.firebase:firebase-auth")
+ implementation("com.google.firebase:firebase-messaging")
+ implementation("androidx.core:core-ktx:1.15.0")
  implementation(platform("androidx.compose:compose-bom:2024.12.01"))
  implementation("androidx.activity:activity-compose:1.10.0")
  implementation("androidx.compose.material3:material3")
