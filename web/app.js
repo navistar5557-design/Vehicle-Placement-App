@@ -204,7 +204,7 @@ function dashboardHtml(){
   const chartHtml=`<svg class="trend-svg" viewBox="0 0 700 190" preserveAspectRatio="none" role="img" aria-label="Seven day trip and margin trend">
       <defs>
         <linearGradient id="tripBarGradient" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#43e8ff"/><stop offset="100%" stop-color="#1686ff"/>
+          <stop offset="0%" stop-color="#2f8cff"/><stop offset="100%" stop-color="#0d4e9b"/>
         </linearGradient>
         <filter id="trendGlow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
       </defs>
@@ -359,23 +359,26 @@ function openStatus(id){
 async function deleteTrip(id){if(!confirm("Delete this trip permanently?"))return;await deleteDoc(doc(db,"trips",id));toast("Trip deleted");}
 
 function active(arr){return arr.filter(x=>x.active!==false)}
-function picker(opts,selected=""){return opts.map(x=>`<option ${x===selected?"selected":""}>${esc(x)}</option>`).join("")}
+function picker(opts,selected="",placeholder=""){
+  const head=placeholder?`<option value="" ${selected?"":"selected"} disabled>${esc(placeholder)}</option>`:"";
+  return head+opts.map(x=>`<option ${x===selected?"selected":""}>${esc(x)}</option>`).join("");
+}
 function newTripHtml(){
  if(!canCreateTrips())return '<div class="card empty">You do not have permission to create trips.</div>';
  return `<form id="tripForm" class="card" autocomplete="off">
  <div class="form-grid">
-  <label><span>Vendor / Transporter</span><select id="fVendor" required>${picker(active(state.vendors).map(x=>x.name))}</select></label>
-  <label><span>Vehicle No</span><select id="fVehicle" required>${picker(active(state.vehicles).map(x=>x.number))}</select></label>
-  <label><span>Current Location</span><select id="fCurrent">${picker(active(state.locations).map(x=>x.name))}</select></label>
-  <label><span>From</span><select id="fFrom" required>${picker(active(state.locations).map(x=>x.name))}</select></label>
-  <label><span>To</span><select id="fTo" required>${picker(active(state.locations).map(x=>x.name))}</select></label>
+  <label><span>Vendor / Transporter</span><select id="fVendor" required>${picker(active(state.vendors).map(x=>x.name),"","Select Vendor / Transporter")}</select></label>
+  <label><span>Vehicle No</span><select id="fVehicle" required>${picker(active(state.vehicles).map(x=>x.number),"","Select Vehicle No")}</select></label>
+  <label><span>Current Location</span><select id="fCurrent">${picker(active(state.locations).map(x=>x.name),"","Select Current Location")}</select></label>
+  <label><span>From</span><select id="fFrom" required>${picker(active(state.locations).map(x=>x.name),"","Select From Location")}</select></label>
+  <label><span>To</span><select id="fTo" required>${picker(active(state.locations).map(x=>x.name),"","Select To Location")}</select></label>
   <label><span>Freight Amount (₹)</span><input id="fFreight" type="number" min="0" step="0.01" required></label>
   <label><span>Advance (₹)</span><input id="fAdvance" type="number" min="0" step="0.01"></label>
   <label><span>Weight (Ton)</span><input id="fWeight" type="number" min="0" step="0.01"></label>
   <label><span>Trip Total KM</span><input id="fKm" type="number" min="0" step="0.01"></label>
   <label><span>Transit Hours</span><input id="fHours" type="number" min="0" step="0.01"></label>
   <label><span>Current Location to Origin KM</span><input id="fOriginKm" type="number" min="0" step="0.01"></label>
-  <label><span>Vehicle Mileage (km/L)</span><select id="fMileage">${(Array.from({length:36},(_,i)=>(2.5+i/10).toFixed(1))).map(x=>`<option>${x}</option>`).join("")}</select></label>
+  <label><span>Vehicle Mileage (km/L)</span><select id="fMileage" required><option value="" selected disabled>Select Mileage</option>${(Array.from({length:36},(_,i)=>(2.5+i/10).toFixed(1))).map(x=>`<option>${x}</option>`).join("")}</select></label>
   <label><span>Loading Expense / Ton</span><input id="fLoad" type="number" min="0" step="0.01"></label>
   <label><span>Unloading Expense / Ton</span><input id="fUnload" type="number" min="0" step="0.01"></label>
   <label><span>Other Expense %</span><input id="fPct" type="number" min="0" step="0.01"></label>
@@ -393,7 +396,7 @@ function wireNewTrip(){
    form.reset();
    ["fFreight","fAdvance","fWeight","fKm","fHours","fOriginKm","fLoad","fUnload","fPct","fFastag","fRto","fFixed"].forEach(id=>{const el=$("#"+id);if(el)el.value="";});
  }
- const v=$("#fVehicle");const setMileage=()=>{const rec=state.vehicles.find(x=>x.number===v.value);if(rec)$("#fMileage").value=Number(rec.mileage).toFixed(1)};v.addEventListener("change",setMileage);setMileage();
+ const v=$("#fVehicle");const setMileage=()=>{const rec=state.vehicles.find(x=>x.number===v.value);$("#fMileage").value=rec?Number(rec.mileage).toFixed(1):""};v.addEventListener("change",setMileage);
  $("#tripForm").addEventListener("submit",async e=>{e.preventDefault();const n=id=>Number($("#"+id).value||0),now=Date.now(),id=uid();const freight=n("fFreight"),pct=n("fPct");
  const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:$("#fVehicle").value,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:n("fAdvance"),weightTon:n("fWeight"),currentToOriginKm:n("fOriginKm"),totalKm:n("fKm"),transitHours:n("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:n("fFixed"),fastag:n("fFastag"),rtoTarpaulin:n("fRto"),loadingUnloading:0,loadingExpensePerTon:n("fLoad"),unloadingExpensePerTon:n("fUnload"),expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Vehicle Placed",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
  await setDoc(doc(db,"trips",id),trip);toast("Trip created");navigate("trips");});
