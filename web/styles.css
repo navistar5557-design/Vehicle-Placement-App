@@ -1,3 +1,9 @@
+@property --gauge-progress {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
 :root{
   --blue:#073B7A;--blue2:#0D4E9B;--orange:#FF6500;--bg:#F5F7FB;--text:#102A56;
   --green:#139B47;--red:#D84315;--border:#DCE3EE;--muted:#6B7280;--white:#fff;
