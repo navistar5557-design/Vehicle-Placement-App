@@ -25,7 +25,7 @@ const uid = () => crypto.randomUUID ? crypto.randomUUID() : (Date.now()+"-"+Math
 let state = {
   user:null, profile:null, role:null,
   trips:[], vehicles:[], vendors:[], locations:[], fuelRate:100,
-  page:"dashboard", unsubs:[]
+  page:"dashboard", unsubs:[], dashboardFilter:"thisWeek", dashboardFrom:"", dashboardTo:""
 };
 
 function toast(msg){ const el=$("#toast"); el.textContent=msg; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2200); }
@@ -116,7 +116,9 @@ function navigate(page){
   state.page=page;
   document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
   $(".sidebar").classList.remove("open"); $("#menuBtn").setAttribute("aria-expanded","false");
-  const titles={dashboard:["Dashboard","Transport operations overview"],trips:["Trips","Live trip placement and status"],newtrip:["Create Trip","Add a new vehicle placement"],vehicles:["Vehicles","Vehicle master"],vendors:["Vendors","Vendor master"],locations:["Locations","Location master"],reports:["Reports","Operational and profitability summary"]};
+  const hour=new Date().getHours();
+  const greet=hour<12?"Good Morning":hour<17?"Good Afternoon":"Good Evening";
+  const titles={dashboard:[`${greet}, ${state.profile?.username||"User"} 👋`,"Here is your fleet & placement overview."],trips:["Trips","Live trip placement and status"],newtrip:["Create Trip","Add a new vehicle placement"],vehicles:["Vehicles","Vehicle master"],vendors:["Vendors","Vendor master"],locations:["Locations","Location master"],reports:["Reports","Operational and profitability summary"]};
   $("#pageTitle").textContent=titles[page]?.[0]||"CUBE";$("#pageSubtitle").textContent=titles[page]?.[1]||"";
   render();
 }
@@ -135,8 +137,48 @@ function render(){
   requestAnimationFrame(()=>requestAnimationFrame(()=>root.classList.add("page-enter")));
 }
 
+function getDashboardRange(){
+  const now=new Date(); now.setHours(23,59,59,999);
+  const startOfDay=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x};
+  const endOfDay=d=>{const x=new Date(d);x.setHours(23,59,59,999);return x};
+  let start,end=now,label="This Week";
+  if(state.dashboardFilter==="yesterday"){
+    const d=new Date();d.setDate(d.getDate()-1);start=startOfDay(d);end=endOfDay(d);label="Yesterday";
+  }else if(state.dashboardFilter==="last7"){
+    const d=new Date();d.setDate(d.getDate()-6);start=startOfDay(d);label="Last 7 Days";
+  }else if(state.dashboardFilter==="lastWeek"){
+    const d=new Date();const day=d.getDay()||7;d.setDate(d.getDate()-day-6);start=startOfDay(d);end=new Date(start);end.setDate(end.getDate()+6);end=endOfDay(end);label="Last Week";
+  }else if(state.dashboardFilter==="thisMonth"){
+    start=new Date(now.getFullYear(),now.getMonth(),1);label="This Month";
+  }else if(state.dashboardFilter==="lastMonth"){
+    start=new Date(now.getFullYear(),now.getMonth()-1,1);end=new Date(now.getFullYear(),now.getMonth(),0,23,59,59,999);label="Last Month";
+  }else if(state.dashboardFilter==="custom" && state.dashboardFrom && state.dashboardTo){
+    start=startOfDay(new Date(state.dashboardFrom+"T00:00:00"));end=endOfDay(new Date(state.dashboardTo+"T00:00:00"));label="Custom Range";
+  }else{
+    const d=new Date();const day=d.getDay()||7;d.setDate(d.getDate()-day+1);start=startOfDay(d);label="This Week";
+  }
+  return {start:start.getTime(),end:end.getTime(),label};
+}
+
+function dashboardTrendBuckets(trips,startMs,endMs){
+  const start=new Date(startMs),end=new Date(endMs);
+  const days=Math.max(1,Math.ceil((end-start)/86400000)+1);
+  const bucketCount=Math.min(7,days);
+  const span=(endMs-startMs+1)/bucketCount;
+  return Array.from({length:bucketCount},(_,i)=>{
+    const bs=startMs+i*span;
+    const be=i===bucketCount-1?endMs:startMs+(i+1)*span-1;
+    const rows=trips.filter(t=>Number(t.createdAt||0)>=bs&&Number(t.createdAt||0)<=be);
+    const d=new Date(bs);
+    const e=new Date(be);
+    const label=days<=7?d.toLocaleDateString("en-IN",{day:"2-digit",month:"short"}):(`${d.toLocaleDateString("en-IN",{day:"2-digit",month:"short"})}-${e.toLocaleDateString("en-IN",{day:"2-digit",month:"short"})}`);
+    return {label,count:rows.length,margin:rows.reduce((s,t)=>s+Number(t.margin||0),0)};
+  });
+}
+
 function dashboardHtml(){
-  const trips=state.trips;
+  const range=getDashboardRange();
+  const trips=state.trips.filter(t=>Number(t.createdAt||0)>=range.start&&Number(t.createdAt||0)<=range.end);
   const activeVehicles=state.vehicles.filter(v=>v.active!==false);
   const placed=trips.filter(t=>(t.status||"Vehicle Placed")==="Vehicle Placed").length;
   const transit=trips.filter(t=>t.status==="In Transit").length;
@@ -168,12 +210,7 @@ function dashboardHtml(){
     return "₹ "+money(n);
   };
 
-  const days=Array.from({length:7},(_,i)=>{
-    const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-(6-i));
-    const next=new Date(d); next.setDate(next.getDate()+1);
-    const rows=trips.filter(t=>Number(t.createdAt||0)>=d.getTime()&&Number(t.createdAt||0)<next.getTime());
-    return {label:d.toLocaleDateString("en-IN",{day:"2-digit",month:"short"}),count:rows.length,margin:rows.reduce((s,t)=>s+Number(t.margin||0),0)};
-  });
+  const days=dashboardTrendBuckets(trips,range.start,range.end);
   const maxCount=Math.max(1,...days.map(d=>d.count));
   const maxMargin=Math.max(1,...days.map(d=>Math.abs(d.margin)));
   const plot={left:48,right:680,top:18,bottom:158};
@@ -217,14 +254,24 @@ function dashboardHtml(){
   const greeting=hour<12?"Good Morning":hour<17?"Good Afternoon":"Good Evening";
 
   return `
-  <section class="neo-hero">
-    <div class="hero-copy">
-      <span class="eyebrow">LIVE FLEET CONTROL</span>
-      <h2>${greeting}, ${esc(state.profile.username)} <span class="wave">👋</span></h2>
-      <p>Here is your fleet & placement overview for today.</p>
+  <section class="dashboard-filterbar">
+    <div class="filter-title"><strong>Dashboard Period</strong><span>${esc(range.label)}</span></div>
+    <div class="filter-controls">
+      <select id="dashboardRange">
+        <option value="thisWeek" ${state.dashboardFilter==="thisWeek"?"selected":""}>This Week</option>
+        <option value="lastWeek" ${state.dashboardFilter==="lastWeek"?"selected":""}>Last Week</option>
+        <option value="last7" ${state.dashboardFilter==="last7"?"selected":""}>Last 7 Days</option>
+        <option value="yesterday" ${state.dashboardFilter==="yesterday"?"selected":""}>Yesterday</option>
+        <option value="thisMonth" ${state.dashboardFilter==="thisMonth"?"selected":""}>This Month</option>
+        <option value="lastMonth" ${state.dashboardFilter==="lastMonth"?"selected":""}>Last Month</option>
+        <option value="custom" ${state.dashboardFilter==="custom"?"selected":""}>Custom Range</option>
+      </select>
+      <div id="customRangeFields" class="custom-range-fields ${state.dashboardFilter==="custom"?"":"hidden"}">
+        <label>From <input id="dashboardFrom" type="date" value="${esc(state.dashboardFrom)}"></label>
+        <label>To <input id="dashboardTo" type="date" value="${esc(state.dashboardTo)}"></label>
+        <button id="applyDashboardRange" class="primary" type="button">Apply</button>
+      </div>
     </div>
-    <div class="hero-truck-art" role="img" aria-label="Neon logistics truck"></div>
-    <div class="hero-date">◫ ${new Date().toLocaleDateString("en-IN",{weekday:"short",day:"2-digit",month:"short",year:"numeric"})}</div>
   </section>
 
   <section class="neo-kpis">
@@ -291,6 +338,20 @@ function dashboardHtml(){
 }
 
 function wireDashboard(){
+  const rangeSelect=$("#dashboardRange");
+  if(rangeSelect){
+    rangeSelect.addEventListener("change",e=>{
+      state.dashboardFilter=e.target.value;
+      if(state.dashboardFilter!=="custom"){render();}
+      else $("#customRangeFields")?.classList.remove("hidden");
+    });
+  }
+  $("#applyDashboardRange")?.addEventListener("click",()=>{
+    const from=$("#dashboardFrom")?.value||"",to=$("#dashboardTo")?.value||"";
+    if(!from||!to){toast("Select From and To dates");return;}
+    if(new Date(from)>new Date(to)){toast("From date cannot be after To date");return;}
+    state.dashboardFrom=from;state.dashboardTo=to;state.dashboardFilter="custom";render();
+  });
   const openKpi=(type)=>{
     const trips=state.trips;
     if(type==="vehicles"){
