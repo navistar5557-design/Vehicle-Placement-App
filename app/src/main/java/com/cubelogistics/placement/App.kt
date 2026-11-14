@@ -1,6 +1,8 @@
 package com.cubelogistics.placement
 
 import android.app.DatePickerDialog
+import android.graphics.BitmapFactory
+import android.util.Base64
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.platform.LocalContext
@@ -9,6 +11,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,7 +27,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -565,295 +570,220 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
     var errorMessage by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
 
-    Box(Modifier.fillMaxSize().background(Color.White)) {
-        Canvas(Modifier.fillMaxSize()) {
-            val topBlue = Path().apply {
-                moveTo(0f, 0f)
-                lineTo(size.width * .46f, 0f)
-                cubicTo(size.width * .35f, size.height * .025f, size.width * .22f, size.height * .045f, 0f, size.height * .10f)
-                close()
-            }
-            drawPath(topBlue, Color(0xFF6EA8F3).copy(alpha = .35f))
-            val topOrange = Path().apply {
-                moveTo(0f, size.height * .055f)
-                cubicTo(size.width * .16f, size.height * .015f, size.width * .27f, size.height * .020f, size.width * .39f, 0f)
-                lineTo(size.width * .28f, 0f)
-                cubicTo(size.width * .18f, size.height * .015f, size.width * .09f, size.height * .035f, 0f, size.height * .075f)
-                close()
-            }
-            drawPath(topOrange, CubeOrange.copy(alpha = .18f))
+    val loginMaster = remember {
+        val bytes = Base64.decode(MOBILE_LOGIN_MASTER_BASE64, Base64.DEFAULT)
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size).asImageBitmap()
+    }
 
-            val wave1 = Path().apply {
-                moveTo(0f, size.height * .94f)
-                cubicTo(size.width * .25f, size.height * .90f, size.width * .55f, size.height * .98f, size.width, size.height * .88f)
-                lineTo(size.width, size.height)
-                lineTo(0f, size.height)
-                close()
-            }
-            drawPath(wave1, Color(0xFF86B6F5).copy(alpha = .55f))
-            val wave2 = Path().apply {
-                moveTo(0f, size.height * .965f)
-                cubicTo(size.width * .32f, size.height * .91f, size.width * .62f, size.height * .99f, size.width, size.height * .91f)
-                lineTo(size.width, size.height)
-                lineTo(0f, size.height)
-                close()
-            }
-            drawPath(wave2, CubeBlue)
-            val wave3 = Path().apply {
-                moveTo(0f, size.height * .925f)
-                cubicTo(size.width * .42f, size.height * .98f, size.width * .72f, size.height * .92f, size.width, size.height * .86f)
-                lineTo(size.width, size.height * .90f)
-                cubicTo(size.width * .70f, size.height * .96f, size.width * .40f, size.height, 0f, size.height * .94f)
-                close()
-            }
-            drawPath(wave3, CubeOrange.copy(alpha = .22f))
+    fun performLogin() {
+        val identity = user.trim()
+        errorMessage = when {
+            identity.isBlank() -> "Enter your User ID."
+            pass.isBlank() -> "Enter your password."
+            else -> ""
         }
+        if (errorMessage.isBlank()) {
+            loading = true
+            val loginEmail = roleRepo.resolveLoginIdentity(identity)
+            auth.signInWithEmailAndPassword(loginEmail, pass)
+                .addOnSuccessListener {
+                    loading = false
+                    if (rememberMe) {
+                        loginPrefs.edit()
+                            .putString("saved_username", identity)
+                            .putBoolean("remember_username", true)
+                            .apply()
+                    } else {
+                        loginPrefs.edit()
+                            .remove("saved_username")
+                            .putBoolean("remember_username", false)
+                            .apply()
+                    }
+                    onLoginSuccess(rememberMe)
+                }
+                .addOnFailureListener {
+                    loading = false
+                    errorMessage = when {
+                        it.message?.contains("password", ignoreCase = true) == true ||
+                            it.message?.contains("credential", ignoreCase = true) == true ->
+                            "Invalid email or password."
+                        else -> it.localizedMessage ?: "Login failed. Please try again."
+                    }
+                }
+        }
+    }
 
-        Column(
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+    ) {
+        val screenW = maxWidth
+        val screenH = maxHeight
+
+        Image(
+            bitmap = loginMaster,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.FillBounds
+        )
+
+        OutlinedTextField(
+            value = user,
+            onValueChange = { user = it },
+            placeholder = { Text("Username", fontSize = 14.sp, color = Color(0xFF65728A)) },
+            leadingIcon = {
+                Icon(
+                    Icons.Default.PersonOutline,
+                    contentDescription = null,
+                    tint = Color(0xFF45556E),
+                    modifier = Modifier.size(21.dp)
+                )
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(10.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFFB6C3D6),
+                unfocusedBorderColor = Color(0xFFB6C3D6),
+                cursorColor = CubeBlue,
+                focusedContainerColor = Color.White.copy(alpha = .98f),
+                unfocusedContainerColor = Color.White.copy(alpha = .98f)
+            ),
             modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 30.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .offset(x = screenW * .163f, y = screenH * .529f)
+                .width(screenW * .674f)
+                .height(screenH * .047f)
+        )
+
+        OutlinedTextField(
+            value = pass,
+            onValueChange = { pass = it },
+            placeholder = { Text("Password", fontSize = 14.sp, color = Color(0xFF65728A)) },
+            leadingIcon = {
+                Icon(
+                    Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = Color(0xFF45556E),
+                    modifier = Modifier.size(20.dp)
+                )
+            },
+            trailingIcon = {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                        tint = Color(0xFF45556E),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            },
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            singleLine = true,
+            shape = RoundedCornerShape(10.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFFB6C3D6),
+                unfocusedBorderColor = Color(0xFFB6C3D6),
+                cursorColor = CubeBlue,
+                focusedContainerColor = Color.White.copy(alpha = .98f),
+                unfocusedContainerColor = Color.White.copy(alpha = .98f)
+            ),
+            modifier = Modifier
+                .offset(x = screenW * .163f, y = screenH * .592f)
+                .width(screenW * .674f)
+                .height(screenH * .047f)
+        )
+
+        Box(
+            modifier = Modifier
+                .offset(x = screenW * .163f, y = screenH * .655f)
+                .width(screenW * .674f)
+                .height(screenH * .048f)
+                .clip(RoundedCornerShape(10.dp))
+                .clickable(enabled = !loading) { performLogin() },
+            contentAlignment = Alignment.Center
         ) {
-            Spacer(Modifier.height(54.dp))
-            MockupLoginLogo()
-
-            Spacer(Modifier.height(18.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.width(38.dp).height(1.dp).background(CubeOrange))
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    "Vehicle Placement",
-                    color = Color(0xFF153A78),
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 21.sp
-                )
-                Spacer(Modifier.width(10.dp))
-                Box(Modifier.width(38.dp).height(1.dp).background(CubeOrange))
-            }
-
-            Spacer(Modifier.height(18.dp))
-            MockupTruckIllustration(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(205.dp)
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = user,
-                onValueChange = { user = it },
-                placeholder = { Text("Username", fontSize = 15.sp, color = Color(0xFF606A7A)) },
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.PersonOutline,
-                        contentDescription = null,
-                        tint = Color(0xFF313844),
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(15.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF9EBBE4),
-                    unfocusedBorderColor = Color(0xFFB7C9E5),
-                    cursorColor = CubeBlue,
-                    focusedContainerColor = Color.White.copy(alpha = .96f),
-                    unfocusedContainerColor = Color.White.copy(alpha = .96f)
-                ),
-                modifier = Modifier.fillMaxWidth().height(62.dp)
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = pass,
-                onValueChange = { pass = it },
-                placeholder = { Text("Password", fontSize = 15.sp, color = Color(0xFF606A7A)) },
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.Lock,
-                        contentDescription = null,
-                        tint = Color(0xFF313844),
-                        modifier = Modifier.size(23.dp)
-                    )
-                },
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(
-                            if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                            tint = Color(0xFF313844),
-                            modifier = Modifier.size(21.dp)
-                        )
-                    }
-                },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                singleLine = true,
-                shape = RoundedCornerShape(15.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF9EBBE4),
-                    unfocusedBorderColor = Color(0xFFB7C9E5),
-                    cursorColor = CubeBlue,
-                    focusedContainerColor = Color.White.copy(alpha = .96f),
-                    unfocusedContainerColor = Color.White.copy(alpha = .96f)
-                ),
-                modifier = Modifier.fillMaxWidth().height(62.dp)
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(
-                    checked = rememberMe,
-                    onCheckedChange = { rememberMe = it },
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = CubeOrange,
-                        uncheckedColor = CubeOrange,
-                        checkmarkColor = Color.White
-                    ),
-                    modifier = Modifier.size(34.dp)
-                )
-                Text(
-                    "Remember Me",
-                    color = Color(0xFF142A58),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(Modifier.weight(1f))
-                Text(
-                    "Forgot Password?",
-                    color = CubeOrange,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.clickable {
-                        val identity = user.trim()
-                        if (identity.isBlank()) {
-                            errorMessage = "Enter your User ID first."
-                        } else if (!identity.contains("@")) {
-                            errorMessage = "For username accounts, please contact Admin to change the password."
-                        } else {
-                            loading = true
-                            auth.sendPasswordResetEmail(identity)
-                                .addOnSuccessListener {
-                                    loading = false
-                                    errorMessage = "Password reset email sent."
-                                }
-                                .addOnFailureListener {
-                                    loading = false
-                                    errorMessage = it.localizedMessage ?: "Unable to send password reset email."
-                                }
-                        }
-                    }
-                )
-            }
-
-            if (errorMessage.isNotBlank()) {
-                Text(
-                    errorMessage,
-                    color = if (errorMessage == "Password reset email sent.") CubeGreen else MaterialTheme.colorScheme.error,
-                    fontSize = 11.sp,
-                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(58.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(Color(0xFF1458C8), Color(0xFF073B7A))
-                        )
-                    )
-                    .clickable(enabled = !loading) {
-                        val identity = user.trim()
-                        errorMessage = when {
-                            identity.isBlank() -> "Enter your User ID."
-                            pass.isBlank() -> "Enter your password."
-                            else -> ""
-                        }
-                        if (errorMessage.isBlank()) {
-                            loading = true
-                            val loginEmail = roleRepo.resolveLoginIdentity(identity)
-                            auth.signInWithEmailAndPassword(loginEmail, pass)
-                                .addOnSuccessListener {
-                                    loading = false
-                                    if (rememberMe) {
-                                        loginPrefs.edit()
-                                            .putString("saved_username", identity)
-                                            .putBoolean("remember_username", true)
-                                            .apply()
-                                    } else {
-                                        loginPrefs.edit()
-                                            .remove("saved_username")
-                                            .putBoolean("remember_username", false)
-                                            .apply()
-                                    }
-                                    onLoginSuccess(rememberMe)
-                                }
-                                .addOnFailureListener {
-                                    loading = false
-                                    errorMessage = when {
-                                        it.message?.contains("password", ignoreCase = true) == true ||
-                                            it.message?.contains("credential", ignoreCase = true) == true ->
-                                            "Invalid email or password."
-                                        else -> it.localizedMessage ?: "Login failed. Please try again."
-                                    }
-                                }
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                if (loading) {
+            if (loading) {
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .background(Color(0xFF0B4C9E).copy(alpha = .92f)),
+                    contentAlignment = Alignment.Center
+                ) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier.size(21.dp),
                         strokeWidth = 2.dp,
                         color = Color.White
                     )
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Spacer(Modifier.weight(1f))
-                        Text("Login", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Spacer(Modifier.weight(1f))
-                        Icon(Icons.Default.ArrowForward, null, tint = Color.White, modifier = Modifier.size(24.dp))
-                    }
                 }
             }
+        }
 
-            Spacer(Modifier.height(28.dp))
-
-            Text(
-                buildAnnotatedString {
-                    append("C.U.B.E. - ")
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) { append("Customers") }
-                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(" who inspire us. ") }
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) { append("Universe") }
-                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(" that enables us.\n") }
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) { append("Business partners") }
-                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(" who support us. ") }
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) { append("Employees") }
-                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(" who make it all possible.") }
-                },
-                color = Color(0xFF14213D),
-                fontFamily = FontFamily.SansSerif,
-                fontSize = 11.sp,
-                lineHeight = 17.sp,
-                modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier
+                .offset(x = screenW * .158f, y = screenH * .711f)
+                .width(screenW * .69f)
+                .height(screenH * .047f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = rememberMe,
+                onCheckedChange = { rememberMe = it },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = CubeOrange,
+                    uncheckedColor = Color(0xFF65728A),
+                    checkmarkColor = Color.White
+                ),
+                modifier = Modifier.size(30.dp)
             )
+            Text(
+                "Remember me",
+                color = Color(0xFF20314F),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+                "Forgot Password?",
+                color = CubeOrange,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.clickable {
+                    val identity = user.trim()
+                    if (identity.isBlank()) {
+                        errorMessage = "Enter your User ID first."
+                    } else if (!identity.contains("@")) {
+                        errorMessage = "For username accounts, please contact Admin to change the password."
+                    } else {
+                        loading = true
+                        auth.sendPasswordResetEmail(identity)
+                            .addOnSuccessListener {
+                                loading = false
+                                errorMessage = "Password reset email sent."
+                            }
+                            .addOnFailureListener {
+                                loading = false
+                                errorMessage = it.localizedMessage ?: "Unable to send password reset email."
+                            }
+                    }
+                }
+            )
+        }
 
-            Spacer(Modifier.height(110.dp))
+        if (errorMessage.isNotBlank()) {
+            Surface(
+                color = Color.White.copy(alpha = .94f),
+                shape = RoundedCornerShape(6.dp),
+                modifier = Modifier
+                    .offset(x = screenW * .16f, y = screenH * .755f)
+                    .width(screenW * .68f)
+            ) {
+                Text(
+                    errorMessage,
+                    color = if (errorMessage == "Password reset email sent.") CubeGreen else MaterialTheme.colorScheme.error,
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                )
+            }
         }
     }
 }
