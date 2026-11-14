@@ -29,7 +29,7 @@ let state = {
 };
 
 function toast(msg){ const el=$("#toast"); el.textContent=msg; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2200); }
-function setSync(text, ok=true){ const el=$("#syncState"); el.textContent=(ok?"● ":"● ")+text; el.style.color=ok?"#BDEDCB":"#FFD0CC"; }
+function setSync(text, ok=true){ const el=$("#syncState"); el.textContent=(ok?"● ":"● ")+text; el.style.color=ok?"#087A36":"#B42318"; }
 function normalizeUsername(v){ return v.trim().toLowerCase().replace(/[^a-z0-9._-]/g,""); }
 function loginIdentity(v){ const s=v.trim(); return s.includes("@") ? s : normalizeUsername(s)+"@cube.internal"; }
 function isAdmin(){ return !!(state.role?.canManageUsers && state.role?.canManageMasters); }
@@ -79,7 +79,7 @@ function showApp(){
 }
 function showLogin(){ $("#appView").classList.add("hidden"); $("#loginView").classList.remove("hidden"); }
 
-$("#togglePassword").addEventListener("click",()=>{ const p=$("#loginPass"); p.type=p.type==="password"?"text":"password"; });
+$("#togglePassword").addEventListener("click",()=>{ const p=$("#loginPass"); p.type=p.type==="password"?"text":"password"; $("#togglePassword").setAttribute("aria-label", p.type==="password"?"Show password":"Hide password"); });
 $("#loginForm").addEventListener("submit",async e=>{
   e.preventDefault(); $("#loginError").textContent="";
   const identity=$("#loginUser").value.trim(), pass=$("#loginPass").value;
@@ -97,13 +97,13 @@ onAuthStateChanged(auth,async user=>{
 });
 $("#logoutBtn").addEventListener("click",()=>signOut(auth));
 $("#refreshBtn").addEventListener("click",()=>{setSync("Refreshing...");state.unsubs.forEach(f=>f());startLiveSync();toast("Live data refreshed");});
-$("#menuBtn").addEventListener("click",()=>$(".sidebar").classList.toggle("open"));
+$("#menuBtn").addEventListener("click",()=>$("#menuBtn").setAttribute("aria-expanded",$(".sidebar").classList.toggle("open")));
 $("#nav").addEventListener("click",e=>{const b=e.target.closest("[data-page]");if(b)navigate(b.dataset.page);});
 
 function navigate(page){
   state.page=page;
   document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
-  $(".sidebar").classList.remove("open");
+  $(".sidebar").classList.remove("open"); $("#menuBtn").setAttribute("aria-expanded","false");
   const titles={dashboard:["Dashboard","Transport operations overview"],trips:["Trips","Live trip placement and status"],newtrip:["Create Trip","Add a new vehicle placement"],vehicles:["Vehicles","Vehicle master"],vendors:["Vendors","Vendor master"],locations:["Locations","Location master"],reports:["Reports","Operational and profitability summary"]};
   $("#pageTitle").textContent=titles[page]?.[0]||"CUBE";$("#pageSubtitle").textContent=titles[page]?.[1]||"";
   render();
@@ -126,18 +126,22 @@ function dashboardHtml(){
   const transit=state.trips.filter(t=>t.status==="In Transit").length, completed=state.trips.filter(t=>t.status==="Completed").length;
   const freight=state.trips.reduce((s,t)=>s+Number(t.freight||0),0), exp=state.trips.reduce((s,t)=>s+t.totalExpenses,0), margin=state.trips.reduce((s,t)=>s+t.margin,0);
   return `
-  <div class="grid kpis">
-    <div class="kpi blue"><div class="label">Trips</div><div class="value">${state.trips.length}</div></div>
-    <div class="kpi blue"><div class="label">Vehicle Placed</div><div class="value">${placed}</div></div>
-    <div class="kpi orange"><div class="label">In Transit</div><div class="value">${transit}</div></div>
-    <div class="kpi green"><div class="label">Completed</div><div class="value">${completed}</div></div>
+  <div class="dashboard-intro">
+    <h2>Hello, ${esc(state.profile.username)}</h2>
+    <p>Transport Operations Dashboard</p>
   </div>
-  <div class="section-head"><h3>Overall Summary</h3></div>
-  <div class="grid kpis">
-    <div class="kpi"><div class="label">Freight</div><div class="value">₹ ${money(freight)}</div></div>
-    <div class="kpi"><div class="label">Expenses</div><div class="value">₹ ${money(exp)}</div></div>
+  <div class="grid dashboard-kpis">
+    <div class="kpi blue"><div class="label">Trips</div><div class="value">${state.trips.length}</div></div>
+    <div class="kpi green"><div class="label">Freight Amount</div><div class="value">₹ ${money(freight)}</div></div>
+    <div class="kpi orange"><div class="label">Total Expenses</div><div class="value">₹ ${money(exp)}</div></div>
     <div class="kpi green"><div class="label">Margin</div><div class="value">₹ ${money(margin)}</div></div>
-    <div class="kpi"><div class="label">Margin %</div><div class="value">${freight?(margin/freight*100).toFixed(2):"0.00"}%</div></div>
+    <div class="kpi green margin-percent"><div class="label">Margin %</div><div class="value">${freight?(margin/freight*100).toFixed(2):"0.00"}%</div></div>
+  </div>
+  <div class="section-head"><h3>Trip Status</h3></div>
+  <div class="grid status-overview">
+    <div class="card">${statusBadge("Vehicle Placed")} <strong>${placed}</strong></div>
+    <div class="card">${statusBadge("In Transit")} <strong>${transit}</strong></div>
+    <div class="card">${statusBadge("Completed")} <strong>${completed}</strong></div>
   </div>
   <div class="section-head"><h3>Latest Trips</h3><button class="secondary" onclick="document.querySelector('[data-page=trips]').click()">View all</button></div>
   ${tripTable(state.trips.slice(0,8),false)}`;
