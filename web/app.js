@@ -339,6 +339,21 @@ function dashboardHtml(){
 }
 
 function wireDashboard(){
+  let selectedTrendGroup=null;
+  const setTrendFocus=(group,persist=false)=>{
+    const groups=[...document.querySelectorAll(".trend-svg-day")];
+    groups.forEach(g=>{
+      const active=g===group;
+      g.classList.toggle("trend-active",active);
+      g.classList.toggle("trend-muted",!!group&&!active);
+    });
+    if(persist) selectedTrendGroup=group;
+  };
+  const clearTrendHover=(group)=>{
+    if(selectedTrendGroup){ setTrendFocus(selectedTrendGroup,false); return; }
+    if(group?.classList.contains("trend-active")) return;
+    document.querySelectorAll(".trend-svg-day").forEach(g=>g.classList.remove("trend-active","trend-muted"));
+  };
   const rangeSelect=$("#dashboardRange");
   if(rangeSelect){
     rangeSelect.addEventListener("change",e=>{
@@ -369,8 +384,12 @@ function wireDashboard(){
     `);
   };
   document.querySelectorAll(".trend-svg-day").forEach(group=>{
-    group.addEventListener("click",()=>openTrendDay(group));
-    group.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openTrendDay(group);}});
+    group.addEventListener("mouseenter",()=>setTrendFocus(group,false));
+    group.addEventListener("mouseleave",()=>clearTrendHover(group));
+    group.addEventListener("focus",()=>setTrendFocus(group,false));
+    group.addEventListener("blur",()=>clearTrendHover(group));
+    group.addEventListener("click",()=>{setTrendFocus(group,true);openTrendDay(group);});
+    group.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();setTrendFocus(group,true);openTrendDay(group);}});
   });
 
   const openKpi=(type)=>{
