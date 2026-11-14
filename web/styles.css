@@ -1020,3 +1020,121 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   background:#0d4e9b;
   box-shadow:0 0 8px rgba(13,78,155,.28);
 }
+
+
+/* v0.3.5 dashboard header relocation + date range filters */
+.dashboard-filterbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin:-4px 0 12px;
+  padding:10px 12px;
+  border-radius:14px;
+  background:rgba(255,255,255,.82);
+  border:1px solid rgba(91,111,160,.10);
+  box-shadow:0 6px 16px rgba(48,60,105,.05),inset 0 1px 0 rgba(255,255,255,.96);
+}
+.filter-title{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  min-width:130px;
+}
+.filter-title strong{
+  font-size:11px;
+  color:#13264b;
+}
+.filter-title span{
+  font-size:9px;
+  color:#6c7891;
+  font-weight:700;
+}
+.filter-controls{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-left:auto;
+}
+#dashboardRange{
+  width:auto;
+  min-width:150px;
+  height:36px;
+  padding:6px 30px 6px 10px;
+  border-radius:10px;
+  font-size:10px;
+  font-weight:800;
+  color:#173056;
+  background:#fff;
+}
+.custom-range-fields{
+  display:flex;
+  align-items:flex-end;
+  gap:7px;
+}
+.custom-range-fields label{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  color:#67748f;
+  font-size:8px;
+  font-weight:800;
+}
+.custom-range-fields input{
+  width:128px;
+  height:34px;
+  padding:6px 8px;
+  border-radius:9px;
+  font-size:9px;
+}
+.custom-range-fields .primary{
+  height:34px;
+  padding:6px 11px;
+  font-size:9px;
+}
+.topbar>div:first-of-type{
+  min-width:310px;
+}
+.topbar h2{
+  font-size:20px;
+  white-space:nowrap;
+}
+.topbar p{
+  font-size:10px;
+}
+.neo-kpis{
+  margin-top:0;
+}
+
+@media(max-width:980px){
+  .dashboard-filterbar{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+  .filter-controls{
+    width:100%;
+    margin-left:0;
+    flex-wrap:wrap;
+  }
+  #dashboardRange{min-width:180px}
+}
+@media(max-width:640px){
+  .custom-range-fields{
+    width:100%;
+    flex-wrap:wrap;
+  }
+  .custom-range-fields label{
+    flex:1 1 44%;
+  }
+  .custom-range-fields input{
+    width:100%;
+  }
+  .topbar>div:first-of-type{
+    min-width:0;
+  }
+  .topbar h2{
+    max-width:190px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+}
