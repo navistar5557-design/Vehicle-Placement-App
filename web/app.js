@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+import { getMessaging, getToken, onMessage, isSupported as messagingSupported } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-messaging.js";
 import {
   getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc,
   onSnapshot, query, orderBy, writeBatch
@@ -25,7 +26,7 @@ const uid = () => crypto.randomUUID ? crypto.randomUUID() : (Date.now()+"-"+Math
 let state = {
   user:null, profile:null, role:null,
   trips:[], vehicles:[], vendors:[], locations:[], fuelRate:100,
-  page:"dashboard", unsubs:[], dashboardFilter:"thisWeek", dashboardFrom:"", dashboardTo:""
+  page:"dashboard", unsubs:[], dashboardFilter:"thisWeek", dashboardFrom:"", dashboardTo:"", notifications:[]
 };
 
 function toast(msg){ const el=$("#toast"); el.textContent=msg; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2200); }
@@ -36,6 +37,25 @@ function isAdmin(){ return !!(state.role?.canManageUsers && state.role?.canManag
 function canManageMasters(){ return !!state.role?.canManageMasters; }
 function canCreateTrips(){ return !!state.role?.canCreateTrips; }
 function canDeleteTrips(){ return !!state.role?.canDeleteTrips; }
+function tokenDocId(token,platform){
+  let hash=5381;
+  for(let i=0;i<token.length;i++) hash=((hash<<5)+hash)^token.charCodeAt(i);
+  return `${state.profile?.uid||"anon"}_${platform}_${(hash>>>0).toString(16)}`;
+}
+function visibleNotification(n){
+  if(!state.profile) return false;
+  if(n.target==="all" || !n.target) return true;
+  if(Array.isArray(n.targetUids) && n.targetUids.includes(state.profile.uid)) return true;
+  if(Array.isArray(n.targetRoles) && n.targetRoles.includes(state.profile.roleId)) return true;
+  return false;
+}
+function updateNotificationBadge(){
+  const badge=$("#notificationBadge"); if(!badge) return;
+  const lastSeen=Number(localStorage.getItem("cube_notifications_seen_at")||0);
+  const unread=state.notifications.filter(n=>Number(n.createdAt||0)>lastSeen).length;
+  badge.textContent=String(Math.min(unread,99));
+  badge.classList.toggle("hidden",unread===0);
+}
 
 function calcTrip(t){
   const freight=Number(t.freight||0), weight=Number(t.weightTon||0), km=Number(t.totalKm||0), mileage=Number(t.mileage||0), fuelRate=Number(t.fuelRate||0);
@@ -68,6 +88,10 @@ function startLiveSync(){
   watch("vendors",rows=>state.vendors=rows.map(x=>({name:x.name||x.id,active:x.active!==false})).sort((a,b)=>a.name.localeCompare(b.name)));
   watch("locations",rows=>state.locations=rows.map(x=>({name:x.name||x.id,active:x.active!==false})).sort((a,b)=>a.name.localeCompare(b.name)));
   state.unsubs.push(onSnapshot(doc(db,"settings","fuelRate"),d=>{ if(d.exists()) state.fuelRate=Number(d.data().value||100); render(); }));
+  state.unsubs.push(onSnapshot(collection(db,"notifications"),snap=>{
+    state.notifications=snap.docs.map(d=>({id:d.id,...d.data()})).filter(visibleNotification).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0)).slice(0,50);
+    updateNotificationBadge();
+  },err=>console.warn("Notifications listener unavailable",err)));
 }
 
 function showApp(){
@@ -80,6 +104,44 @@ function showApp(){
   startLiveSync(); navigate("dashboard");
 }
 function showLogin(){ $("#appView").classList.add("hidden"); $("#loginView").classList.remove("hidden"); }
+async function enableBrowserPush(){
+  if(!("Notification" in window) || !("serviceWorker" in navigator)){ toast("Browser push is not supported here"); return; }
+  if(!(await messagingSupported())){ toast("Firebase browser messaging is not supported here"); return; }
+  const cfg=await getDoc(doc(db,"settings","webPush"));
+  const vapidKey=cfg.exists()?String(cfg.data().vapidKey||""):"";
+  if(!vapidKey){ toast("Web Push key is not configured in Firebase yet"); return; }
+  const permission=await Notification.requestPermission();
+  if(permission!=="granted"){ toast("Notification permission was not granted"); return; }
+  const sw=await navigator.serviceWorker.register("./firebase-messaging-sw.js");
+  const messaging=getMessaging(app);
+  const token=await getToken(messaging,{vapidKey,serviceWorkerRegistration:sw});
+  if(!token){ toast("Unable to register browser notifications"); return; }
+  await setDoc(doc(db,"deviceTokens",tokenDocId(token,"web")),{
+    uid:state.profile.uid,username:state.profile.username,platform:"web",token,active:true,updatedAt:Date.now()
+  },{merge:true});
+  onMessage(messaging,payload=>{
+    const title=payload.notification?.title||payload.data?.title||"CUBE Logistics";
+    const body=payload.notification?.body||payload.data?.body||"New update";
+    toast(title+": "+body);
+  });
+  toast("Browser push notifications enabled");
+}
+function openNotificationCenter(){
+  localStorage.setItem("cube_notifications_seen_at",String(Date.now()));
+  updateNotificationBadge();
+  const rows=state.notifications.slice(0,20);
+  const body=`
+    <div class="notification-center-actions">
+      <button id="enablePushBtn" class="primary" type="button">Enable Browser Push</button>
+    </div>
+    ${rows.length?`<div class="notification-list">${rows.map(n=>`<div class="notification-item">
+      <div class="notification-item-icon">🔔</div>
+      <div><strong>${esc(n.title||"CUBE Logistics")}</strong><p>${esc(n.body||"")}</p><small>${esc(dateTime(n.createdAt))}</small></div>
+    </div>`).join("")}</div>`:'<div class="empty">No notifications yet.</div>'}
+  `;
+  const m=modal("Notifications",body);
+  m.querySelector("#enablePushBtn")?.addEventListener("click",()=>enableBrowserPush().catch(e=>{console.error(e);toast("Unable to enable browser push");}));
+}
 
 $("#togglePassword").addEventListener("click",()=>{ const p=$("#loginPass"); p.type=p.type==="password"?"text":"password"; $("#togglePassword").setAttribute("aria-label", p.type==="password"?"Show password":"Hide password"); });
 $("#loginForm").addEventListener("submit",async e=>{
@@ -98,6 +160,7 @@ onAuthStateChanged(auth,async user=>{
   try{await loadProfile(user);showApp();}catch(e){await signOut(auth);$("#loginError").textContent=e.message;}
 });
 $("#logoutBtn").addEventListener("click",()=>signOut(auth));
+$("#notificationBtn")?.addEventListener("click",openNotificationCenter);
 $("#refreshBtn").addEventListener("click",()=>{setSync("Refreshing...");state.unsubs.forEach(f=>f());startLiveSync();toast("Live data refreshed");});
 $("#globalSearch")?.addEventListener("keydown",e=>{
   if(e.key==="Enter" && e.currentTarget.value.trim()){
