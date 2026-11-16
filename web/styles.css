@@ -2593,3 +2593,44 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   #loginView #loginError{position:static!important;margin-top:2px!important}
 }
 #loginView.hidden{display:none!important;visibility:hidden!important;pointer-events:none!important}
+
+
+/* v0.3.31 final mockup vertical alignment */
+@media (min-width:801px){
+  #loginView .login-card{
+    top:22.65vh!important;
+    width:34.2vw!important;
+    min-width:455px!important;
+    max-width:600px!important;
+    height:49.9vh!important;
+    min-height:345px!important;
+    max-height:448px!important;
+    padding:3.8vh 3.05vw 2.1vh!important;
+    box-shadow:
+      0 0 0 12px rgba(255,255,255,.985),
+      0 23px 50px rgba(20,58,113,.14),
+      0 9px 26px rgba(255,101,0,.13)!important;
+  }
+  #loginView .login-subtitle{
+    margin:.6vh 0 3.9vh!important;
+  }
+  #loginView #loginForm>label{
+    height:6.3vh!important;
+    min-height:46px!important;
+    max-height:56px!important;
+    margin:0 0 2vh!important;
+  }
+  #loginView .login-submit{
+    height:6.8vh!important;
+    min-height:50px!important;
+    max-height:62px!important;
+    margin:.7vh 0 0!important;
+  }
+  #loginView .login-options{
+    height:4.2vh!important;
+    min-height:31px!important;
+    max-height:39px!important;
+    margin:2.2vh 0 0!important;
+  }
+}
+#loginView.hidden{display:none!important;visibility:hidden!important;pointer-events:none!important}
