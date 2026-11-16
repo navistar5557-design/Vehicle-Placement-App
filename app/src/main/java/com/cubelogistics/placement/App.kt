@@ -1,8 +1,6 @@
 package com.cubelogistics.placement
 
 import android.app.DatePickerDialog
-import android.graphics.BitmapFactory
-import android.util.Base64
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.platform.LocalContext
@@ -27,9 +25,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -570,11 +568,6 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
     var errorMessage by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
 
-    val loginMaster = remember {
-        val bytes = Base64.decode(MOBILE_LOGIN_MASTER_BASE64, Base64.DEFAULT)
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size).asImageBitmap()
-    }
-
     fun performLogin() {
         val identity = user.trim()
         errorMessage = when {
@@ -622,7 +615,7 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
         val screenH = maxHeight
 
         Image(
-            bitmap = loginMaster,
+            painter = painterResource(R.drawable.cube_mobile_login_master_final),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.FillBounds
