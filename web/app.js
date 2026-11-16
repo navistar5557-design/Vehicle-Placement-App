@@ -68,19 +68,32 @@ async function createLiveNotification(title,body,tripId="",type="general"){
 }
 
 function handlingExpenses(t,freight,weight){
-  const loadRaw=Number(t.loadingExpensePerTon||0);
-  const unloadRaw=Number(t.unloadingExpensePerTon||0);
-  const rawTotal=loadRaw+unloadRaw;
+  const rawLoad=Number(t.loadingExpensePerTon||0);
+  const rawUnload=Number(t.unloadingExpensePerTon||0);
   const version=Number(t.expenseCalcVersion||0);
+  const freightPerTon=weight>0&&freight>0?freight/weight:0;
 
-  // Version 2+ records are explicitly stored as per-ton values.
-  if(version>=2 || weight<=1 || rawTotal<=0){
-    return {loading:loadRaw*weight,unloading:unloadRaw*weight,legacyTotalMode:false};
+  // Version 2+ records are explicitly stored as normal rupee-per-ton values.
+  if(version>=2 || weight<=1 || (rawLoad+rawUnload)<=0){
+    return {loading:rawLoad*weight,unloading:rawUnload*weight,legacyTotalMode:false,legacyDecimalCorrected:false};
   }
 
-  // Backward compatibility: older records sometimes stored the TOTAL
-  // loading/unloading amount in the newer per-ton fields. Multiplying those
-  // totals by vehicle weight created lakh-level false expenses.
+  // Some older Android records saved values such as 500.00 as 50000.
+  // Correct only clearly implausible per-ton values, and only for legacy data.
+  const normalizeLegacyPerTon=v=>{
+    if(v>=5000 && freightPerTon>0 && (v/100)<=freightPerTon) return v/100;
+    return v;
+  };
+  const load=normalizeLegacyPerTon(rawLoad);
+  const unload=normalizeLegacyPerTon(rawUnload);
+  const decimalCorrected=load!==rawLoad || unload!==rawUnload;
+  if(decimalCorrected){
+    return {loading:load*weight,unloading:unload*weight,legacyTotalMode:false,legacyDecimalCorrected:true};
+  }
+
+  // Separate compatibility for records where total handling was put in
+  // the newer per-ton fields.
+  const rawTotal=rawLoad+rawUnload;
   const multiplied=rawTotal*weight;
   const looksLikeLegacyTotal=
     rawTotal>=5000 &&
@@ -89,8 +102,8 @@ function handlingExpenses(t,freight,weight){
     multiplied>freight*1.25;
 
   return looksLikeLegacyTotal
-    ? {loading:loadRaw,unloading:unloadRaw,legacyTotalMode:true}
-    : {loading:loadRaw*weight,unloading:unloadRaw*weight,legacyTotalMode:false};
+    ? {loading:rawLoad,unloading:rawUnload,legacyTotalMode:true,legacyDecimalCorrected:false}
+    : {loading:rawLoad*weight,unloading:rawUnload*weight,legacyTotalMode:false,legacyDecimalCorrected:false};
 }
 
 function calcTrip(t){
@@ -111,7 +124,8 @@ function calcTrip(t){
     loadingExpense:handling.loading,
     unloadingExpense:handling.unloading,
     legacyLoadingUnloadingExpense:legacyLU,
-    legacyHandlingCorrected:handling.legacyTotalMode
+    legacyHandlingCorrected:handling.legacyTotalMode,
+    legacyDecimalCorrected:handling.legacyDecimalCorrected
   };
 }
 
@@ -571,7 +585,7 @@ function wireDashboard(){
       const freight=trips.reduce((s,t)=>s+Number(t.freight||0),0);
       const pct=freight?total/freight*100:0;
       const rows=[...trips].sort((a,b)=>Number(b.margin||0)-Number(a.margin||0)).slice(0,8);
-      modal("Margin Details", `<div class="mini-summary"><span>Total Vehicle Margin</span><strong>₹ ${money(total)} <small>(${pct.toFixed(1)}%)</small></strong></div><div class="mini-list">${rows.map(t=>`<div class="mini-row margin-breakdown-row"><div class="grow"><strong>${esc(t.vehicle||"-")}</strong><small>${esc(t.from||"-")} → ${esc(t.to||"-")}</small><small>Freight ₹ ${money(t.freight)} · Fuel ₹ ${money(t.fuelExpense)} · Loading ₹ ${money(t.loadingExpense)} · Unloading ₹ ${money(t.unloadingExpense)} · FASTag ₹ ${money(t.fastag)} · RTO/Tarpaulin ₹ ${money(t.rtoTarpaulin)} · Fixed ₹ ${money(t.fixedExpenses)} · Other ₹ ${money(t.percentageExpense)}${Number(t.legacyLoadingUnloadingExpense||0)?` · Legacy L/U ₹ ${money(t.legacyLoadingUnloadingExpense)}`:""}${t.legacyHandlingCorrected?" · Legacy total corrected":""}</small><small>Total Expenses ₹ ${money(t.totalExpenses)}</small></div><span>₹ ${money(t.margin)}</span></div>`).join("")}</div>`);
+      modal("Margin Details", `<div class="mini-summary"><span>Total Vehicle Margin</span><strong>₹ ${money(total)} <small>(${pct.toFixed(1)}%)</small></strong></div><div class="mini-list">${rows.map(t=>`<div class="mini-row margin-breakdown-row"><div class="grow"><strong>${esc(t.vehicle||"-")}</strong><small>${esc(t.from||"-")} → ${esc(t.to||"-")}</small><small>Freight ₹ ${money(t.freight)} · Fuel ₹ ${money(t.fuelExpense)} · Loading ₹ ${money(t.loadingExpense)} · Unloading ₹ ${money(t.unloadingExpense)} · FASTag ₹ ${money(t.fastag)} · RTO/Tarpaulin ₹ ${money(t.rtoTarpaulin)} · Fixed ₹ ${money(t.fixedExpenses)} · Other ₹ ${money(t.percentageExpense)}${Number(t.legacyLoadingUnloadingExpense||0)?` · Legacy L/U ₹ ${money(t.legacyLoadingUnloadingExpense)}`:""}${t.legacyHandlingCorrected?" · Legacy total corrected":""}${t.legacyDecimalCorrected?" · Decimal ×100 corrected":""}</small><small>Total Expenses ₹ ${money(t.totalExpenses)}</small></div><span>₹ ${money(t.margin)}</span></div>`).join("")}</div>`);
     }
   };
   document.querySelectorAll(".neo-kpi[data-kpi]").forEach(card=>{
