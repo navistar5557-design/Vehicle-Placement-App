@@ -1822,7 +1822,8 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   overflow:hidden!important;
   padding:0!important;
   display:block!important;
-  background-image:url("./login-master.svg")!important;
+  background-image:none!important;
+  background-color:#fff!important;
   background-size:100% 100%!important;
   background-position:center center!important;
   background-repeat:no-repeat!important;
