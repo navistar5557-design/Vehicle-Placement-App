@@ -1961,3 +1961,90 @@ body{animation:pearlDrift 22s ease-in-out infinite}
     background-position:center center!important;
   }
 }
+
+
+/* v0.3.20 web login control alignment fix */
+@media (min-width:801px){
+  /* Use the same full viewport coordinate system as the approved login master image. */
+  #loginView .login-card{
+    inset:0!important;
+    left:0!important;
+    top:0!important;
+    width:100%!important;
+    height:100%!important;
+  }
+  #loginView #loginForm{
+    position:absolute!important;
+    inset:0!important;
+    width:100%!important;
+    height:100%!important;
+  }
+
+  /* Exact control positions on the approved desktop master. */
+  #loginView #loginForm>label:nth-of-type(1){
+    left:36.40%!important;
+    top:45.70%!important;
+    width:26.35%!important;
+    height:5.95%!important;
+  }
+  #loginView #loginForm>label:nth-of-type(2){
+    left:36.40%!important;
+    top:53.70%!important;
+    width:26.35%!important;
+    height:5.95%!important;
+  }
+  #loginView .login-submit{
+    left:36.75%!important;
+    top:62.05%!important;
+    width:26.15%!important;
+    height:6.05%!important;
+  }
+  #loginView .login-options{
+    left:36.75%!important;
+    top:69.35%!important;
+    width:26.15%!important;
+    height:4.25%!important;
+  }
+  #loginView #loginError{
+    left:36.75%!important;
+    top:73.55%!important;
+    width:26.15%!important;
+  }
+
+  /* Keep the live controls visually clean over the master artwork. */
+  #loginView .login-input-wrap{
+    border-color:rgba(182,195,214,.90)!important;
+    border-radius:10px!important;
+    background:rgba(255,255,255,.985)!important;
+  }
+  #loginView .login-field-icon{
+    width:12.5%!important;
+    font-size:18px!important;
+  }
+  #loginView .login-input-wrap input{
+    padding-right:46px!important;
+    font-size:clamp(12px,.95vw,15px)!important;
+  }
+  #loginView .login-submit{
+    background:linear-gradient(100deg,#1458c8 0%,#073b7a 100%)!important;
+    color:#fff!important;
+    box-shadow:0 8px 18px rgba(7,59,122,.16)!important;
+  }
+  #loginView .login-submit *{visibility:visible!important}
+  #loginView .login-submit span{
+    margin-left:auto!important;
+    font-weight:850!important;
+  }
+  #loginView .login-submit b{
+    margin-left:auto!important;
+    font-size:24px!important;
+  }
+  #loginView .remember{
+    color:#172744!important;
+  }
+  #loginView .forgot-password-web{
+    color:#ff5c00!important;
+    width:auto!important;
+    height:auto!important;
+  }
+}
