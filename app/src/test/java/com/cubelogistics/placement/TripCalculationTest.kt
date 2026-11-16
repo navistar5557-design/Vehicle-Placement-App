@@ -41,16 +41,24 @@ class TripCalculationTest {
  @Test fun loadingExpensePerTon() = assertEquals(1000.0, trip(loadingPerTon = 100.0).loadingExpense, 0.01)
  @Test fun unloadingExpensePerTon() = assertEquals(500.0, trip(unloadingPerTon = 50.0).unloadingExpense, 0.01)
  @Test fun perTonExpensesReduceMargin() = assertEquals(72400.0, trip(loadingPerTon = 100.0, unloadingPerTon = 50.0).margin, 0.01)
+ @Test fun legacyDecimalPerTonValuesAreDividedBy100() {
+  val t = trip(freight = 64500.0, loadingPerTon = 50000.0, unloadingPerTon = 25000.0)
+  assertEquals(5000.0, t.loadingExpense, 0.01)
+  assertEquals(2500.0, t.unloadingExpense, 0.01)
+  assertEquals(true, t.legacyDecimalCorrected)
+  assertEquals(false, t.legacyHandlingCorrected)
+ }
  @Test fun legacyTotalHandlingIsNotMultipliedAgain() {
-  val t = trip(freight = 64500.0, loadingPerTon = 20000.0, unloadingPerTon = 15000.0)
-  assertEquals(20000.0, t.loadingExpense, 0.01)
-  assertEquals(15000.0, t.unloadingExpense, 0.01)
+  val t = trip(freight = 64500.0, loadingPerTon = 4500.0, unloadingPerTon = 4000.0)
+  assertEquals(4500.0, t.loadingExpense, 0.01)
+  assertEquals(4000.0, t.unloadingExpense, 0.01)
   assertEquals(true, t.legacyHandlingCorrected)
  }
  @Test fun version2AlwaysUsesPerTonHandling() {
-  val t = trip(freight = 64500.0, loadingPerTon = 20000.0, unloadingPerTon = 15000.0, expenseCalcVersion = 2)
-  assertEquals(200000.0, t.loadingExpense, 0.01)
-  assertEquals(150000.0, t.unloadingExpense, 0.01)
+  val t = trip(freight = 64500.0, loadingPerTon = 500.0, unloadingPerTon = 250.0, expenseCalcVersion = 2)
+  assertEquals(5000.0, t.loadingExpense, 0.01)
+  assertEquals(2500.0, t.unloadingExpense, 0.01)
+  assertEquals(false, t.legacyDecimalCorrected)
   assertEquals(false, t.legacyHandlingCorrected)
  }
  @Test fun zeroKmSafe() = assertEquals(0.0, trip(km = 0.0).perKmFreight, 0.01)
