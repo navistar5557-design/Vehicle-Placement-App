@@ -1865,3 +1865,59 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   }
 }
 
+
+
+/* v0.3.35 deploy approved generated login design */
+@media(min-width:801px){
+  #loginView .login-card{
+    top:22.75%!important;
+    width:31.7%!important;
+    height:49.2%!important;
+    padding:4.35vh 3.05vw 2.25vh!important;
+    border-radius:29px!important;
+    border:1.4px solid rgba(255,101,0,.58)!important;
+    background:#fff!important;
+    box-shadow:
+      0 20px 42px rgba(18,55,108,.13),
+      0 9px 23px rgba(255,101,0,.11)!important;
+  }
+
+  #loginView .login-card h1{
+    font-size:clamp(26px,2.1vw,33px)!important;
+    line-height:1.04!important;
+  }
+
+  #loginView .login-subtitle{
+    margin:.7vh 0 3.0vh!important;
+    font-size:clamp(12px,1vw,16px)!important;
+  }
+
+  #loginView #loginForm>label{
+    height:6.15vh!important;
+    margin-bottom:2.25vh!important;
+  }
+
+  #loginView .login-input-wrap{
+    border-radius:12px!important;
+  }
+
+  #loginView .login-submit{
+    height:6.65vh!important;
+    margin-top:.35vh!important;
+    border-radius:13px!important;
+    background:linear-gradient(100deg,#1482f2 0%,#075dce 48%,#073b86 100%)!important;
+    box-shadow:
+      0 12px 24px rgba(6,66,151,.25),
+      inset 0 1px 0 rgba(255,255,255,.22)!important;
+  }
+
+  #loginView .login-options{
+    margin-top:2.35vh!important;
+  }
+}
+
+#loginView.hidden{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
