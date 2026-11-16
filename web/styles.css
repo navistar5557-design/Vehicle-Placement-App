@@ -1819,3 +1819,25 @@ body{animation:pearlDrift 22s ease-in-out infinite}
 body:has(#loginView:not(.hidden)){
   overflow:hidden!important;
 }
+
+
+/* v0.3.25 desktop reference positioning */
+@media (min-width:801px){
+  #loginView .login-card{
+    top:clamp(205px,31vh,235px)!important;
+    height:318px!important;
+    min-height:318px!important;
+    max-height:318px!important;
+  }
+  #loginView.login-page::after{
+    top:clamp(205px,31vh,235px)!important;
+    height:322px!important;
+  }
+}
+
+/* This rule is intentionally last: hidden authentication state must win. */
+#loginView.hidden{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
