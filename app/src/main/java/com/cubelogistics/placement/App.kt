@@ -582,38 +582,23 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
                 .addOnSuccessListener {
                     loading = false
                     if (rememberMe) {
-                        loginPrefs.edit()
-                            .putString("saved_username", identity)
-                            .putBoolean("remember_username", true)
-                            .apply()
+                        loginPrefs.edit().putString("saved_username", identity).putBoolean("remember_username", true).apply()
                     } else {
-                        loginPrefs.edit()
-                            .remove("saved_username")
-                            .putBoolean("remember_username", false)
-                            .apply()
+                        loginPrefs.edit().remove("saved_username").putBoolean("remember_username", false).apply()
                     }
                     onLoginSuccess(rememberMe)
                 }
                 .addOnFailureListener {
                     loading = false
-                    errorMessage = when {
+                    errorMessage = if (
                         it.message?.contains("password", ignoreCase = true) == true ||
-                            it.message?.contains("credential", ignoreCase = true) == true ->
-                            "Invalid email or password."
-                        else -> it.localizedMessage ?: "Login failed. Please try again."
-                    }
+                        it.message?.contains("credential", ignoreCase = true) == true
+                    ) "Invalid email or password." else it.localizedMessage ?: "Login failed. Please try again."
                 }
         }
     }
 
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-    ) {
-        val screenW = maxWidth
-        val screenH = maxHeight
-
+    BoxWithConstraints(Modifier.fillMaxSize().background(Color.White)) {
         Image(
             painter = painterResource(R.drawable.cube_mobile_login_master_hq),
             contentDescription = null,
@@ -621,161 +606,141 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
             contentScale = ContentScale.FillBounds
         )
 
-        OutlinedTextField(
-            value = user,
-            onValueChange = { user = it },
-            placeholder = { Text("Username", fontSize = 14.sp, color = Color(0xFF65728A)) },
-            leadingIcon = {
-                Icon(
-                    Icons.Default.PersonOutline,
-                    contentDescription = null,
-                    tint = Color(0xFF45556E),
-                    modifier = Modifier.size(21.dp)
-                )
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(10.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFFB6C3D6),
-                unfocusedBorderColor = Color(0xFFB6C3D6),
-                cursorColor = CubeBlue,
-                focusedContainerColor = Color.White.copy(alpha = .98f),
-                unfocusedContainerColor = Color.White.copy(alpha = .98f)
-            ),
+        Surface(
             modifier = Modifier
-                .offset(x = screenW * .163f, y = screenH * .529f)
-                .width(screenW * .674f)
-                .height(screenH * .047f)
-        )
-
-        OutlinedTextField(
-            value = pass,
-            onValueChange = { pass = it },
-            placeholder = { Text("Password", fontSize = 14.sp, color = Color(0xFF65728A)) },
-            leadingIcon = {
-                Icon(
-                    Icons.Default.Lock,
-                    contentDescription = null,
-                    tint = Color(0xFF45556E),
-                    modifier = Modifier.size(20.dp)
-                )
-            },
-            trailingIcon = {
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(
-                        if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                        tint = Color(0xFF45556E),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            },
-            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            singleLine = true,
-            shape = RoundedCornerShape(10.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFFB6C3D6),
-                unfocusedBorderColor = Color(0xFFB6C3D6),
-                cursorColor = CubeBlue,
-                focusedContainerColor = Color.White.copy(alpha = .98f),
-                unfocusedContainerColor = Color.White.copy(alpha = .98f)
-            ),
-            modifier = Modifier
-                .offset(x = screenW * .163f, y = screenH * .592f)
-                .width(screenW * .674f)
-                .height(screenH * .047f)
-        )
-
-        Box(
-            modifier = Modifier
-                .offset(x = screenW * .163f, y = screenH * .655f)
-                .width(screenW * .674f)
-                .height(screenH * .048f)
-                .clip(RoundedCornerShape(10.dp))
-                .clickable(enabled = !loading) { performLogin() },
-            contentAlignment = Alignment.Center
+                .align(Alignment.Center)
+                .fillMaxWidth(.82f)
+                .offset(y = maxHeight * .035f),
+            shape = RoundedCornerShape(26.dp),
+            color = Color.White.copy(alpha = .99f),
+            shadowElevation = 10.dp
         ) {
-            if (loading) {
-                Box(
-                    Modifier
-                        .matchParentSize()
-                        .background(Color(0xFF0B4C9E).copy(alpha = .92f)),
-                    contentAlignment = Alignment.Center
+            Column(
+                Modifier.padding(horizontal = 22.dp, vertical = 22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Sign In", color = Color(0xFF294F8E), fontSize = 27.sp, fontWeight = FontWeight.Black)
+                Spacer(Modifier.height(4.dp))
+                Text("Access your logistics operations", color = Color(0xFF66738B), fontSize = 12.sp)
+                Spacer(Modifier.height(18.dp))
+
+                OutlinedTextField(
+                    value = user,
+                    onValueChange = { user = it },
+                    placeholder = { Text("Username", fontSize = 14.sp, color = Color(0xFF65728A)) },
+                    leadingIcon = { Icon(Icons.Default.PersonOutline, null, tint = Color(0xFF45556E), modifier = Modifier.size(21.dp)) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFFB6C3D6),
+                        unfocusedBorderColor = Color(0xFFB6C3D6),
+                        cursorColor = CubeBlue,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    ),
+                    modifier = Modifier.fillMaxWidth().height(54.dp)
+                )
+
+                Spacer(Modifier.height(11.dp))
+
+                OutlinedTextField(
+                    value = pass,
+                    onValueChange = { pass = it },
+                    placeholder = { Text("Password", fontSize = 14.sp, color = Color(0xFF65728A)) },
+                    leadingIcon = { Icon(Icons.Default.Lock, null, tint = Color(0xFF45556E), modifier = Modifier.size(20.dp)) },
+                    trailingIcon = {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(
+                                if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                if (passwordVisible) "Hide password" else "Show password",
+                                tint = Color(0xFF45556E),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    },
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFFB6C3D6),
+                        unfocusedBorderColor = Color(0xFFB6C3D6),
+                        cursorColor = CubeBlue,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    ),
+                    modifier = Modifier.fillMaxWidth().height(54.dp)
+                )
+
+                Spacer(Modifier.height(14.dp))
+
+                Button(
+                    onClick = { performLogin() },
+                    enabled = !loading,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = CubeBlue2, contentColor = Color.White)
                 ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(21.dp),
-                        strokeWidth = 2.dp,
-                        color = Color.White
-                    )
-                }
-            }
-        }
-
-        Row(
-            modifier = Modifier
-                .offset(x = screenW * .158f, y = screenH * .711f)
-                .width(screenW * .69f)
-                .height(screenH * .047f),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = rememberMe,
-                onCheckedChange = { rememberMe = it },
-                colors = CheckboxDefaults.colors(
-                    checkedColor = CubeOrange,
-                    uncheckedColor = Color(0xFF65728A),
-                    checkmarkColor = Color.White
-                ),
-                modifier = Modifier.size(30.dp)
-            )
-            Text(
-                "Remember me",
-                color = Color(0xFF20314F),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(Modifier.weight(1f))
-            Text(
-                "Forgot Password?",
-                color = CubeOrange,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.clickable {
-                    val identity = user.trim()
-                    if (identity.isBlank()) {
-                        errorMessage = "Enter your User ID first."
-                    } else if (!identity.contains("@")) {
-                        errorMessage = "For username accounts, please contact Admin to change the password."
+                    if (loading) {
+                        CircularProgressIndicator(Modifier.size(21.dp), strokeWidth = 2.dp, color = Color.White)
                     } else {
-                        loading = true
-                        auth.sendPasswordResetEmail(identity)
-                            .addOnSuccessListener {
-                                loading = false
-                                errorMessage = "Password reset email sent."
-                            }
-                            .addOnFailureListener {
-                                loading = false
-                                errorMessage = it.localizedMessage ?: "Unable to send password reset email."
-                            }
+                        Box(Modifier.fillMaxWidth()) {
+                            Text("Login", modifier = Modifier.align(Alignment.Center), fontWeight = FontWeight.Black)
+                            Icon(Icons.Default.ArrowForward, null, modifier = Modifier.align(Alignment.CenterEnd))
+                        }
                     }
                 }
-            )
-        }
 
-        if (errorMessage.isNotBlank()) {
-            Surface(
-                color = Color.White.copy(alpha = .94f),
-                shape = RoundedCornerShape(6.dp),
-                modifier = Modifier
-                    .offset(x = screenW * .16f, y = screenH * .755f)
-                    .width(screenW * .68f)
-            ) {
-                Text(
-                    errorMessage,
-                    color = if (errorMessage == "Password reset email sent.") CubeGreen else MaterialTheme.colorScheme.error,
-                    fontSize = 10.sp,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = rememberMe,
+                        onCheckedChange = { rememberMe = it },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = CubeOrange,
+                            uncheckedColor = Color(0xFF65728A),
+                            checkmarkColor = Color.White
+                        ),
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Text("Remember me", color = Color(0xFF20314F), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        "Forgot Password?",
+                        color = CubeOrange,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable {
+                            val identity = user.trim()
+                            if (identity.isBlank()) {
+                                errorMessage = "Enter your User ID first."
+                            } else if (!identity.contains("@")) {
+                                errorMessage = "For username accounts, please contact Admin to change the password."
+                            } else {
+                                loading = true
+                                auth.sendPasswordResetEmail(identity)
+                                    .addOnSuccessListener {
+                                        loading = false
+                                        errorMessage = "Password reset email sent."
+                                    }
+                                    .addOnFailureListener {
+                                        loading = false
+                                        errorMessage = it.localizedMessage ?: "Unable to send password reset email."
+                                    }
+                            }
+                        }
+                    )
+                }
+
+                if (errorMessage.isNotBlank()) {
+                    Text(
+                        errorMessage,
+                        color = if (errorMessage == "Password reset email sent.") CubeGreen else MaterialTheme.colorScheme.error,
+                        fontSize = 10.sp,
+                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
+                    )
+                }
             }
         }
     }
