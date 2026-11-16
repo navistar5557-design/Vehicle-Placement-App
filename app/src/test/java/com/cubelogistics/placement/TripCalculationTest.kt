@@ -13,7 +13,8 @@ class TripCalculationTest {
   fuelRate: Double = 100.0,
   loadingPerTon: Double = 0.0,
   unloadingPerTon: Double = 0.0,
-  rules: List<ExpenseRule> = listOf(ExpenseRule("Commission", 2.0))
+  rules: List<ExpenseRule> = listOf(ExpenseRule("Commission", 2.0)),
+  expenseCalcVersion: Int = 0
  ) = Trip(
   id = "1", createdAt = 0, vendor = "Vendor", vehicle = "TN01AA0001",
   currentLocation = "Erode", from = "Erode", to = "Chennai",
@@ -23,7 +24,8 @@ class TripCalculationTest {
   fastag = 2000.0, rtoTarpaulin = 500.0, loadingUnloading = 500.0,
   expenseRules = rules,
   loadingExpensePerTon = loadingPerTon,
-  unloadingExpensePerTon = unloadingPerTon
+  unloadingExpensePerTon = unloadingPerTon,
+  expenseCalcVersion = expenseCalcVersion
  )
 
  @Test fun bookingType90Percent() = assertEquals("90% Advance", trip().bookingType)
@@ -39,6 +41,18 @@ class TripCalculationTest {
  @Test fun loadingExpensePerTon() = assertEquals(1000.0, trip(loadingPerTon = 100.0).loadingExpense, 0.01)
  @Test fun unloadingExpensePerTon() = assertEquals(500.0, trip(unloadingPerTon = 50.0).unloadingExpense, 0.01)
  @Test fun perTonExpensesReduceMargin() = assertEquals(72400.0, trip(loadingPerTon = 100.0, unloadingPerTon = 50.0).margin, 0.01)
+ @Test fun legacyTotalHandlingIsNotMultipliedAgain() {
+  val t = trip(freight = 64500.0, loadingPerTon = 20000.0, unloadingPerTon = 15000.0)
+  assertEquals(20000.0, t.loadingExpense, 0.01)
+  assertEquals(15000.0, t.unloadingExpense, 0.01)
+  assertEquals(true, t.legacyHandlingCorrected)
+ }
+ @Test fun version2AlwaysUsesPerTonHandling() {
+  val t = trip(freight = 64500.0, loadingPerTon = 20000.0, unloadingPerTon = 15000.0, expenseCalcVersion = 2)
+  assertEquals(200000.0, t.loadingExpense, 0.01)
+  assertEquals(150000.0, t.unloadingExpense, 0.01)
+  assertEquals(false, t.legacyHandlingCorrected)
+ }
  @Test fun zeroKmSafe() = assertEquals(0.0, trip(km = 0.0).perKmFreight, 0.01)
  @Test fun zeroMileageSafe() = assertEquals(0.0, trip(mileage = 0.0).fuelExpense, 0.01)
 }
