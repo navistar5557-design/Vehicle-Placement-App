@@ -1921,3 +1921,28 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   visibility:hidden!important;
   pointer-events:none!important;
 }
+
+
+/* v0.3.36 hide browser chrome baked into login background */
+@media(min-width:801px){
+  #loginView.login-page::before{
+    content:""!important;
+    display:block!important;
+    position:absolute!important;
+    left:0!important;
+    right:0!important;
+    top:0!important;
+    width:100%!important;
+    height:10.8%!important;
+    z-index:7!important;
+    pointer-events:none!important;
+    background:
+      radial-gradient(circle at 50% 115%,rgba(223,233,248,.22),transparent 48%),
+      linear-gradient(180deg,#f8faff 0%,#fafcff 100%)!important;
+  }
+}
+#loginView.hidden{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
