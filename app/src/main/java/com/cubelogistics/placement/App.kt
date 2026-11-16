@@ -615,7 +615,7 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
         val screenH = maxHeight
 
         Image(
-            painter = painterResource(R.drawable.cube_mobile_login_master_final),
+            painter = painterResource(R.drawable.cube_mobile_login_master_hq),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.FillBounds
