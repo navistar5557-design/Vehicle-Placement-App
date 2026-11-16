@@ -1501,7 +1501,7 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   line-height:1.4;
 }
 
-/* v0.3.34 FINAL WEB LOGIN — matched to approved reference */
+/* v0.3.41 WORLD-CLASS WEB LOGIN — rebuilt from attached reference */
 #loginView.hidden{
   display:none!important;
   visibility:hidden!important;
@@ -1519,73 +1519,206 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   margin:0!important;
   padding:0!important;
   overflow:hidden!important;
-  background:#f8fbff url("./login-master-hq-v0319.png?v=0334") center center / 100% 100% no-repeat!important;
+  isolation:isolate!important;
+
+  /* Keep only the photographic logistics scene from the previous master. */
+  background:
+    linear-gradient(180deg,rgba(242,247,255,.02),rgba(255,255,255,.08)),
+    url("./login-master-hq-v0319.png?v=0341") center center / 100% 100% no-repeat!important;
+  background-color:#f7faff!important;
 }
 
-/* Background image already contains the CUBE logo, portal title, truck,
-   warehouse, slogan and footer waves. Do not draw any duplicate layers. */
-#loginView .login-brand-area,
-#loginView .login-scene,
-#loginView .cube-statement,
-#loginView .login-wave,
-#loginView .version{
-  display:none!important;
+/* Remove the browser strip baked into the old master. */
+#loginView.login-page::before{
+  content:""!important;
+  position:absolute!important;
+  inset:0 0 auto 0!important;
+  height:10.6%!important;
+  z-index:2!important;
+  pointer-events:none!important;
+  background:
+    radial-gradient(circle at 50% 110%,rgba(216,229,248,.25),transparent 52%),
+    linear-gradient(180deg,#f7f9fe 0%,#fafcff 100%)!important;
 }
 
-/* One functional HTML login card positioned exactly over the card in the reference. */
+/* Subtle world-class light treatment without affecting live controls. */
+#loginView.login-page::after{
+  content:""!important;
+  position:absolute!important;
+  inset:10.6% 0 0!important;
+  z-index:2!important;
+  pointer-events:none!important;
+  background:
+    radial-gradient(circle at 27% 43%,rgba(255,177,92,.09),transparent 24%),
+    radial-gradient(circle at 78% 43%,rgba(92,157,230,.07),transparent 31%)!important;
+  mix-blend-mode:soft-light!important;
+}
+
+/* ===== LIVE CUBE HEADER ===== */
+#loginView .login-brand-area{
+  display:block!important;
+  position:absolute!important;
+  left:50%!important;
+  top:16px!important;
+  transform:translateX(-50%)!important;
+  width:min(760px,92vw)!important;
+  height:175px!important;
+  z-index:8!important;
+  text-align:center!important;
+}
+
+/* Hide the old baked logo + title under the live header. */
+#loginView .login-brand-area::before{
+  content:""!important;
+  position:absolute!important;
+  z-index:-1!important;
+  left:50%!important;
+  top:-16px!important;
+  transform:translateX(-50%)!important;
+  width:min(820px,96vw)!important;
+  height:205px!important;
+  border-radius:0 0 46% 46% / 0 0 22% 22%!important;
+  background:
+    radial-gradient(circle at 50% 92%,rgba(225,235,250,.16),transparent 58%),
+    linear-gradient(180deg,#f8faff 0%,rgba(250,252,255,.985) 72%,rgba(250,252,255,.90) 100%)!important;
+  pointer-events:none!important;
+}
+
+#loginView .login-brand{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:10px!important;
+  margin:0!important;
+}
+
+#loginView .login-brand .wordmark strong{
+  display:block!important;
+  color:#07439b!important;
+  font-family:Arial Black,Arial,Helvetica,sans-serif!important;
+  font-size:clamp(46px,4.25vw,68px)!important;
+  line-height:.80!important;
+  letter-spacing:-4px!important;
+  font-style:italic!important;
+  font-weight:900!important;
+  text-shadow:0 2px 2px rgba(6,61,145,.08)!important;
+}
+
+#loginView .login-brand .wordmark span{
+  display:block!important;
+  margin-top:10px!important;
+  color:#ff5b0a!important;
+  font-family:Arial Black,Arial,Helvetica,sans-serif!important;
+  font-size:clamp(17px,1.55vw,24px)!important;
+  line-height:1!important;
+  letter-spacing:1.6px!important;
+  font-style:italic!important;
+  font-weight:900!important;
+}
+
+#loginView .login-brand img{
+  display:block!important;
+  width:clamp(54px,5vw,76px)!important;
+  height:clamp(54px,5vw,76px)!important;
+  filter:drop-shadow(0 3px 3px rgba(6,61,145,.08))!important;
+}
+
+#loginView .login-portal-title{
+  position:relative!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin-top:17px!important;
+  padding:0 108px!important;
+  color:#0d3d95!important;
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-size:clamp(12px,1.08vw,17px)!important;
+  line-height:20px!important;
+  letter-spacing:clamp(5px,.48vw,8px)!important;
+  font-weight:800!important;
+  white-space:nowrap!important;
+}
+
+#loginView .login-portal-title::before,
+#loginView .login-portal-title::after{
+  content:""!important;
+  position:absolute!important;
+  top:50%!important;
+  width:82px!important;
+  height:2px!important;
+  background:linear-gradient(90deg,transparent 0%,#ff6500 100%)!important;
+}
+
+#loginView .login-portal-title::before{left:8px!important}
+#loginView .login-portal-title::after{
+  right:8px!important;
+  transform:scaleX(-1)!important;
+}
+
+/* The photographic truck/warehouse scene is already in the background. */
+#loginView .login-scene{display:none!important}
+
+/* ===== PREMIUM LIVE SIGN-IN CARD ===== */
 #loginView .login-card{
   position:absolute!important;
   left:50%!important;
-  top:23.63%!important;
+  top:22.8%!important;
   transform:translateX(-50%)!important;
   z-index:10!important;
 
-  width:31.76%!important;
-  height:50.14%!important;
-  min-width:0!important;
-  min-height:0!important;
-  max-width:none!important;
-  max-height:none!important;
+  width:35.2%!important;
+  height:49.8%!important;
+  min-width:500px!important;
+  max-width:640px!important;
+  min-height:390px!important;
+  max-height:470px!important;
 
   margin:0!important;
-  padding:4.1vh 3.05vw 2.2vh!important;
+  padding:3.8vh 3.05vw 2.4vh!important;
   box-sizing:border-box!important;
   overflow:hidden!important;
 
-  background:#fff!important;
-  border:1.35px solid rgba(255,101,0,.58)!important;
-  border-radius:27px!important;
+  background:rgba(255,255,255,.985)!important;
+  border:1.5px solid rgba(255,101,0,.56)!important;
+  border-radius:30px!important;
   box-shadow:
-    0 18px 38px rgba(18,55,108,.13),
-    0 7px 20px rgba(255,101,0,.10)!important;
-  backdrop-filter:none!important;
-  animation:none!important;
+    0 24px 52px rgba(15,53,111,.14),
+    0 10px 28px rgba(255,101,0,.14)!important;
+  backdrop-filter:blur(8px)!important;
+  animation:cubeLoginCardIn .52s cubic-bezier(.2,.8,.2,1) both!important;
+}
+
+@keyframes cubeLoginCardIn{
+  from{opacity:0;transform:translate(-50%,14px) scale(.985)}
+  to{opacity:1;transform:translate(-50%,0) scale(1)}
 }
 
 #loginView .login-card h1{
   display:block!important;
   margin:0!important;
   padding:0!important;
-  color:#0c4192!important;
+  color:#0a4198!important;
   text-align:center!important;
   font-family:Arial Black,Arial,Helvetica,sans-serif!important;
-  font-size:clamp(24px,2.05vw,31px)!important;
+  font-size:clamp(30px,2.35vw,39px)!important;
   line-height:1.05!important;
-  letter-spacing:-.8px!important;
+  letter-spacing:-1.1px!important;
   font-weight:900!important;
 }
 
 #loginView .login-subtitle{
   display:block!important;
-  margin:.55vh 0 2.75vh!important;
+  margin:.9vh 0 3.0vh!important;
   padding:0!important;
-  color:#4d5d75!important;
+  color:#4b5b73!important;
   text-align:center!important;
   font-family:Arial,Helvetica,sans-serif!important;
-  font-size:clamp(12px,1.03vw,16px)!important;
+  font-size:clamp(15px,1.25vw,20px)!important;
   line-height:1.2!important;
   font-weight:400!important;
 }
+
+#loginView .version{display:none!important}
 
 #loginView #loginForm{
   position:static!important;
@@ -1601,10 +1734,10 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   inset:auto!important;
   display:block!important;
   width:100%!important;
-  height:6.15vh!important;
-  min-height:0!important;
-  max-height:none!important;
-  margin:0 0 2.15vh!important;
+  height:6.35vh!important;
+  min-height:52px!important;
+  max-height:62px!important;
+  margin:0 0 2.05vh!important;
 }
 
 #loginView .login-input-wrap{
@@ -1613,36 +1746,40 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   align-items:center!important;
   width:100%!important;
   height:100%!important;
-  min-height:0!important;
-  max-height:none!important;
+  min-height:52px!important;
   margin:0!important;
-  border:1.2px solid #b7c3d4!important;
-  border-radius:11px!important;
-  background:#fff!important;
-  box-shadow:none!important;
+  overflow:hidden!important;
+  border:1.45px solid #b6c2d3!important;
+  border-radius:14px!important;
+  background:rgba(255,255,255,.98)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8)!important;
   transform:none!important;
-  transition:border-color .18s ease,box-shadow .18s ease!important;
+  transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease!important;
 }
 
 #loginView .login-input-wrap:focus-within{
-  border-color:#88a8d5!important;
-  box-shadow:0 0 0 3px rgba(10,75,162,.07)!important;
+  border-color:#6c9bd7!important;
+  box-shadow:
+    0 0 0 4px rgba(10,79,171,.08),
+    0 6px 18px rgba(21,66,128,.06)!important;
+  transform:translateY(-1px)!important;
 }
 
 #loginView .login-field-icon{
   display:flex!important;
   align-items:center!important;
   justify-content:center!important;
-  width:3.1vw!important;
-  min-width:38px!important;
+  width:3.5vw!important;
+  min-width:50px!important;
+  max-width:64px!important;
   height:100%!important;
-  flex:0 0 3.1vw!important;
-  color:#3e506b!important;
+  flex:0 0 auto!important;
+  color:#334b69!important;
 }
 
 #loginView .login-field-icon svg{
-  width:20px!important;
-  height:20px!important;
+  width:24px!important;
+  height:24px!important;
   fill:none!important;
   stroke:currentColor!important;
   stroke-width:1.8!important;
@@ -1653,42 +1790,48 @@ body{animation:pearlDrift 22s ease-in-out infinite}
 #loginView .login-input-wrap input{
   width:100%!important;
   height:100%!important;
-  min-height:0!important;
-  max-height:none!important;
+  min-height:50px!important;
   margin:0!important;
-  padding:0 3.15vw 0 0!important;
+  padding:0 3.3vw 0 0!important;
   border:0!important;
-  outline:0!important;
-  border-radius:10px!important;
+  border-radius:13px!important;
   background:transparent!important;
+  outline:0!important;
   box-shadow:none!important;
-  color:#35445e!important;
+  color:#33445e!important;
   font-family:Arial,Helvetica,sans-serif!important;
-  font-size:clamp(14px,1.08vw,17px)!important;
+  font-size:clamp(16px,1.35vw,21px)!important;
+  line-height:1!important;
   font-weight:400!important;
 }
 
 #loginView .login-input-wrap input::placeholder{
-  color:#65738a!important;
+  color:#63718a!important;
   opacity:1!important;
 }
 
 #loginView .password-wrap .icon-btn{
   position:absolute!important;
-  right:.55vw!important;
+  right:.65vw!important;
   top:50%!important;
   transform:translateY(-50%)!important;
-  width:38px!important;
-  height:38px!important;
-  padding:8px!important;
+  width:44px!important;
+  height:44px!important;
+  padding:9px!important;
   border:0!important;
   background:transparent!important;
-  color:#465a75!important;
+  color:#415875!important;
+  transition:transform .18s ease,color .18s ease!important;
+}
+
+#loginView .password-wrap .icon-btn:hover{
+  color:#0b4fa6!important;
+  transform:translateY(-50%) scale(1.06)!important;
 }
 
 #loginView .password-wrap .icon-btn svg{
-  width:20px!important;
-  height:20px!important;
+  width:22px!important;
+  height:22px!important;
   fill:none!important;
   stroke:currentColor!important;
   stroke-width:1.8!important;
@@ -1701,34 +1844,58 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   align-items:center!important;
   justify-content:center!important;
   width:100%!important;
-  height:6.45vh!important;
-  min-height:0!important;
-  max-height:none!important;
-  margin:.15vh 0 0!important;
-  padding:0 1.2vw!important;
+  height:7.05vh!important;
+  min-height:56px!important;
+  max-height:66px!important;
+  margin:.3vh 0 0!important;
+  padding:0 1.4vw!important;
+  overflow:hidden!important;
   border:0!important;
-  border-radius:12px!important;
-  background:linear-gradient(100deg,#087ff0 0%,#0759c9 50%,#063b86 100%)!important;
+  border-radius:15px!important;
+  background:linear-gradient(100deg,#0789f7 0%,#075ecf 48%,#063b87 100%)!important;
   color:#fff!important;
   box-shadow:
-    0 10px 22px rgba(6,66,151,.24),
-    inset 0 1px 0 rgba(255,255,255,.2)!important;
+    0 14px 28px rgba(6,70,161,.26),
+    inset 0 1px 0 rgba(255,255,255,.24)!important;
   font-family:Arial,Helvetica,sans-serif!important;
-  font-size:clamp(15px,1.2vw,19px)!important;
+  font-size:clamp(18px,1.45vw,23px)!important;
   cursor:pointer!important;
-  animation:none!important;
+  transition:transform .18s ease,box-shadow .18s ease,filter .18s ease!important;
 }
 
+#loginView .login-submit::before{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  transform:translateX(-115%)!important;
+  background:linear-gradient(110deg,transparent 25%,rgba(255,255,255,.18) 50%,transparent 75%)!important;
+  transition:transform .55s ease!important;
+}
+
+#loginView .login-submit:hover{
+  transform:translateY(-2px)!important;
+  filter:saturate(1.05)!important;
+  box-shadow:
+    0 18px 34px rgba(6,70,161,.31),
+    inset 0 1px 0 rgba(255,255,255,.28)!important;
+}
+
+#loginView .login-submit:hover::before{transform:translateX(115%)!important}
+
 #loginView .login-submit span{
+  position:relative!important;
+  z-index:1!important;
   margin-left:auto!important;
   font-family:Arial Black,Arial,Helvetica,sans-serif!important;
   font-weight:900!important;
 }
 
 #loginView .login-submit b{
+  position:relative!important;
+  z-index:1!important;
   margin-left:auto!important;
   margin-right:.1vw!important;
-  font-size:clamp(24px,1.85vw,30px)!important;
+  font-size:clamp(29px,2.1vw,37px)!important;
   line-height:1!important;
   font-weight:400!important;
 }
@@ -1740,20 +1907,20 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   align-items:center!important;
   justify-content:space-between!important;
   width:100%!important;
-  height:3.9vh!important;
-  min-height:0!important;
-  max-height:none!important;
-  margin:2.2vh 0 0!important;
+  height:4.45vh!important;
+  min-height:34px!important;
+  max-height:42px!important;
+  margin:2.25vh 0 0!important;
 }
 
 #loginView .remember{
   display:flex!important;
   align-items:center!important;
-  gap:.6vw!important;
+  gap:.65vw!important;
   margin:0!important;
   color:#33425b!important;
   font-family:Arial,Helvetica,sans-serif!important;
-  font-size:clamp(11px,.9vw,14px)!important;
+  font-size:clamp(13px,1vw,16px)!important;
   line-height:1!important;
   font-weight:500!important;
   white-space:nowrap!important;
@@ -1761,8 +1928,8 @@ body{animation:pearlDrift 22s ease-in-out infinite}
 }
 
 #loginView .remember input{
-  width:18px!important;
-  height:18px!important;
+  width:clamp(20px,1.45vw,24px)!important;
+  height:clamp(20px,1.45vw,24px)!important;
   margin:0!important;
   padding:0!important;
   accent-color:#ff6500!important;
@@ -1772,44 +1939,143 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   width:auto!important;
   height:auto!important;
   margin:0!important;
-  padding:4px 0!important;
+  padding:5px 0!important;
   border:0!important;
   background:transparent!important;
-  color:#ff4c0b!important;
+  color:#ff4a0a!important;
   font-family:Arial,Helvetica,sans-serif!important;
-  font-size:clamp(11px,.9vw,14px)!important;
+  font-size:clamp(13px,1vw,16px)!important;
   line-height:1!important;
   font-weight:800!important;
   white-space:nowrap!important;
   cursor:pointer!important;
+  transition:color .18s ease,transform .18s ease!important;
+}
+
+#loginView .forgot-password-web:hover{
+  color:#e23f00!important;
+  transform:translateY(-1px)!important;
 }
 
 #loginView #loginError{
   position:absolute!important;
   left:3.05vw!important;
   right:3.05vw!important;
-  bottom:.45vh!important;
+  bottom:.55vh!important;
   width:auto!important;
-  max-height:15px!important;
+  max-height:16px!important;
   margin:0!important;
   padding:0!important;
   overflow:hidden!important;
   background:transparent!important;
   color:#b42318!important;
+  font-family:Arial,Helvetica,sans-serif!important;
   font-size:10px!important;
-  line-height:14px!important;
+  line-height:15px!important;
 }
 
-/* Desktop reference geometry: never let minimum sizes distort the mockup. */
-@media(min-width:801px){
-  #loginView.login-page::before,
-  #loginView.login-page::after{
-    display:none!important;
-    content:none!important;
+/* ===== LIVE SLOGAN ===== */
+#loginView .cube-statement{
+  display:block!important;
+  position:absolute!important;
+  left:50%!important;
+  bottom:10.9%!important;
+  transform:translateX(-50%)!important;
+  z-index:7!important;
+  width:min(980px,82vw)!important;
+  padding:8px 22px!important;
+  box-sizing:border-box!important;
+  text-align:center!important;
+  color:#0d1420!important;
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-size:clamp(15px,1.35vw,21px)!important;
+  line-height:1.42!important;
+  white-space:nowrap!important;
+}
+
+/* Hide the old baked slogan beneath the live slogan. */
+#loginView .cube-statement::before{
+  content:""!important;
+  position:absolute!important;
+  z-index:-1!important;
+  left:50%!important;
+  top:50%!important;
+  transform:translate(-50%,-50%)!important;
+  width:112%!important;
+  height:115%!important;
+  border-radius:50%!important;
+  background:radial-gradient(ellipse at center,rgba(255,255,255,.98) 0%,rgba(255,255,255,.92) 60%,rgba(255,255,255,0) 100%)!important;
+}
+
+#loginView .cube-statement i{font-style:italic!important}
+#loginView .cube-statement b{font-weight:900!important}
+
+/* ===== LIVE FOOTER WAVES ===== */
+#loginView .login-wave{
+  display:block!important;
+  position:absolute!important;
+  left:-7%!important;
+  width:114%!important;
+  pointer-events:none!important;
+  border-radius:50% 50% 0 0 / 100% 100% 0 0!important;
+}
+
+#loginView .wave-one{
+  z-index:4!important;
+  bottom:-105px!important;
+  height:190px!important;
+  background:linear-gradient(90deg,#ff5b00 0%,#ff7817 100%)!important;
+  transform:rotate(1.8deg)!important;
+}
+
+#loginView .wave-two{
+  z-index:5!important;
+  bottom:-132px!important;
+  height:190px!important;
+  background:linear-gradient(90deg,#003b91 0%,#0657c3 100%)!important;
+  transform:rotate(-1.05deg)!important;
+}
+
+#loginView .wave-three{
+  z-index:6!important;
+  bottom:-79px!important;
+  height:110px!important;
+  background:rgba(255,255,255,.96)!important;
+  transform:rotate(1.35deg)!important;
+}
+
+/* Short desktop screens: preserve the reference proportions without clipping. */
+@media(min-width:801px) and (max-height:760px){
+  #loginView .login-brand-area{top:10px!important;height:150px!important}
+  #loginView .login-brand .wordmark strong{font-size:48px!important}
+  #loginView .login-brand .wordmark span{font-size:17px!important;margin-top:7px!important}
+  #loginView .login-brand img{width:54px!important;height:54px!important}
+  #loginView .login-portal-title{margin-top:11px!important;font-size:11px!important;letter-spacing:5.3px!important}
+
+  #loginView .login-card{
+    top:22.5%!important;
+    width:34.5%!important;
+    min-width:470px!important;
+    height:49.5%!important;
+    min-height:345px!important;
+    padding:3.15vh 2.8vw 1.9vh!important;
+  }
+  #loginView .login-card h1{font-size:29px!important}
+  #loginView .login-subtitle{font-size:13px!important;margin:.55vh 0 2.1vh!important}
+  #loginView #loginForm>label{height:5.9vh!important;min-height:44px!important;margin-bottom:1.55vh!important}
+  #loginView .login-input-wrap input{font-size:15px!important}
+  #loginView .login-submit{height:6.3vh!important;min-height:47px!important;font-size:17px!important}
+  #loginView .login-options{height:3.7vh!important;min-height:28px!important;margin-top:1.35vh!important}
+  #loginView .remember,#loginView .forgot-password-web{font-size:12px!important}
+
+  #loginView .cube-statement{
+    bottom:9.4%!important;
+    font-size:13px!important;
+    line-height:1.35!important;
   }
 }
 
-/* Browser-mobile only. Android APK uses its own native login screen. */
+/* Mobile browser only. Android APK remains completely independent. */
 @media(max-width:800px){
   #loginView.login-page{
     height:100dvh!important;
@@ -1818,101 +2084,60 @@ body{animation:pearlDrift 22s ease-in-out infinite}
     background-size:cover!important;
     background-position:center top!important;
   }
+
+  #loginView.login-page::before{height:9%!important}
+
+  #loginView .login-brand-area{
+    top:14px!important;
+    width:94vw!important;
+    height:130px!important;
+  }
+  #loginView .login-brand-area::before{
+    width:100vw!important;
+    height:150px!important;
+  }
+  #loginView .login-brand .wordmark strong{font-size:38px!important}
+  #loginView .login-brand .wordmark span{font-size:14px!important;margin-top:7px!important}
+  #loginView .login-brand img{width:44px!important;height:44px!important}
+  #loginView .login-portal-title{
+    margin-top:10px!important;
+    padding:0!important;
+    font-size:8px!important;
+    letter-spacing:2.7px!important;
+  }
+  #loginView .login-portal-title::before,
+  #loginView .login-portal-title::after{display:none!important}
+
   #loginView .login-card{
     top:145px!important;
-    width:min(88vw,410px)!important;
+    width:min(89vw,410px)!important;
     height:auto!important;
     min-width:0!important;
     min-height:0!important;
+    max-width:none!important;
+    max-height:none!important;
     padding:22px 22px 20px!important;
-    border-radius:24px!important;
+    border-radius:25px!important;
   }
-  #loginView .login-card h1{
-    font-size:28px!important;
-  }
-  #loginView .login-subtitle{
-    margin:5px 0 17px!important;
-    font-size:12px!important;
-  }
-  #loginView #loginForm>label{
-    height:50px!important;
-    margin-bottom:11px!important;
-  }
-  #loginView .login-field-icon{
-    width:45px!important;
-    min-width:45px!important;
-    flex-basis:45px!important;
-  }
-  #loginView .login-input-wrap input{
-    padding-right:44px!important;
-    font-size:14px!important;
-  }
-  #loginView .login-submit{
-    height:51px!important;
-    font-size:16px!important;
-  }
-  #loginView .login-options{
-    height:30px!important;
-    margin-top:9px!important;
-  }
-  #loginView .remember,
-  #loginView .forgot-password-web{
-    font-size:11px!important;
-  }
-  #loginView #loginError{
-    position:static!important;
-    margin-top:2px!important;
-  }
-}
+  #loginView .login-card h1{font-size:29px!important}
+  #loginView .login-subtitle{font-size:12px!important;margin:5px 0 17px!important}
+  #loginView #loginForm>label{height:50px!important;min-height:50px!important;margin-bottom:11px!important}
+  #loginView .login-field-icon{width:46px!important;min-width:46px!important}
+  #loginView .login-field-icon svg{width:20px!important;height:20px!important}
+  #loginView .login-input-wrap input{padding-right:44px!important;font-size:14px!important}
+  #loginView .login-submit{height:52px!important;min-height:52px!important;font-size:16px!important}
+  #loginView .login-options{height:31px!important;min-height:31px!important;margin-top:10px!important}
+  #loginView .remember,#loginView .forgot-password-web{font-size:11px!important}
+  #loginView .remember input{width:17px!important;height:17px!important}
+  #loginView #loginError{position:static!important;margin-top:2px!important}
 
-
-
-/* v0.3.35 deploy approved generated login design */
-@media(min-width:801px){
-  #loginView .login-card{
-    top:22.75%!important;
-    width:31.7%!important;
-    height:49.2%!important;
-    padding:4.35vh 3.05vw 2.25vh!important;
-    border-radius:29px!important;
-    border:1.4px solid rgba(255,101,0,.58)!important;
-    background:#fff!important;
-    box-shadow:
-      0 20px 42px rgba(18,55,108,.13),
-      0 9px 23px rgba(255,101,0,.11)!important;
-  }
-
-  #loginView .login-card h1{
-    font-size:clamp(26px,2.1vw,33px)!important;
-    line-height:1.04!important;
-  }
-
-  #loginView .login-subtitle{
-    margin:.7vh 0 3.0vh!important;
-    font-size:clamp(12px,1vw,16px)!important;
-  }
-
-  #loginView #loginForm>label{
-    height:6.15vh!important;
-    margin-bottom:2.25vh!important;
-  }
-
-  #loginView .login-input-wrap{
-    border-radius:12px!important;
-  }
-
-  #loginView .login-submit{
-    height:6.65vh!important;
-    margin-top:.35vh!important;
-    border-radius:13px!important;
-    background:linear-gradient(100deg,#1482f2 0%,#075dce 48%,#073b86 100%)!important;
-    box-shadow:
-      0 12px 24px rgba(6,66,151,.25),
-      inset 0 1px 0 rgba(255,255,255,.22)!important;
-  }
-
-  #loginView .login-options{
-    margin-top:2.35vh!important;
+  #loginView .cube-statement{
+    bottom:7.6%!important;
+    width:92vw!important;
+    padding:6px 10px!important;
+    font-size:10px!important;
+    line-height:1.35!important;
+    white-space:normal!important;
   }
 }
 
@@ -1922,265 +2147,3 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   pointer-events:none!important;
 }
 
-
-/* v0.3.36 hide browser chrome baked into login background */
-@media(min-width:801px){
-  #loginView.login-page::before{
-    content:""!important;
-    display:block!important;
-    position:absolute!important;
-    left:0!important;
-    right:0!important;
-    top:0!important;
-    width:100%!important;
-    height:10.8%!important;
-    z-index:7!important;
-    pointer-events:none!important;
-    background:
-      radial-gradient(circle at 50% 115%,rgba(223,233,248,.22),transparent 48%),
-      linear-gradient(180deg,#f8faff 0%,#fafcff 100%)!important;
-  }
-}
-#loginView.hidden{
-  display:none!important;
-  visibility:hidden!important;
-  pointer-events:none!important;
-}
-
-
-/* v0.3.37 final login card vertical alignment */
-@media(min-width:801px){
-  #loginView .login-card{
-    top:calc(23.63% + 20px)!important;
-  }
-}
-#loginView.hidden{
-  display:none!important;
-  visibility:hidden!important;
-  pointer-events:none!important;
-}
-
-
-/* v0.3.38 reduce and lower desktop login card */
-@media(min-width:801px){
-  #loginView .login-card{
-    top:calc(23.63% + 32px)!important;
-    width:30.9%!important;
-    height:47.8%!important;
-    padding:3.7vh 2.8vw 1.9vh!important;
-    border-radius:27px!important;
-  }
-
-  #loginView .login-card h1{
-    font-size:clamp(24px,1.9vw,30px)!important;
-  }
-
-  #loginView .login-subtitle{
-    margin:.55vh 0 2.25vh!important;
-    font-size:clamp(12px,.95vw,15px)!important;
-  }
-
-  #loginView #loginForm>label{
-    height:5.8vh!important;
-    margin-bottom:1.8vh!important;
-  }
-
-  #loginView .login-input-wrap input{
-    font-size:clamp(14px,1vw,16px)!important;
-  }
-
-  #loginView .login-submit{
-    height:6.2vh!important;
-    margin-top:.25vh!important;
-    font-size:clamp(15px,1.1vw,18px)!important;
-  }
-
-  #loginView .login-options{
-    height:3.6vh!important;
-    margin-top:1.6vh!important;
-  }
-
-  #loginView .remember,
-  #loginView .forgot-password-web{
-    font-size:clamp(11px,.84vw,13px)!important;
-  }
-}
-
-#loginView.hidden{
-  display:none!important;
-  visibility:hidden!important;
-  pointer-events:none!important;
-}
-
-
-/* v0.3.39 exact live-card/background-box match */
-@media(min-width:801px){
-  #loginView.login-page::after{
-    content:""!important;
-    display:block!important;
-    position:absolute!important;
-    left:50%!important;
-    top:calc(23.63% + 32px)!important;
-    transform:translateX(-50%)!important;
-    width:31.2%!important;
-    height:48.2%!important;
-    min-width:0!important;
-    min-height:0!important;
-    max-width:none!important;
-    max-height:none!important;
-    margin:0!important;
-    padding:0!important;
-    background:#fff!important;
-    border:1.35px solid rgba(255,101,0,.55)!important;
-    border-radius:28px!important;
-    box-sizing:border-box!important;
-    box-shadow:
-      0 18px 36px rgba(20,58,113,.10),
-      0 7px 20px rgba(255,101,0,.08)!important;
-    z-index:6!important;
-    pointer-events:none!important;
-  }
-
-  #loginView .login-card{
-    position:absolute!important;
-    left:50%!important;
-    top:calc(23.63% + 32px)!important;
-    transform:translateX(-50%)!important;
-    width:31.2%!important;
-    height:48.2%!important;
-    min-width:0!important;
-    min-height:0!important;
-    max-width:none!important;
-    max-height:none!important;
-    margin:0!important;
-    padding:3.6vh 2.75vw 1.9vh!important;
-    background:#fff!important;
-    border:1.35px solid rgba(255,101,0,.55)!important;
-    border-radius:28px!important;
-    box-sizing:border-box!important;
-    box-shadow:
-      0 18px 36px rgba(20,58,113,.10),
-      0 7px 20px rgba(255,101,0,.08)!important;
-    z-index:8!important;
-    overflow:hidden!important;
-  }
-
-  #loginView .login-card h1{
-    margin:0!important;
-    font-size:24px!important;
-    line-height:1.05!important;
-  }
-
-  #loginView .login-subtitle{
-    margin:.5vh 0 2.1vh!important;
-    font-size:14px!important;
-  }
-
-  #loginView #loginForm>label{
-    height:5.7vh!important;
-    margin-bottom:1.7vh!important;
-  }
-
-  #loginView .login-submit{
-    height:6.1vh!important;
-    margin-top:.2vh!important;
-  }
-
-  #loginView .login-options{
-    margin-top:1.5vh!important;
-  }
-}
-
-#loginView.hidden{
-  display:none!important;
-  visibility:hidden!important;
-  pointer-events:none!important;
-}
-
-
-/* v0.3.40 move live brand header to top */
-@media(min-width:801px){
-  #loginView .login-brand-area{
-    display:block!important;
-    position:absolute!important;
-    left:50%!important;
-    top:8px!important;
-    transform:translateX(-50%)!important;
-    width:560px!important;
-    height:150px!important;
-    z-index:9!important;
-    text-align:center!important;
-    isolation:isolate!important;
-  }
-
-  /* Cover only the old logo/title baked into the background image. */
-  #loginView .login-brand-area::before{
-    content:""!important;
-    position:absolute!important;
-    z-index:-1!important;
-    left:50%!important;
-    top:-8px!important;
-    transform:translateX(-50%)!important;
-    width:610px!important;
-    height:188px!important;
-    background:
-      radial-gradient(circle at 50% 100%,rgba(230,238,250,.18),transparent 55%),
-      linear-gradient(180deg,#f8faff 0%,#fbfdff 100%)!important;
-    pointer-events:none!important;
-  }
-
-  #loginView .login-brand{
-    display:flex!important;
-    align-items:center!important;
-    justify-content:center!important;
-    gap:8px!important;
-    margin-top:0!important;
-  }
-
-  #loginView .login-brand .wordmark strong{
-    display:block!important;
-    color:#0b438f!important;
-    font-family:Arial Black,Arial,Helvetica,sans-serif!important;
-    font-size:52px!important;
-    line-height:.82!important;
-    letter-spacing:-3.5px!important;
-    font-style:italic!important;
-    font-weight:900!important;
-  }
-
-  #loginView .login-brand .wordmark span{
-    display:block!important;
-    margin-top:8px!important;
-    color:#ff6500!important;
-    font-family:Arial Black,Arial,Helvetica,sans-serif!important;
-    font-size:18px!important;
-    line-height:1!important;
-    letter-spacing:1.4px!important;
-    font-style:italic!important;
-    font-weight:900!important;
-  }
-
-  #loginView .login-brand img{
-    display:block!important;
-    width:56px!important;
-    height:56px!important;
-  }
-
-  #loginView .login-portal-title{
-    display:block!important;
-    margin-top:13px!important;
-    color:#17366f!important;
-    font-family:Arial,Helvetica,sans-serif!important;
-    font-size:12px!important;
-    line-height:16px!important;
-    letter-spacing:5.7px!important;
-    font-weight:800!important;
-    white-space:nowrap!important;
-  }
-}
-
-#loginView.hidden{
-  display:none!important;
-  visibility:hidden!important;
-  pointer-events:none!important;
-}
