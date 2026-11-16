@@ -1959,3 +1959,55 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   visibility:hidden!important;
   pointer-events:none!important;
 }
+
+
+/* v0.3.38 reduce and lower desktop login card */
+@media(min-width:801px){
+  #loginView .login-card{
+    top:calc(23.63% + 32px)!important;
+    width:30.9%!important;
+    height:47.8%!important;
+    padding:3.7vh 2.8vw 1.9vh!important;
+    border-radius:27px!important;
+  }
+
+  #loginView .login-card h1{
+    font-size:clamp(24px,1.9vw,30px)!important;
+  }
+
+  #loginView .login-subtitle{
+    margin:.55vh 0 2.25vh!important;
+    font-size:clamp(12px,.95vw,15px)!important;
+  }
+
+  #loginView #loginForm>label{
+    height:5.8vh!important;
+    margin-bottom:1.8vh!important;
+  }
+
+  #loginView .login-input-wrap input{
+    font-size:clamp(14px,1vw,16px)!important;
+  }
+
+  #loginView .login-submit{
+    height:6.2vh!important;
+    margin-top:.25vh!important;
+    font-size:clamp(15px,1.1vw,18px)!important;
+  }
+
+  #loginView .login-options{
+    height:3.6vh!important;
+    margin-top:1.6vh!important;
+  }
+
+  #loginView .remember,
+  #loginView .forgot-password-web{
+    font-size:clamp(11px,.84vw,13px)!important;
+  }
+}
+
+#loginView.hidden{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
