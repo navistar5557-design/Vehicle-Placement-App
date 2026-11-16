@@ -1,32 +1,4 @@
 
-async function loadExactLoginMaster() {
-  try {
-    const parts = await Promise.all([
-      fetch("./login-master-part0.txt", { cache: "no-store" }).then(r => {
-        if (!r.ok) throw new Error("login master part 0");
-        return r.text();
-      }),
-      fetch("./login-master-part1.txt", { cache: "no-store" }).then(r => {
-        if (!r.ok) throw new Error("login master part 1");
-        return r.text();
-      }),
-      fetch("./login-master-part2.txt", { cache: "no-store" }).then(r => {
-        if (!r.ok) throw new Error("login master part 2");
-        return r.text();
-      })
-    ]);
-    const b64 = parts.join("").replace(/\s+/g, "");
-    const login = document.getElementById("loginView");
-    if (!login || !b64.startsWith("/9j/")) throw new Error("invalid login master");
-    login.style.setProperty("background-image", `url("data:image/jpeg;base64,${b64}")`, "important");
-    login.style.setProperty("background-size", "100% 100%", "important");
-    login.style.setProperty("background-position", "center center", "important");
-    login.style.setProperty("background-repeat", "no-repeat", "important");
-  } catch (error) {
-    console.error("Exact login master failed to load", error);
-  }
-}
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 import { getMessaging, getToken, onMessage, isSupported as messagingSupported } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-messaging.js";
@@ -709,8 +681,3 @@ function reportsHtml(){
 
 document.addEventListener("click",e=>{if(e.target?.id==="csvBtn"){const headers=["Date","Vendor","Vehicle","Current Location","From","To","Status","Freight","Expenses","Margin","Created By","Status Updated By","Status Updated At"];const rows=state.trips.map(t=>[dateTime(t.createdAt),t.vendor,t.vehicle,t.currentLocation,t.from,t.to,t.status,t.freight,t.totalExpenses,t.margin,t.createdBy||t.createdByEmail,t.statusUpdatedBy||t.statusUpdatedByEmail,dateTime(t.statusUpdatedAt)]);const csv=[headers,...rows].map(r=>r.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="cube-trip-report.csv";a.click();URL.revokeObjectURL(a.href);}});
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", loadExactLoginMaster, { once: true });
-} else {
-  loadExactLoginMaster();
-}
