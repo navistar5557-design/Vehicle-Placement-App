@@ -2648,3 +2648,64 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   }
 }
 #loginView.hidden{display:none!important;visibility:hidden!important;pointer-events:none!important}
+
+
+/* v0.3.33 restore known-good login background */
+#loginView.login-page{
+  background-image:url("./login-master-hq-v0319.png?v=0333")!important;
+  background-size:100% 100%!important;
+  background-position:center center!important;
+  background-repeat:no-repeat!important;
+  background-color:#f8fbff!important;
+}
+
+/* Cover the baked login card completely before drawing the live form. */
+#loginView.login-page::after{
+  content:""!important;
+  position:absolute!important;
+  left:50%!important;
+  top:22.35vh!important;
+  transform:translateX(-50%)!important;
+  width:35.1vw!important;
+  min-width:475px!important;
+  max-width:615px!important;
+  height:51.2vh!important;
+  min-height:355px!important;
+  max-height:460px!important;
+  background:#fff!important;
+  border-radius:31px!important;
+  box-shadow:
+    0 22px 48px rgba(20,58,113,.12),
+    0 8px 24px rgba(255,101,0,.10)!important;
+  z-index:6!important;
+  pointer-events:none!important;
+}
+
+#loginView .login-card{
+  z-index:8!important;
+  background:#fff!important;
+  box-shadow:
+    0 20px 44px rgba(20,58,113,.12),
+    0 8px 22px rgba(255,101,0,.10)!important;
+}
+
+@media(max-width:800px){
+  #loginView.login-page{
+    background-size:cover!important;
+    background-position:center top!important;
+  }
+  #loginView.login-page::after{
+    top:137px!important;
+    width:min(91vw,425px)!important;
+    min-width:0!important;
+    height:365px!important;
+    min-height:365px!important;
+    max-height:365px!important;
+  }
+}
+
+#loginView.hidden{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
