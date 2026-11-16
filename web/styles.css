@@ -1946,3 +1946,16 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   visibility:hidden!important;
   pointer-events:none!important;
 }
+
+
+/* v0.3.37 final login card vertical alignment */
+@media(min-width:801px){
+  #loginView .login-card{
+    top:calc(23.63% + 20px)!important;
+  }
+}
+#loginView.hidden{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
