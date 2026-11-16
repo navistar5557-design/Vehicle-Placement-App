@@ -2355,3 +2355,241 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   #loginView .cube-statement{bottom:56px!important;width:92vw!important;height:54px!important}
 }
 #loginView.hidden{display:none!important;visibility:hidden!important;pointer-events:none!important}
+
+
+/* v0.3.30 approved seamless mockup scene */
+#loginView.login-page{
+  background-image:url("./approved-login-scene.jpg?v=0330")!important;
+  background-size:100% 100%!important;
+  background-position:center center!important;
+  background-repeat:no-repeat!important;
+  background-color:#f8fbff!important;
+}
+
+/* The approved scene already contains header, truck, warehouse, slogan and waves. */
+#loginView .login-brand-area,
+#loginView .login-scene,
+#loginView .cube-statement,
+#loginView .login-wave{
+  display:none!important;
+}
+
+/* Opaque live card masks the baked card completely and matches its proportions. */
+#loginView .login-card{
+  display:block!important;
+  position:absolute!important;
+  left:50%!important;
+  top:22.65vh!important;
+  transform:translateX(-50%)!important;
+  width:34.2vw!important;
+  min-width:468px!important;
+  max-width:600px!important;
+  height:49.9vh!important;
+  min-height:354px!important;
+  max-height:448px!important;
+  margin:0!important;
+  padding:3.15vh 3.05vw 2.45vh!important;
+  box-sizing:border-box!important;
+  overflow:hidden!important;
+  z-index:8!important;
+  background:#fff!important;
+  border:1.4px solid rgba(255,101,0,.58)!important;
+  border-radius:29px!important;
+  box-shadow:
+    0 22px 48px rgba(20,58,113,.14),
+    0 8px 25px rgba(255,101,0,.13)!important;
+  backdrop-filter:none!important;
+}
+#loginView .login-card h1{
+  margin:0!important;
+  color:#0d4192!important;
+  font-family:Arial Black,Arial,Helvetica,sans-serif!important;
+  font-size:clamp(29px,2.05vw,36px)!important;
+  line-height:1.08!important;
+  font-weight:900!important;
+  letter-spacing:-1px!important;
+  text-align:center!important;
+}
+#loginView .login-subtitle{
+  margin:.7vh 0 2.45vh!important;
+  color:#4c5b73!important;
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-size:clamp(13px,.98vw,17px)!important;
+  line-height:1.2!important;
+  text-align:center!important;
+}
+#loginView #loginForm{
+  position:static!important;
+  width:100%!important;
+  height:auto!important;
+  margin:0!important;
+  padding:0!important;
+}
+#loginView #loginForm>label{
+  display:block!important;
+  width:100%!important;
+  height:6.15vh!important;
+  min-height:46px!important;
+  max-height:56px!important;
+  margin:0 0 1.65vh!important;
+}
+#loginView .login-input-wrap{
+  display:flex!important;
+  align-items:center!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:46px!important;
+  max-height:56px!important;
+  border:1.35px solid #b7c2d2!important;
+  border-radius:13px!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+#loginView .login-input-wrap:focus-within{
+  border-color:#8daed8!important;
+  box-shadow:0 0 0 3px rgba(8,88,201,.08)!important;
+}
+#loginView .login-field-icon{
+  width:3.2vw!important;
+  min-width:45px!important;
+  max-width:57px!important;
+  color:#354963!important;
+}
+#loginView .login-field-icon svg{
+  width:22px!important;
+  height:22px!important;
+  stroke-width:1.8!important;
+}
+#loginView .login-input-wrap input{
+  height:100%!important;
+  min-height:44px!important;
+  max-height:54px!important;
+  padding:0 50px 0 0!important;
+  color:#34435d!important;
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-size:clamp(15px,1.08vw,18px)!important;
+  font-weight:400!important;
+}
+#loginView .login-input-wrap input::placeholder{
+  color:#65728a!important;
+  opacity:1!important;
+}
+#loginView .password-wrap .icon-btn{
+  top:50%!important;
+  right:7px!important;
+  transform:translateY(-50%)!important;
+  width:42px!important;
+  height:42px!important;
+  padding:9px!important;
+}
+#loginView .login-submit{
+  position:relative!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:100%!important;
+  height:6.9vh!important;
+  min-height:50px!important;
+  max-height:62px!important;
+  margin:.25vh 0 0!important;
+  padding:0 18px!important;
+  border:0!important;
+  border-radius:14px!important;
+  background:linear-gradient(100deg,#0983f3 0%,#075ccf 50%,#063b87 100%)!important;
+  box-shadow:
+    0 13px 27px rgba(6,66,151,.27),
+    inset 0 1px 0 rgba(255,255,255,.20)!important;
+  color:#fff!important;
+  font-size:clamp(17px,1.18vw,21px)!important;
+}
+#loginView .login-submit span{
+  margin-left:auto!important;
+  font-family:Arial Black,Arial,Helvetica,sans-serif!important;
+  font-weight:900!important;
+}
+#loginView .login-submit b{
+  margin-left:auto!important;
+  margin-right:2px!important;
+  font-size:clamp(27px,1.8vw,34px)!important;
+  line-height:1!important;
+}
+#loginView .login-options{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  width:100%!important;
+  height:4.2vh!important;
+  min-height:31px!important;
+  max-height:39px!important;
+  margin:1.35vh 0 0!important;
+}
+#loginView .remember{
+  gap:8px!important;
+  color:#33425b!important;
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-size:clamp(12px,.9vw,15px)!important;
+  font-weight:500!important;
+}
+#loginView .remember input{
+  width:clamp(18px,1.35vw,22px)!important;
+  height:clamp(18px,1.35vw,22px)!important;
+  margin:0!important;
+  accent-color:#ff6500!important;
+}
+#loginView .forgot-password-web{
+  color:#ff4c0b!important;
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-size:clamp(12px,.9vw,15px)!important;
+  font-weight:800!important;
+}
+#loginView #loginError{
+  position:absolute!important;
+  left:3.05vw!important;
+  right:3.05vw!important;
+  bottom:.55vh!important;
+  width:auto!important;
+  max-height:16px!important;
+  overflow:hidden!important;
+  margin:0!important;
+  font-size:10px!important;
+}
+
+/* Exact-fit desktop adjustments for shorter browser viewports. */
+@media (min-width:801px) and (max-height:760px){
+  #loginView .login-card{
+    top:22.6vh!important;
+    width:34.2vw!important;
+    min-width:455px!important;
+    height:49.8vh!important;
+    min-height:345px!important;
+    padding:2.55vh 2.75vw 2.1vh!important;
+  }
+  #loginView .login-subtitle{margin:.55vh 0 1.85vh!important}
+  #loginView #loginForm>label{height:6.05vh!important;margin-bottom:1.35vh!important}
+  #loginView .login-submit{height:6.55vh!important}
+  #loginView .login-options{margin-top:.95vh!important}
+}
+
+/* Browser/mobile web only; Android APK stays on its independent native layout. */
+@media(max-width:800px){
+  #loginView.login-page{
+    background-size:cover!important;
+    background-position:center top!important;
+  }
+  #loginView .login-card{
+    top:145px!important;
+    width:min(88vw,410px)!important;
+    min-width:0!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    padding:22px 22px 20px!important;
+  }
+  #loginView .login-card h1{font-size:28px!important}
+  #loginView .login-subtitle{font-size:12px!important;margin:5px 0 17px!important}
+  #loginView #loginForm>label{height:50px!important;min-height:50px!important;margin-bottom:11px!important}
+  #loginView .login-submit{height:51px!important;min-height:51px!important}
+  #loginView .login-options{height:30px!important;min-height:30px!important;margin-top:9px!important}
+  #loginView #loginError{position:static!important;margin-top:2px!important}
+}
+#loginView.hidden{display:none!important;visibility:hidden!important;pointer-events:none!important}
