@@ -1935,3 +1935,29 @@ body{animation:pearlDrift 22s ease-in-out infinite}
     height:45%!important;
   }
 }
+
+
+/* v0.3.18 login visibility + exact viewport fix */
+#loginView.hidden{
+  display:none!important;
+}
+#loginView.login-page{
+  height:100dvh!important;
+  min-height:100dvh!important;
+  max-height:100dvh!important;
+  width:100%!important;
+  max-width:100vw!important;
+}
+#loginView .remember{
+  color:transparent!important;
+  user-select:none;
+}
+#loginView .remember input{
+  opacity:1!important;
+}
+@media(max-width:800px){
+  #loginView.login-page{
+    background-size:100% 100%!important;
+    background-position:center center!important;
+  }
+}
