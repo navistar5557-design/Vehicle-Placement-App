@@ -6,12 +6,12 @@
   <meta name="theme-color" content="#073B7A" />
   <title>CUBE Logistics | Vehicle Placement</title>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="./styles.css?v=0325" />
+  <link rel="stylesheet" href="./styles.css?v=0326" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <!-- consolidated-web-login-v0323 -->
+  <!-- live-designed-login-v0326 -->
 </head>
 <body>
   <div id="toast" class="toast" aria-live="polite"></div>
@@ -36,13 +36,13 @@
       <form id="loginForm">
         <label><span class="sr-only">User ID</span>
           <div class="login-input-wrap">
-            <span class="login-field-icon">♙</span>
+            <span class="login-field-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="m3 6 9 7 9-7"/></svg></span>
             <input id="loginUser" autocomplete="username" placeholder="Username" required />
           </div>
         </label>
         <label><span class="sr-only">Password</span>
           <div class="password-wrap login-input-wrap">
-            <span class="login-field-icon">▣</span>
+            <span class="login-field-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
             <input id="loginPass" placeholder="Password" type="password" autocomplete="current-password" required />
             <button id="togglePassword" type="button" class="icon-btn" aria-label="Show password"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.5"/></svg></button>
           </div>
