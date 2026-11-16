@@ -1501,788 +1501,283 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   line-height:1.4;
 }
 
+/* v0.3.23 consolidated web login — single source of truth */
+#loginView.hidden{display:none!important}
 
-/* v0.3.12 approved login design */
-.login-page{
-  position:relative;
-  min-height:100vh;
-  overflow:hidden;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:150px 24px 150px;
-  background:
-    radial-gradient(circle at 22% 45%,rgba(255,166,89,.12),transparent 28%),
-    radial-gradient(circle at 72% 52%,rgba(50,111,200,.08),transparent 30%),
-    linear-gradient(180deg,#fff 0%,#fbfdff 62%,#fff 100%);
-}
-.login-page::before{
-  content:"";
-  position:absolute;
-  inset:27% 0 11%;
-  background:linear-gradient(180deg,rgba(241,246,253,.28),rgba(255,255,255,.04));
-  z-index:0;
-  pointer-events:none;
-}
-.login-brand-area{
-  position:absolute;
-  top:42px;
-  left:50%;
-  transform:translateX(-50%);
-  z-index:5;
-  text-align:center;
-}
-.login-brand{
-  justify-content:center;
-  gap:8px;
-}
-.login-brand .wordmark strong{
-  font-size:48px!important;
-  line-height:.86!important;
-  letter-spacing:-3px!important;
-  color:#123f82!important;
-  font-style:italic;
-  font-weight:1000;
-}
-.login-brand .wordmark span{
-  display:block;
-  margin-top:7px;
-  font-size:18px!important;
-  letter-spacing:1px!important;
-  color:#ff6500!important;
-  font-style:italic;
-  font-weight:1000;
-}
-.login-brand img{width:54px!important;height:54px!important}
-.login-portal-title{
-  margin-top:14px;
-  color:#17366f;
-  font-size:13px;
-  font-weight:800;
-  letter-spacing:7px;
-  white-space:nowrap;
-}
-.login-scene{
-  position:absolute;
-  inset:0;
-  z-index:1;
-  pointer-events:none;
-}
-.login-truck-art{
-  position:absolute;
-  left:-2%;
-  top:39%;
-  width:min(38vw,610px);
-  opacity:.68;
-  filter:saturate(.65) brightness(1.12) drop-shadow(0 14px 24px rgba(30,61,112,.08));
-}
-.login-warehouse{
-  position:absolute;
-  right:-2%;
-  top:34%;
-  width:35vw;
-  max-width:600px;
-  height:250px;
-  opacity:.28;
-  background:
-    linear-gradient(180deg,rgba(215,223,234,.72),rgba(241,245,250,.40)),
-    repeating-linear-gradient(90deg,rgba(92,111,141,.24) 0 2px,transparent 2px 82px);
-  clip-path:polygon(18% 26%,100% 0,100% 100%,0 100%,0 55%);
-  box-shadow:inset 0 -28px 40px rgba(110,131,159,.08);
-}
-.login-warehouse::before{
-  content:"";
-  position:absolute;
-  left:12%;
-  right:4%;
-  bottom:15px;
-  height:88px;
-  background:repeating-linear-gradient(90deg,rgba(86,105,135,.30) 0 52px,transparent 52px 78px);
-  opacity:.7;
-}
-.login-card{
-  position:relative;
-  z-index:4;
-  width:min(520px,92vw);
-  padding:34px 48px 28px!important;
-  background:rgba(255,255,255,.88)!important;
-  border:1px solid rgba(255,101,0,.36);
-  border-radius:28px!important;
-  box-shadow:
-    0 24px 55px rgba(27,57,107,.10),
-    0 8px 28px rgba(255,101,0,.08),
-    inset 0 1px 0 rgba(255,255,255,.95)!important;
-  backdrop-filter:blur(14px);
-}
-.login-card h1{
-  margin:0!important;
-  text-align:center;
-  color:#123f82!important;
-  font-size:31px!important;
-  font-weight:950;
-}
-.login-subtitle{
-  margin:7px 0 24px;
-  text-align:center;
-  color:#596881;
-  font-size:14px;
-}
-.login-card form>label{margin:10px 0!important}
-.login-input-wrap{
-  position:relative;
-  display:flex;
-  align-items:center;
-  height:54px;
-  border:1px solid #c9d2df;
-  border-radius:10px;
-  background:rgba(255,255,255,.94);
-  transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease;
-}
-.login-input-wrap:focus-within{
-  border-color:#8eaee1;
-  box-shadow:0 0 0 4px rgba(18,63,130,.07);
-  transform:translateY(-1px);
-}
-.login-field-icon{
-  width:52px;
-  text-align:center;
-  color:#4f607b;
-  font-size:24px;
-  line-height:1;
-}
-.login-card .login-input-wrap input{
-  min-height:0!important;
-  height:52px;
-  border:0!important;
-  border-radius:10px!important;
-  background:transparent;
-  padding:0 46px 0 0!important;
-  font-size:15px!important;
-  box-shadow:none!important;
-}
-.login-card .login-input-wrap input:focus{outline:0}
-.login-card .password-wrap{gap:0!important}
-.login-card .password-wrap .icon-btn{
-  position:absolute;
-  right:5px;
-  top:4px;
-  width:44px;
-  height:44px;
-  color:#52617a;
-}
-.login-submit{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:16px;
-  min-height:54px!important;
-  margin-top:18px;
-  border-radius:11px!important;
-  background:linear-gradient(100deg,#1458c8 0%,#073b7a 100%)!important;
-  color:#fff!important;
-  font-size:16px;
-  box-shadow:0 12px 24px rgba(7,59,122,.20);
-  transition:transform .2s ease,box-shadow .2s ease;
-}
-.login-submit:hover{
-  transform:translateY(-2px);
-  box-shadow:0 16px 30px rgba(7,59,122,.25);
-}
-.login-submit b{margin-left:auto;font-size:25px;font-weight:400}
-.login-submit span{margin-left:auto;font-weight:850}
-.login-options{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  margin-top:15px;
-}
-.login-card .remember{
-  margin:0!important;
-  color:#1b2d4f!important;
-  font-size:12px!important;
-  font-weight:600!important;
-}
-.login-card .remember input{
-  accent-color:#ff6500!important;
-  width:17px!important;
-  height:17px!important;
-}
-.forgot-password-web{
-  border:0;
-  background:transparent;
-  color:#ff5c00;
-  font-size:12px;
-  font-weight:700;
-  cursor:pointer;
-}
-.login-card .version{
-  position:absolute;
-  right:18px;
-  bottom:8px;
-  margin:0!important;
-  opacity:.42;
-  font-size:8px!important;
-}
-.cube-statement{
-  position:absolute;
-  z-index:4;
-  left:50%;
-  bottom:74px;
-  transform:translateX(-50%);
-  width:min(850px,90vw);
-  text-align:center;
-  color:#111a2a;
-  font-size:14px;
-  line-height:1.65;
-  white-space:nowrap;
-}
-.cube-statement i{font-style:italic}
-.cube-statement b{font-weight:900}
-.login-wave{
-  position:absolute;
-  left:-4%;
-  width:108%;
-  border-radius:50% 50% 0 0;
-  transform-origin:center bottom;
-  pointer-events:none;
-}
-.wave-one{
-  z-index:1;
-  bottom:-112px;
-  height:190px;
-  background:#ff6500;
-  transform:rotate(2deg);
-}
-.wave-two{
-  z-index:2;
-  bottom:-126px;
-  height:190px;
-  background:#123f82;
-  transform:rotate(-1.2deg);
-}
-.wave-three{
-  z-index:3;
-  bottom:-98px;
-  height:130px;
-  background:rgba(255,255,255,.94);
-  transform:rotate(1.5deg);
-}
-@media(max-width:760px){
-  .login-page{padding:140px 18px 150px;align-items:flex-start}
-  .login-brand-area{top:28px}
-  .login-brand .wordmark strong{font-size:40px!important}
-  .login-brand .wordmark span{font-size:15px!important}
-  .login-brand img{width:48px!important;height:48px!important}
-  .login-portal-title{font-size:10px;letter-spacing:4px}
-  .login-scene{display:none}
-  .login-card{margin-top:120px;padding:28px 24px 24px!important}
-  .cube-statement{bottom:58px;font-size:10px;white-space:normal;width:88vw}
-}
-
-
-/* v0.3.13 login fidelity corrections */
-.login-truck-art{
-  left:1.5%!important;
-  top:40.5%!important;
-  width:min(36vw,610px)!important;
-  opacity:.82!important;
-  filter:drop-shadow(0 18px 28px rgba(24,52,92,.12))!important;
-}
-.login-warehouse{
-  top:35.5%!important;
-  width:37vw!important;
-  height:255px!important;
-  opacity:.19!important;
-}
-.login-card{
-  width:min(525px,92vw)!important;
-  padding:32px 47px 27px!important;
-}
-.login-brand-area{top:35px!important}
-.login-portal-title{margin-top:13px!important}
-.cube-statement{bottom:73px!important}
-@media (min-width:1100px) and (max-height:760px){
-  .login-page{padding-top:144px!important;padding-bottom:128px!important}
-  .login-brand-area{top:30px!important}
-  .login-brand .wordmark strong{font-size:46px!important}
-  .login-brand .wordmark span{font-size:17px!important}
-  .login-brand img{width:52px!important;height:52px!important}
-  .login-portal-title{font-size:12px!important;letter-spacing:6px!important}
-  .login-card{transform:translateY(4px)}
-  .login-truck-art{top:42%!important;width:min(35vw,585px)!important}
-  .cube-statement{bottom:70px!important}
-}
-
-
-/* v0.3.14 exact approved login master */
 #loginView.login-page{
   position:relative!important;
-  min-height:100vh!important;
-  width:100vw!important;
+  width:100%!important;
+  min-width:100%!important;
+  height:100dvh!important;
+  min-height:100dvh!important;
+  max-height:100dvh!important;
   overflow:hidden!important;
   padding:0!important;
+  margin:0!important;
   display:block!important;
-  background-image:url("./login-master-hq-v0319.png?v=0319")!important;
+  background-image:url("./login-master-hq-v0319.png?v=0323")!important;
   background-color:#fff!important;
   background-size:100% 100%!important;
   background-position:center center!important;
   background-repeat:no-repeat!important;
 }
+
+/* The approved master image supplies the logo, portal title, truck,
+   warehouse, C.U.B.E. statement and lower waves. */
 #loginView .login-brand-area,
 #loginView .login-scene,
 #loginView .cube-statement,
 #loginView .login-wave{
   display:none!important;
 }
+
+/* One live HTML login card only. It covers the card artwork in the master image. */
 #loginView .login-card{
   position:absolute!important;
-  left:33.61%!important;
-  top:23.32%!important;
-  width:31.28%!important;
-  height:49.59%!important;
+  left:50%!important;
+  right:auto!important;
+  top:clamp(150px,24vh,190px)!important;
+  bottom:auto!important;
+  width:min(420px,calc(100vw - 48px))!important;
+  height:320px!important;
+  min-height:320px!important;
+  max-height:320px!important;
   margin:0!important;
-  padding:0!important;
-  transform:none!important;
-  background:transparent!important;
-  border:0!important;
-  border-radius:0!important;
-  box-shadow:none!important;
+  padding:22px 28px 18px!important;
+  transform:translateX(-50%)!important;
+  box-sizing:border-box!important;
+  display:block!important;
+  overflow:hidden!important;
+  background:rgba(255,255,255,.992)!important;
+  border:1px solid rgba(255,101,0,.30)!important;
+  border-radius:24px!important;
+  box-shadow:0 14px 34px rgba(7,59,122,.10),0 7px 22px rgba(255,101,0,.08)!important;
   backdrop-filter:none!important;
   animation:none!important;
-  overflow:visible!important;
 }
-#loginView .login-card h1,
-#loginView .login-subtitle,
+
+#loginView .login-card h1{
+  display:block!important;
+  margin:0!important;
+  color:#294f8e!important;
+  text-align:center!important;
+  font-size:26px!important;
+  line-height:30px!important;
+  font-weight:900!important;
+}
+
+#loginView .login-subtitle{
+  display:block!important;
+  margin:4px 0 16px!important;
+  color:#66738b!important;
+  text-align:center!important;
+  font-size:13px!important;
+  line-height:17px!important;
+}
+
 #loginView .version{display:none!important}
+
 #loginView #loginForm{
-  position:absolute!important;
-  inset:0!important;
+  position:static!important;
+  inset:auto!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:0!important;
   margin:0!important;
   padding:0!important;
 }
+
 #loginView #loginForm>label:nth-of-type(1),
 #loginView #loginForm>label:nth-of-type(2){
-  position:absolute!important;
-  left:9.55%!important;
-  width:81.45%!important;
-  height:12.15%!important;
-  margin:0!important;
+  position:static!important;
+  inset:auto!important;
+  display:block!important;
+  width:100%!important;
+  height:44px!important;
+  min-height:44px!important;
+  max-height:44px!important;
+  margin:0 0 10px!important;
 }
-#loginView #loginForm>label:nth-of-type(1){top:31.60%!important}
-#loginView #loginForm>label:nth-of-type(2){top:48.70%!important}
+
 #loginView .login-input-wrap{
-  width:100%!important;height:100%!important;
-  border:1px solid rgba(182,195,214,.9)!important;
+  position:relative!important;
+  display:flex!important;
+  align-items:center!important;
+  width:100%!important;
+  height:44px!important;
+  min-height:44px!important;
+  max-height:44px!important;
+  margin:0!important;
+  border:1px solid #b8c6d9!important;
   border-radius:10px!important;
-  background:rgba(255,255,255,.96)!important;
+  background:#fff!important;
   box-shadow:none!important;
+  transform:none!important;
 }
-#loginView .login-field-icon{width:13%!important;font-size:20px!important}
+
+#loginView .login-input-wrap:focus-within{
+  border-color:#8eaee1!important;
+  box-shadow:0 0 0 3px rgba(18,63,130,.07)!important;
+  transform:none!important;
+}
+
+#loginView .login-field-icon{
+  width:42px!important;
+  min-width:42px!important;
+  flex:0 0 42px!important;
+  text-align:center!important;
+  color:#4f607b!important;
+  font-size:17px!important;
+  line-height:1!important;
+}
+
 #loginView .login-input-wrap input{
-  height:100%!important;
-  font-size:clamp(13px,1.05vw,17px)!important;
-  font-weight:500!important;
-  color:#536079!important;
-}
-#loginView .login-submit{
-  position:absolute!important;
-  left:9.0%!important;
-  top:67.25%!important;
-  width:82.0%!important;
-  height:12.55%!important;
-  min-height:0!important;
-  margin:0!important;
-  border-radius:10px!important;
+  width:100%!important;
+  height:42px!important;
+  min-height:42px!important;
+  border:0!important;
+  border-radius:9px!important;
   background:transparent!important;
+  padding:0 44px 0 0!important;
+  color:#33445f!important;
+  font-size:13px!important;
+  font-weight:500!important;
   box-shadow:none!important;
-  color:transparent!important;
+  outline:0!important;
 }
-#loginView .login-submit *{visibility:hidden!important}
+
+#loginView .password-wrap{gap:0!important}
+
+#loginView .password-wrap .icon-btn{
+  position:absolute!important;
+  right:3px!important;
+  top:1px!important;
+  width:40px!important;
+  height:40px!important;
+  padding:9px!important;
+  color:#52617a!important;
+}
+
+#loginView .password-wrap .icon-btn svg{
+  width:20px!important;
+  height:20px!important;
+  fill:none!important;
+  stroke:currentColor!important;
+  stroke-width:1.8!important;
+}
+
+#loginView .login-submit{
+  position:relative!important;
+  inset:auto!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:100%!important;
+  height:44px!important;
+  min-height:44px!important;
+  max-height:44px!important;
+  margin:3px 0 0!important;
+  padding:0 14px!important;
+  border:0!important;
+  border-radius:10px!important;
+  background:linear-gradient(100deg,#1b62d1 0%,#073b7a 100%)!important;
+  color:#fff!important;
+  font-size:15px!important;
+  box-shadow:0 8px 18px rgba(7,59,122,.18)!important;
+  cursor:pointer!important;
+}
+
+#loginView .login-submit span{
+  margin-left:auto!important;
+  font-weight:850!important;
+}
+
+#loginView .login-submit b{
+  margin-left:auto!important;
+  font-size:23px!important;
+  line-height:1!important;
+  font-weight:400!important;
+}
+
 #loginView .login-options{
-  position:absolute!important;
-  left:9.55%!important;
-  top:84.9%!important;
-  width:81.0%!important;
-  height:9.5%!important;
-  margin:0!important;
+  position:static!important;
+  inset:auto!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  width:100%!important;
+  height:28px!important;
+  min-height:28px!important;
+  max-height:28px!important;
+  margin:7px 0 0!important;
 }
+
 #loginView .remember{
-  font-size:clamp(10px,.8vw,13px)!important;
-  color:#172744!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:5px!important;
+  margin:0!important;
+  color:#263853!important;
+  font-size:11px!important;
+  line-height:16px!important;
+  font-weight:600!important;
+  white-space:nowrap!important;
+  user-select:none!important;
 }
+
+#loginView .remember input{
+  width:16px!important;
+  height:16px!important;
+  margin:0!important;
+  padding:0!important;
+  accent-color:#ff6500!important;
+  opacity:1!important;
+}
+
 #loginView .forgot-password-web{
-  color:transparent!important;
-  width:35%!important;
-  height:100%!important;
+  width:auto!important;
+  height:auto!important;
+  margin:0!important;
+  padding:4px 0!important;
+  border:0!important;
+  background:transparent!important;
+  color:#ff5c00!important;
+  font-size:11px!important;
+  line-height:16px!important;
+  font-weight:700!important;
+  white-space:nowrap!important;
+  cursor:pointer!important;
 }
+
 #loginView #loginError{
-  position:absolute!important;
-  left:9.5%!important;
-  width:81%!important;
-  top:96%!important;
+  position:static!important;
+  inset:auto!important;
+  width:100%!important;
+  min-height:0!important;
+  max-height:18px!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  background:transparent!important;
+  color:#b42318!important;
   font-size:10px!important;
-  background:rgba(255,255,255,.92);
+  line-height:16px!important;
 }
+
+/* Browser-mobile layout. Android APK has its own native Compose login screen. */
 @media(max-width:800px){
   #loginView.login-page{
     background-size:cover!important;
     background-position:center top!important;
   }
+
   #loginView .login-card{
-    left:12%!important;
-    top:27%!important;
-    width:76%!important;
-    height:45%!important;
+    top:clamp(145px,22vh,180px)!important;
+    width:min(86vw,390px)!important;
+    height:320px!important;
+    min-height:320px!important;
+    max-height:320px!important;
+    padding:22px 22px 18px!important;
   }
 }
 
-
-/* v0.3.18 login visibility + exact viewport fix */
-#loginView.hidden{
-  display:none!important;
-}
-#loginView.login-page{
-  height:100dvh!important;
-  min-height:100dvh!important;
-  max-height:100dvh!important;
-  width:100%!important;
-  max-width:100vw!important;
-}
-#loginView .remember{
-  color:transparent!important;
-  user-select:none;
-}
-#loginView .remember input{
-  opacity:1!important;
-}
-@media(max-width:800px){
-  #loginView.login-page{
-    background-size:100% 100%!important;
-    background-position:center center!important;
-  }
-}
-
-
-/* v0.3.20 web login control alignment fix */
-@media (min-width:801px){
-  /* Use the same full viewport coordinate system as the approved login master image. */
-  #loginView .login-card{
-    inset:0!important;
-    left:0!important;
-    top:0!important;
-    width:100%!important;
-    height:100%!important;
-  }
-  #loginView #loginForm{
-    position:absolute!important;
-    inset:0!important;
-    width:100%!important;
-    height:100%!important;
-  }
-
-  /* Exact control positions on the approved desktop master. */
-  #loginView #loginForm>label:nth-of-type(1){
-    left:36.40%!important;
-    top:45.70%!important;
-    width:26.35%!important;
-    height:5.95%!important;
-  }
-  #loginView #loginForm>label:nth-of-type(2){
-    left:36.40%!important;
-    top:53.70%!important;
-    width:26.35%!important;
-    height:5.95%!important;
-  }
-  #loginView .login-submit{
-    left:36.75%!important;
-    top:62.05%!important;
-    width:26.15%!important;
-    height:6.05%!important;
-  }
-  #loginView .login-options{
-    left:36.75%!important;
-    top:69.35%!important;
-    width:26.15%!important;
-    height:4.25%!important;
-  }
-  #loginView #loginError{
-    left:36.75%!important;
-    top:73.55%!important;
-    width:26.15%!important;
-  }
-
-  /* Keep the live controls visually clean over the master artwork. */
-  #loginView .login-input-wrap{
-    border-color:rgba(182,195,214,.90)!important;
-    border-radius:10px!important;
-    background:rgba(255,255,255,.985)!important;
-  }
-  #loginView .login-field-icon{
-    width:12.5%!important;
-    font-size:18px!important;
-  }
-  #loginView .login-input-wrap input{
-    padding-right:46px!important;
-    font-size:clamp(12px,.95vw,15px)!important;
-  }
-  #loginView .login-submit{
-    background:linear-gradient(100deg,#1458c8 0%,#073b7a 100%)!important;
-    color:#fff!important;
-    box-shadow:0 8px 18px rgba(7,59,122,.16)!important;
-  }
-  #loginView .login-submit *{visibility:visible!important}
-  #loginView .login-submit span{
-    margin-left:auto!important;
-    font-weight:850!important;
-  }
-  #loginView .login-submit b{
-    margin-left:auto!important;
-    font-size:24px!important;
-  }
-  #loginView .remember{
-    color:#172744!important;
-  }
-  #loginView .forgot-password-web{
-    color:#ff5c00!important;
-    width:auto!important;
-    height:auto!important;
-  }
-}
-
-
-/* v0.3.21 independent web login card */
-@media (min-width:801px){
-  #loginView .login-card{
-    position:absolute!important;
-    left:50%!important;
-    top:23.2%!important;
-    width:min(31.8vw,440px)!important;
-    height:auto!important;
-    min-height:0!important;
-    transform:translateX(-50%)!important;
-    padding:24px 30px 22px!important;
-    margin:0!important;
-    background:rgba(255,255,255,.985)!important;
-    border:1px solid rgba(255,101,0,.28)!important;
-    border-radius:24px!important;
-    box-shadow:0 14px 34px rgba(7,59,122,.10),0 7px 22px rgba(255,101,0,.08)!important;
-    backdrop-filter:blur(8px)!important;
-    overflow:hidden!important;
-  }
-  #loginView .login-card h1{
-    display:block!important;
-    margin:0!important;
-    text-align:center!important;
-    color:#294f8e!important;
-    font-size:26px!important;
-    line-height:1.15!important;
-    font-weight:900!important;
-  }
-  #loginView .login-subtitle{
-    display:block!important;
-    margin:5px 0 18px!important;
-    text-align:center!important;
-    color:#66738b!important;
-    font-size:13px!important;
-    line-height:1.3!important;
-  }
-  #loginView #loginForm{
-    position:static!important;
-    inset:auto!important;
-    width:100%!important;
-    height:auto!important;
-    margin:0!important;
-    padding:0!important;
-  }
-  #loginView #loginForm>label:nth-of-type(1),
-  #loginView #loginForm>label:nth-of-type(2){
-    position:static!important;
-    left:auto!important;
-    top:auto!important;
-    width:100%!important;
-    height:44px!important;
-    margin:0 0 11px!important;
-    display:block!important;
-  }
-  #loginView .login-input-wrap{
-    width:100%!important;
-    height:44px!important;
-    border:1px solid #b8c6d9!important;
-    border-radius:10px!important;
-    background:#fff!important;
-    box-shadow:none!important;
-    transform:none!important;
-  }
-  #loginView .login-field-icon{
-    width:42px!important;
-    flex:0 0 42px!important;
-    font-size:17px!important;
-  }
-  #loginView .login-input-wrap input{
-    height:42px!important;
-    padding:0 44px 0 0!important;
-    font-size:13px!important;
-    color:#33445f!important;
-  }
-  #loginView .password-wrap .icon-btn{
-    top:1px!important;
-    right:3px!important;
-    width:40px!important;
-    height:40px!important;
-  }
-  #loginView .login-submit{
-    position:relative!important;
-    left:auto!important;
-    top:auto!important;
-    width:100%!important;
-    height:44px!important;
-    min-height:44px!important;
-    margin:4px 0 0!important;
-    border-radius:10px!important;
-    background:linear-gradient(100deg,#1b62d1 0%,#073b7a 100%)!important;
-    color:#fff!important;
-    box-shadow:0 8px 18px rgba(7,59,122,.18)!important;
-  }
-  #loginView .login-submit *{visibility:visible!important}
-  #loginView .login-options{
-    position:static!important;
-    left:auto!important;
-    top:auto!important;
-    width:100%!important;
-    height:28px!important;
-    margin:8px 0 0!important;
-    display:flex!important;
-    align-items:center!important;
-    justify-content:space-between!important;
-  }
-  #loginView .remember{
-    color:#263853!important;
-    font-size:11px!important;
-    white-space:nowrap!important;
-  }
-  #loginView .remember input{
-    width:16px!important;
-    height:16px!important;
-    margin:0 5px 0 0!important;
-  }
-  #loginView .forgot-password-web{
-    color:#ff5c00!important;
-    width:auto!important;
-    height:auto!important;
-    padding:4px 0!important;
-    font-size:11px!important;
-    white-space:nowrap!important;
-  }
-  #loginView #loginError{
-    position:static!important;
-    left:auto!important;
-    top:auto!important;
-    width:100%!important;
-    min-height:0!important;
-    margin:2px 0 0!important;
-    background:transparent!important;
-    font-size:10px!important;
-  }
-}
-
-
-/* v0.3.22 exact desktop card geometry */
-@media (min-width:801px){
-  #loginView .login-card{
-    position:absolute!important;
-    left:50%!important;
-    right:auto!important;
-    top:clamp(135px,21vh,165px)!important;
-    bottom:auto!important;
-    width:min(420px,calc(100vw - 48px))!important;
-    height:318px!important;
-    min-height:318px!important;
-    max-height:318px!important;
-    margin:0!important;
-    padding:22px 28px 18px!important;
-    transform:translateX(-50%)!important;
-    box-sizing:border-box!important;
-    display:block!important;
-    overflow:hidden!important;
-    background:rgba(255,255,255,.985)!important;
-    border:1px solid rgba(255,101,0,.30)!important;
-    border-radius:24px!important;
-    box-shadow:0 14px 34px rgba(7,59,122,.10),0 7px 22px rgba(255,101,0,.08)!important;
-  }
-
-  #loginView .login-card h1{
-    display:block!important;
-    margin:0!important;
-    text-align:center!important;
-    font-size:26px!important;
-    line-height:30px!important;
-  }
-
-  #loginView .login-subtitle{
-    display:block!important;
-    margin:4px 0 16px!important;
-    line-height:17px!important;
-    font-size:13px!important;
-  }
-
-  #loginView #loginForm{
-    position:static!important;
-    inset:auto!important;
-    width:100%!important;
-    height:auto!important;
-    min-height:0!important;
-    margin:0!important;
-    padding:0!important;
-  }
-
-  #loginView #loginForm>label:nth-of-type(1),
-  #loginView #loginForm>label:nth-of-type(2){
-    position:static!important;
-    inset:auto!important;
-    display:block!important;
-    width:100%!important;
-    height:44px!important;
-    min-height:44px!important;
-    max-height:44px!important;
-    margin:0 0 10px!important;
-  }
-
-  #loginView .login-input-wrap{
-    width:100%!important;
-    height:44px!important;
-    min-height:44px!important;
-    max-height:44px!important;
-    margin:0!important;
-  }
-
-  #loginView .login-submit{
-    position:relative!important;
-    inset:auto!important;
-    width:100%!important;
-    height:44px!important;
-    min-height:44px!important;
-    max-height:44px!important;
-    margin:3px 0 0!important;
-  }
-
-  #loginView .login-options{
-    position:static!important;
-    inset:auto!important;
-    width:100%!important;
-    height:28px!important;
-    min-height:28px!important;
-    max-height:28px!important;
-    margin:7px 0 0!important;
-  }
-
-  #loginView #loginError{
-    position:static!important;
-    inset:auto!important;
-    width:100%!important;
-    min-height:0!important;
-    max-height:18px!important;
-    margin:0!important;
-    padding:0!important;
-    overflow:hidden!important;
-  }
-}
