@@ -67,14 +67,52 @@ async function createLiveNotification(title,body,tripId="",type="general"){
   });
 }
 
+function handlingExpenses(t,freight,weight){
+  const loadRaw=Number(t.loadingExpensePerTon||0);
+  const unloadRaw=Number(t.unloadingExpensePerTon||0);
+  const rawTotal=loadRaw+unloadRaw;
+  const version=Number(t.expenseCalcVersion||0);
+
+  // Version 2+ records are explicitly stored as per-ton values.
+  if(version>=2 || weight<=1 || rawTotal<=0){
+    return {loading:loadRaw*weight,unloading:unloadRaw*weight,legacyTotalMode:false};
+  }
+
+  // Backward compatibility: older records sometimes stored the TOTAL
+  // loading/unloading amount in the newer per-ton fields. Multiplying those
+  // totals by vehicle weight created lakh-level false expenses.
+  const multiplied=rawTotal*weight;
+  const looksLikeLegacyTotal=
+    rawTotal>=5000 &&
+    freight>0 &&
+    rawTotal<=freight &&
+    multiplied>freight*1.25;
+
+  return looksLikeLegacyTotal
+    ? {loading:loadRaw,unloading:unloadRaw,legacyTotalMode:true}
+    : {loading:loadRaw*weight,unloading:unloadRaw*weight,legacyTotalMode:false};
+}
+
 function calcTrip(t){
   const freight=Number(t.freight||0), weight=Number(t.weightTon||0), km=Number(t.totalKm||0), mileage=Number(t.mileage||0), fuelRate=Number(t.fuelRate||0);
   const pct=(t.expenseRules||[]).reduce((s,r)=>s+freight*Number(r.percent||0)/100,0);
   const fuel=mileage>0?(km/mileage)*fuelRate:0;
-  const load=Number(t.loadingExpensePerTon||0)*weight, unload=Number(t.unloadingExpensePerTon||0)*weight;
-  const exp=pct+fuel+Number(t.fixedExpenses||0)+Number(t.fastag||0)+Number(t.rtoTarpaulin||0)+Number(t.loadingUnloading||0)+load+unload;
+  const handling=handlingExpenses(t,freight,weight);
+  const legacyLU=Number(t.loadingUnloading||0);
+  const exp=pct+fuel+Number(t.fixedExpenses||0)+Number(t.fastag||0)+Number(t.rtoTarpaulin||0)+legacyLU+handling.loading+handling.unloading;
   const margin=freight-exp;
-  return {...t,totalExpenses:exp,margin,marginPercent:freight?margin/freight*100:0,fuelExpense:fuel};
+  return {
+    ...t,
+    totalExpenses:exp,
+    margin,
+    marginPercent:freight?margin/freight*100:0,
+    fuelExpense:fuel,
+    percentageExpense:pct,
+    loadingExpense:handling.loading,
+    unloadingExpense:handling.unloading,
+    legacyLoadingUnloadingExpense:legacyLU,
+    legacyHandlingCorrected:handling.legacyTotalMode
+  };
 }
 
 async function loadProfile(user){
@@ -533,7 +571,7 @@ function wireDashboard(){
       const freight=trips.reduce((s,t)=>s+Number(t.freight||0),0);
       const pct=freight?total/freight*100:0;
       const rows=[...trips].sort((a,b)=>Number(b.margin||0)-Number(a.margin||0)).slice(0,8);
-      modal("Margin Details", `<div class="mini-summary"><span>Total Vehicle Margin</span><strong>₹ ${money(total)} <small>(${pct.toFixed(1)}%)</small></strong></div><div class="mini-list">${rows.map(t=>`<div class="mini-row"><div><strong>${esc(t.vehicle||"-")}</strong><small>${esc(t.from||"-")} → ${esc(t.to||"-")}</small></div><span>₹ ${money(t.margin)}</span></div>`).join("")}</div>`);
+      modal("Margin Details", `<div class="mini-summary"><span>Total Vehicle Margin</span><strong>₹ ${money(total)} <small>(${pct.toFixed(1)}%)</small></strong></div><div class="mini-list">${rows.map(t=>`<div class="mini-row margin-breakdown-row"><div class="grow"><strong>${esc(t.vehicle||"-")}</strong><small>${esc(t.from||"-")} → ${esc(t.to||"-")}</small><small>Freight ₹ ${money(t.freight)} · Fuel ₹ ${money(t.fuelExpense)} · Loading ₹ ${money(t.loadingExpense)} · Unloading ₹ ${money(t.unloadingExpense)} · FASTag ₹ ${money(t.fastag)} · RTO/Tarpaulin ₹ ${money(t.rtoTarpaulin)} · Fixed ₹ ${money(t.fixedExpenses)} · Other ₹ ${money(t.percentageExpense)}${Number(t.legacyLoadingUnloadingExpense||0)?` · Legacy L/U ₹ ${money(t.legacyLoadingUnloadingExpense)}`:""}${t.legacyHandlingCorrected?" · Legacy total corrected":""}</small><small>Total Expenses ₹ ${money(t.totalExpenses)}</small></div><span>₹ ${money(t.margin)}</span></div>`).join("")}</div>`);
     }
   };
   document.querySelectorAll(".neo-kpi[data-kpi]").forEach(card=>{
@@ -625,7 +663,13 @@ function wireNewTrip(){
  }
  const v=$("#fVehicle");const setMileage=()=>{const rec=state.vehicles.find(x=>x.number===v.value);$("#fMileage").value=rec?Number(rec.mileage).toFixed(1):""};v.addEventListener("change",setMileage);
  $("#tripForm").addEventListener("submit",async e=>{e.preventDefault();const n=id=>Number($("#"+id).value||0),now=Date.now(),id=uid();const freight=n("fFreight"),pct=n("fPct");
- const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:$("#fVehicle").value,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:n("fAdvance"),weightTon:n("fWeight"),currentToOriginKm:n("fOriginKm"),totalKm:n("fKm"),transitHours:n("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:n("fFixed"),fastag:n("fFastag"),rtoTarpaulin:n("fRto"),loadingUnloading:0,loadingExpensePerTon:n("fLoad"),unloadingExpensePerTon:n("fUnload"),expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Vehicle Placed",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
+ const weight=n("fWeight"),loadPerTon=n("fLoad"),unloadPerTon=n("fUnload");
+ const freightPerTon=weight>0?freight/weight:0;
+ if(weight>0 && freightPerTon>0 && (loadPerTon+unloadPerTon)>freightPerTon){
+   toast("Loading + unloading must be PER TON. The entered value is higher than freight/ton.");
+   return;
+ }
+ const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:$("#fVehicle").value,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:n("fAdvance"),weightTon:weight,currentToOriginKm:n("fOriginKm"),totalKm:n("fKm"),transitHours:n("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:n("fFixed"),fastag:n("fFastag"),rtoTarpaulin:n("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,expenseCalcVersion:2,expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Vehicle Placed",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
  await setDoc(doc(db,"trips",id),trip);
  await createLiveNotification("New Trip Created",trip.vehicle+" — "+trip.from+" → "+trip.to,id,"trip_created");
  toast("Trip created");navigate("trips");});
