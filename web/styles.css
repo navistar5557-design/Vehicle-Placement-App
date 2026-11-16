@@ -2096,3 +2096,91 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   visibility:hidden!important;
   pointer-events:none!important;
 }
+
+
+/* v0.3.40 move live brand header to top */
+@media(min-width:801px){
+  #loginView .login-brand-area{
+    display:block!important;
+    position:absolute!important;
+    left:50%!important;
+    top:8px!important;
+    transform:translateX(-50%)!important;
+    width:560px!important;
+    height:150px!important;
+    z-index:9!important;
+    text-align:center!important;
+    isolation:isolate!important;
+  }
+
+  /* Cover only the old logo/title baked into the background image. */
+  #loginView .login-brand-area::before{
+    content:""!important;
+    position:absolute!important;
+    z-index:-1!important;
+    left:50%!important;
+    top:-8px!important;
+    transform:translateX(-50%)!important;
+    width:610px!important;
+    height:188px!important;
+    background:
+      radial-gradient(circle at 50% 100%,rgba(230,238,250,.18),transparent 55%),
+      linear-gradient(180deg,#f8faff 0%,#fbfdff 100%)!important;
+    pointer-events:none!important;
+  }
+
+  #loginView .login-brand{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:8px!important;
+    margin-top:0!important;
+  }
+
+  #loginView .login-brand .wordmark strong{
+    display:block!important;
+    color:#0b438f!important;
+    font-family:Arial Black,Arial,Helvetica,sans-serif!important;
+    font-size:52px!important;
+    line-height:.82!important;
+    letter-spacing:-3.5px!important;
+    font-style:italic!important;
+    font-weight:900!important;
+  }
+
+  #loginView .login-brand .wordmark span{
+    display:block!important;
+    margin-top:8px!important;
+    color:#ff6500!important;
+    font-family:Arial Black,Arial,Helvetica,sans-serif!important;
+    font-size:18px!important;
+    line-height:1!important;
+    letter-spacing:1.4px!important;
+    font-style:italic!important;
+    font-weight:900!important;
+  }
+
+  #loginView .login-brand img{
+    display:block!important;
+    width:56px!important;
+    height:56px!important;
+  }
+
+  #loginView .login-portal-title{
+    display:block!important;
+    margin-top:13px!important;
+    color:#17366f!important;
+    font-family:Arial,Helvetica,sans-serif!important;
+    font-size:12px!important;
+    line-height:16px!important;
+    letter-spacing:5.7px!important;
+    font-weight:800!important;
+    white-space:nowrap!important;
+  }
+}
+
+#loginView.hidden{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
