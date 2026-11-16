@@ -2011,3 +2011,88 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   visibility:hidden!important;
   pointer-events:none!important;
 }
+
+
+/* v0.3.39 exact live-card/background-box match */
+@media(min-width:801px){
+  #loginView.login-page::after{
+    content:""!important;
+    display:block!important;
+    position:absolute!important;
+    left:50%!important;
+    top:calc(23.63% + 32px)!important;
+    transform:translateX(-50%)!important;
+    width:31.2%!important;
+    height:48.2%!important;
+    min-width:0!important;
+    min-height:0!important;
+    max-width:none!important;
+    max-height:none!important;
+    margin:0!important;
+    padding:0!important;
+    background:#fff!important;
+    border:1.35px solid rgba(255,101,0,.55)!important;
+    border-radius:28px!important;
+    box-sizing:border-box!important;
+    box-shadow:
+      0 18px 36px rgba(20,58,113,.10),
+      0 7px 20px rgba(255,101,0,.08)!important;
+    z-index:6!important;
+    pointer-events:none!important;
+  }
+
+  #loginView .login-card{
+    position:absolute!important;
+    left:50%!important;
+    top:calc(23.63% + 32px)!important;
+    transform:translateX(-50%)!important;
+    width:31.2%!important;
+    height:48.2%!important;
+    min-width:0!important;
+    min-height:0!important;
+    max-width:none!important;
+    max-height:none!important;
+    margin:0!important;
+    padding:3.6vh 2.75vw 1.9vh!important;
+    background:#fff!important;
+    border:1.35px solid rgba(255,101,0,.55)!important;
+    border-radius:28px!important;
+    box-sizing:border-box!important;
+    box-shadow:
+      0 18px 36px rgba(20,58,113,.10),
+      0 7px 20px rgba(255,101,0,.08)!important;
+    z-index:8!important;
+    overflow:hidden!important;
+  }
+
+  #loginView .login-card h1{
+    margin:0!important;
+    font-size:24px!important;
+    line-height:1.05!important;
+  }
+
+  #loginView .login-subtitle{
+    margin:.5vh 0 2.1vh!important;
+    font-size:14px!important;
+  }
+
+  #loginView #loginForm>label{
+    height:5.7vh!important;
+    margin-bottom:1.7vh!important;
+  }
+
+  #loginView .login-submit{
+    height:6.1vh!important;
+    margin-top:.2vh!important;
+  }
+
+  #loginView .login-options{
+    margin-top:1.5vh!important;
+  }
+}
+
+#loginView.hidden{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
