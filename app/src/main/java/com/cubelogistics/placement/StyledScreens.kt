@@ -206,8 +206,13 @@ fun StyledTripEntryScreen(store: Store, createdBy: String = "", createdByEmail: 
             }
             Button(
                 onClick = {
+                    val w = weight.num()
+                    val handlingPerTon = loadingPerTon.num() + unloadingPerTon.num()
+                    val freightPerTon = if (w > 0) f / w else 0.0
                     if (vendor.isBlank() || vehicle.isBlank() || f <= 0) {
                         message = "Vendor, vehicle and freight are required"
+                    } else if (w > 0 && freightPerTon > 0 && handlingPerTon > freightPerTon) {
+                        message = "Loading + unloading must be entered PER TON. The entered value is higher than freight/ton."
                     } else {
                         val trip = Trip(
                             id = UUID.randomUUID().toString(),
@@ -238,7 +243,8 @@ fun StyledTripEntryScreen(store: Store, createdBy: String = "", createdByEmail: 
                             status = "Vehicle Placed",
                             statusUpdatedBy = createdBy,
                             statusUpdatedByEmail = createdByEmail,
-                            statusUpdatedAt = System.currentTimeMillis()
+                            statusUpdatedAt = System.currentTimeMillis(),
+                            expenseCalcVersion = 2
                         )
                         val trips = store.trips()
                         trips.add(trip)
