@@ -2634,3 +2634,17 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   }
 }
 #loginView.hidden{display:none!important;visibility:hidden!important;pointer-events:none!important}
+
+
+/* v0.3.32 final card mask polish */
+@media (min-width:801px){
+  #loginView .login-card{
+    width:34.45vw!important;
+    height:50.05vh!important;
+    box-shadow:
+      0 0 0 5px rgba(255,255,255,.99),
+      0 23px 50px rgba(20,58,113,.14),
+      0 9px 26px rgba(255,101,0,.13)!important;
+  }
+}
+#loginView.hidden{display:none!important;visibility:hidden!important;pointer-events:none!important}
