@@ -58,6 +58,46 @@ class TripCalculationTest {
   assertEquals(5000.0, t.unloadingExpense, 0.01)
   assertEquals(50000.0, t.loadingExpense + t.unloadingExpense, 0.01)
  }
+ @Test fun legacyNumericFieldsAreNormalizedOnce() {
+  val legacy = trip(freight = 64500.0, expenseCalcVersion = 3).copy(
+   totalKm = 45000.0,
+   currentToOriginKm = 12500.0,
+   transitHours = 2400.0,
+   fastag = 4500000.0,
+   rtoTarpaulin = 2500000.0,
+   fixedExpenses = 1500000.0,
+   loadingExpensePerTon = 4500000.0,
+   unloadingExpensePerTon = 500000.0,
+   expenseRules = listOf(ExpenseRule("Other Expense", 500.0)),
+   numericDataVersion = 0
+  )
+  val fixed = legacy.normalizedNumericData()
+  assertEquals(450.0, fixed.totalKm, 0.01)
+  assertEquals(125.0, fixed.currentToOriginKm, 0.01)
+  assertEquals(24.0, fixed.transitHours, 0.01)
+  assertEquals(45000.0, fixed.fastag, 0.01)
+  assertEquals(25000.0, fixed.rtoTarpaulin, 0.01)
+  assertEquals(15000.0, fixed.fixedExpenses, 0.01)
+  assertEquals(45000.0, fixed.loadingExpensePerTon, 0.01)
+  assertEquals(5000.0, fixed.unloadingExpensePerTon, 0.01)
+  assertEquals(5.0, fixed.expenseRules.first().percent, 0.01)
+  assertEquals(2, fixed.numericDataVersion)
+ }
+ @Test fun numericNormalizationDoesNotChangeNormalValues() {
+  val current = trip(freight = 64500.0, expenseCalcVersion = 3).copy(
+   totalKm = 450.0,
+   currentToOriginKm = 125.0,
+   transitHours = 24.0,
+   fastag = 45000.0,
+   rtoTarpaulin = 2500.0,
+   fixedExpenses = 1500.0,
+   loadingExpensePerTon = 45000.0,
+   unloadingExpensePerTon = 5000.0,
+   expenseRules = listOf(ExpenseRule("Other Expense", 5.0)),
+   numericDataVersion = 2
+  )
+  assertEquals(current, current.normalizedNumericData())
+ }
  @Test fun zeroKmSafe() = assertEquals(0.0, trip(km = 0.0).perKmFreight, 0.01)
  @Test fun zeroMileageSafe() = assertEquals(0.0, trip(mileage = 0.0).fuelExpense, 0.01)
 }
