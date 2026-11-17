@@ -2176,3 +2176,318 @@ body{
   background:#FFFFFF!important;
   background-image:none!important;
 }
+
+
+/* v0.3.57 world-class vehicle placement trend */
+.trend-panel{
+  min-height:348px;
+  padding:16px 17px 15px;
+  background:#fff;
+  border:1px solid #dfe7f3;
+  box-shadow:0 10px 28px rgba(28,52,95,.075),inset 0 1px 0 #fff;
+  overflow:visible;
+}
+.trend-panel::after{
+  opacity:.35;
+}
+.trend-panel-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:12px;
+}
+.trend-title-wrap{
+  display:flex;
+  align-items:flex-start;
+  gap:9px;
+  min-width:0;
+}
+.trend-title-icon{
+  width:29px;
+  height:29px;
+  flex:0 0 29px;
+  display:grid;
+  place-items:center;
+  border-radius:9px;
+  color:#0b4fa4;
+  background:#eef5ff;
+  border:1px solid #dce9fb;
+  font-size:14px;
+  font-weight:900;
+}
+.trend-title-wrap h3{
+  margin:0;
+  color:#0c1f44;
+  font-size:14px;
+  line-height:1.15;
+  font-weight:900;
+}
+.trend-title-wrap p{
+  margin:4px 0 0;
+  color:#7a879d;
+  font-size:9px;
+  line-height:1.35;
+  font-weight:600;
+}
+.trend-panel .legend{
+  margin:1px 0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  color:#5e6d87;
+  font-size:9px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.trend-panel .legend>span{
+  display:flex;
+  align-items:center;
+  gap:5px;
+}
+.trend-panel .legend .cyan-dot,
+.trend-panel .legend .purple-dot{
+  width:8px;
+  height:8px;
+  box-shadow:none;
+}
+.trend-panel .legend .cyan-dot{
+  background:#1268c9;
+}
+.trend-panel .legend .purple-dot{
+  background:#8b3fe8;
+}
+
+.trend-insights{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+  margin:0 0 10px;
+}
+.trend-insight{
+  min-width:0;
+  padding:8px 9px;
+  border-radius:11px;
+  background:#fbfcff;
+  border:1px solid #e6ebf4;
+  box-shadow:0 2px 7px rgba(25,53,98,.025);
+}
+.trend-insight span{
+  display:block;
+  color:#7b879b;
+  font-size:7.5px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.55px;
+}
+.trend-insight strong{
+  display:block;
+  margin-top:3px;
+  overflow:hidden;
+  color:#11264b;
+  font-size:12px;
+  font-weight:900;
+  line-height:1.12;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.trend-insight strong.negative,
+.trend-tooltip b.negative{
+  color:#c63842;
+}
+.trend-insight small{
+  display:block;
+  margin-top:3px;
+  overflow:hidden;
+  color:#8a95a8;
+  font-size:7.5px;
+  font-weight:650;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.trend-chart{
+  display:block!important;
+  width:100%;
+  height:220px;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  overflow:visible!important;
+}
+.trend-plot{
+  position:relative;
+  width:100%;
+  height:220px;
+  border:1px solid #e5ebf4;
+  border-radius:14px;
+  background:
+    linear-gradient(180deg,#fbfdff 0%,#fff 76%);
+  overflow:hidden;
+}
+.trend-svg{
+  display:block;
+  width:100%!important;
+  height:100%!important;
+  overflow:visible;
+}
+.trend-gridline{
+  stroke:#e6ebf3;
+  stroke-width:1;
+  vector-effect:non-scaling-stroke;
+}
+.trend-zero-line{
+  stroke:#cad4e3;
+  stroke-width:1.1;
+  stroke-dasharray:4 5;
+  vector-effect:non-scaling-stroke;
+}
+.trend-y-label,
+.trend-margin-axis-label{
+  fill:#8490a4;
+  font-size:9px;
+  font-weight:700;
+}
+.trend-axis-caption{
+  fill:#8591a5;
+  font-size:7.5px;
+  font-weight:900;
+  letter-spacing:1.1px;
+}
+.trend-axis-caption-right{
+  fill:#8b67b9;
+}
+.trend-svg-label{
+  fill:#6f7d93;
+  font-size:8.4px;
+  font-weight:750;
+}
+.trend-bar-value{
+  fill:#305078;
+  font-size:8px;
+  font-weight:900;
+  opacity:.82;
+}
+.trend-svg-bar{
+  fill:url(#tripBarGradient);
+  opacity:1;
+  filter:url(#trendSoftShadow);
+  animation:svgBarRise .72s var(--ease-out) both;
+}
+.trend-svg-line{
+  fill:none;
+  stroke:url(#marginLineGradient);
+  stroke-width:3;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
+  filter:drop-shadow(0 2px 4px rgba(124,58,237,.16));
+  stroke-dasharray:1100;
+  stroke-dashoffset:1100;
+  animation:trendDraw .95s .12s var(--ease-out) forwards;
+}
+.trend-svg-dot-ring{
+  fill:rgba(139,63,232,.10);
+  stroke:rgba(139,63,232,.16);
+  stroke-width:1;
+  vector-effect:non-scaling-stroke;
+}
+.trend-svg-dot{
+  fill:#8b3fe8;
+  stroke:#fff;
+  stroke-width:2.2;
+  vector-effect:non-scaling-stroke;
+  filter:drop-shadow(0 2px 4px rgba(107,57,184,.24));
+}
+.trend-svg-hit{
+  fill:transparent;
+}
+.trend-svg-day:hover .trend-svg-hit,
+.trend-svg-day:focus-visible .trend-svg-hit,
+.trend-svg-day.trend-active .trend-svg-hit{
+  fill:rgba(23,101,190,.035);
+}
+.trend-svg-day.trend-active .trend-svg-bar{
+  transform:translateY(-3px) scale(1.08);
+  filter:drop-shadow(0 8px 11px rgba(13,78,155,.25));
+}
+.trend-svg-day.trend-active .trend-svg-dot{
+  transform:translateY(-3px) scale(1.32);
+  filter:drop-shadow(0 3px 7px rgba(124,58,237,.30));
+}
+.trend-svg-day.trend-muted{
+  opacity:.42;
+}
+
+.trend-tooltip{
+  position:absolute;
+  z-index:8;
+  width:178px;
+  padding:10px 11px;
+  border-radius:12px;
+  border:1px solid rgba(24,55,105,.13);
+  background:rgba(255,255,255,.98);
+  box-shadow:0 12px 30px rgba(26,48,88,.18);
+  opacity:0;
+  pointer-events:none;
+  transform:translate(-50%,-100%) translateY(-8px);
+  transition:opacity .14s ease,transform .16s ease;
+}
+.trend-tooltip.visible{
+  opacity:1;
+  transform:translate(-50%,-100%) translateY(-12px);
+}
+.trend-tooltip>strong{
+  display:block;
+  margin-bottom:7px;
+  color:#10264a;
+  font-size:10px;
+  font-weight:900;
+}
+.trend-tooltip>div{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:2px 0;
+  color:#738198;
+  font-size:8.5px;
+}
+.trend-tooltip>div b{
+  color:#17335e;
+  font-size:9px;
+}
+.trend-tooltip>small{
+  display:block;
+  margin-top:6px;
+  padding-top:6px;
+  border-top:1px solid #edf1f6;
+  color:#9aa4b4;
+  font-size:7.5px;
+  font-weight:650;
+}
+
+@media(max-width:1180px){
+  .trend-panel{min-height:340px}
+}
+@media(max-width:760px){
+  .trend-panel{
+    min-height:390px;
+    padding:14px;
+  }
+  .trend-panel-head{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:8px;
+  }
+  .trend-panel .legend{
+    margin-left:38px;
+  }
+  .trend-insights{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .trend-chart,
+  .trend-plot{
+    height:224px;
+  }
+}
