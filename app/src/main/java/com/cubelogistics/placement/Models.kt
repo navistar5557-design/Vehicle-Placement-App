@@ -24,32 +24,24 @@ data class Trip(
  val perKmFreight get()=if(totalKm>0)freight/totalKm else 0.0
  val percentageExpenses get()=expenseRules.sumOf{freight*it.percent/100.0}
  val fuelExpense get()=if(mileage>0)(totalKm/mileage)*fuelRate else 0.0
- private fun legacyPerTon(v:Double):Double {
-  if(expenseCalcVersion>=2 || weightTon<=0 || freight<=0) return v
-  val freightPerTon=freight/weightTon
-  return if(v>=5000 && (v/100.0)<=freightPerTon) v/100.0 else v
- }
- private val normalizedLoadingPerTon get()=legacyPerTon(loadingExpensePerTon)
- private val normalizedUnloadingPerTon get()=legacyPerTon(unloadingExpensePerTon)
- val legacyDecimalCorrected get()=
-  expenseCalcVersion<2 && (normalizedLoadingPerTon!=loadingExpensePerTon || normalizedUnloadingPerTon!=unloadingExpensePerTon)
  private val legacyHandlingTotalMode get():Boolean {
-  if(expenseCalcVersion>=2 || weightTon<=1 || legacyDecimalCorrected) return false
+  if(expenseCalcVersion>=2 || weightTon<=1) return false
   val raw=loadingExpensePerTon+unloadingExpensePerTon
-  if(raw<5000 || freight<=0 || raw>freight) return false
+  if(raw<5000 || freight<=0 || raw>freight*2) return false
   return raw*weightTon > freight*1.25
  }
  val loadingExpense get()=when {
   expenseCalcVersion>=3 -> loadingExpensePerTon
   legacyHandlingTotalMode -> loadingExpensePerTon
-  else -> normalizedLoadingPerTon*weightTon
+  else -> loadingExpensePerTon*weightTon
  }
  val unloadingExpense get()=when {
   expenseCalcVersion>=3 -> unloadingExpensePerTon
   legacyHandlingTotalMode -> unloadingExpensePerTon
-  else -> normalizedUnloadingPerTon*weightTon
+  else -> unloadingExpensePerTon*weightTon
  }
  val legacyHandlingCorrected get()=legacyHandlingTotalMode
+ val legacyDecimalCorrected get()=false
  val totalExpenses get()=percentageExpenses+fuelExpense+fixedExpenses+fastag+rtoTarpaulin+loadingUnloading+loadingExpense+unloadingExpense
  val margin get()=freight-totalExpenses
  val marginPercent get()=if(freight>0)margin/freight*100 else 0.0
