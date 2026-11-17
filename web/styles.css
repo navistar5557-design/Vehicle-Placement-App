@@ -2162,3 +2162,17 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   display:none!important;
   content:none!important;
 }
+
+
+/* v0.3.56 pure white web interior */
+body{
+  background:#FFFFFF!important;
+  background-image:none!important;
+}
+#appView,
+#appView.app,
+#appView .main,
+#appView .content{
+  background:#FFFFFF!important;
+  background-image:none!important;
+}
