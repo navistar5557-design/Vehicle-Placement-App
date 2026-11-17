@@ -32,7 +32,7 @@ data class Trip(
  private val normalizedLoadingPerTon get()=legacyPerTon(loadingExpensePerTon)
  private val normalizedUnloadingPerTon get()=legacyPerTon(unloadingExpensePerTon)
  val legacyDecimalCorrected get()=
-  normalizedLoadingPerTon!=loadingExpensePerTon || normalizedUnloadingPerTon!=unloadingExpensePerTon
+  expenseCalcVersion<2 && (normalizedLoadingPerTon!=loadingExpensePerTon || normalizedUnloadingPerTon!=unloadingExpensePerTon)
  private val legacyHandlingTotalMode get():Boolean {
   if(expenseCalcVersion>=2 || weightTon<=1 || legacyDecimalCorrected) return false
   val raw=loadingExpensePerTon+unloadingExpensePerTon
@@ -40,10 +40,12 @@ data class Trip(
   return raw*weightTon > freight*1.25
  }
  val loadingExpense get()=when {
+  expenseCalcVersion>=3 -> loadingExpensePerTon
   legacyHandlingTotalMode -> loadingExpensePerTon
   else -> normalizedLoadingPerTon*weightTon
  }
  val unloadingExpense get()=when {
+  expenseCalcVersion>=3 -> unloadingExpensePerTon
   legacyHandlingTotalMode -> unloadingExpensePerTon
   else -> normalizedUnloadingPerTon*weightTon
  }
