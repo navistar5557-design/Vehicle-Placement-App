@@ -29,6 +29,17 @@ const moneyInputValue = v => {
   const n=Number(v||0);
   return Number.isInteger(n)?String(n):String(Number(n.toFixed(2)));
 };
+const normalizeLegacyScalarValue = (value,maxReasonable) => {
+  let v=parseMoneyValue(value);
+  if(v<=maxReasonable) return v;
+  while(v>maxReasonable && v/100>0) v/=100;
+  return v;
+};
+const normalizeLegacyMoneyValue = (value,freight) => {
+  const v=parseMoneyValue(value);
+  const cap=Math.max(100000,parseMoneyValue(freight)*2);
+  return (v>cap && v/100<=cap)?v/100:v;
+};
 const dateTime = ms => ms ? new Date(ms).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}) : "-";
 const esc = v => String(v ?? "").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const uid = () => crypto.randomUUID ? crypto.randomUUID() : (Date.now()+"-"+Math.random().toString(16).slice(2));
@@ -149,40 +160,58 @@ async function migrateExistingTripsToV3(){
 
   for(const d of snap.docs){
     const t=d.data();
-    const version=Number(t.expenseCalcVersion||0);
-    if(version>=3) continue;
+    const expenseVersion=Number(t.expenseCalcVersion||0);
+    const numericVersion=Number(t.numericDataVersion||0);
+    if(expenseVersion>=3 && numericVersion>=2) continue;
 
     const freight=parseMoneyValue(t.freight);
     const weight=Number(t.weightTon||0);
-    const load=parseMoneyValue(t.loadingExpensePerTon);
-    const unload=parseMoneyValue(t.unloadingExpensePerTon);
-    const rawTotal=load+unload;
+    let totalLoading=parseMoneyValue(t.loadingExpensePerTon);
+    let totalUnloading=parseMoneyValue(t.unloadingExpensePerTon);
 
-    let totalLoading=load;
-    let totalUnloading=unload;
-
-    if(weight>1 && rawTotal>0){
-      const freightPerTon=freight>0 ? freight/weight : 0;
-      const clearlyTotal=
-        rawTotal>=5000 &&
-        freightPerTon>0 &&
-        rawTotal>freightPerTon*1.25;
-
-      if(!clearlyTotal){
-        totalLoading=load*weight;
-        totalUnloading=unload*weight;
+    if(expenseVersion<3){
+      const rawTotal=totalLoading+totalUnloading;
+      if(weight>1 && rawTotal>0){
+        const freightPerTon=freight>0 ? freight/weight : 0;
+        const clearlyTotal=
+          rawTotal>=5000 &&
+          freightPerTon>0 &&
+          rawTotal>freightPerTon*1.25;
+        if(!clearlyTotal){
+          totalLoading*=weight;
+          totalUnloading*=weight;
+        }
       }
     }
 
-    batch.set(d.ref,{
-      loadingExpensePerTon:totalLoading,
-      unloadingExpensePerTon:totalUnloading,
+    const patch={
+      loadingExpensePerTon: numericVersion<2 ? normalizeLegacyMoneyValue(totalLoading,freight) : totalLoading,
+      unloadingExpensePerTon: numericVersion<2 ? normalizeLegacyMoneyValue(totalUnloading,freight) : totalUnloading,
       expenseCalcVersion:3,
-      legacyExpenseMigratedAt:now,
-      legacyExpenseMigratedBy:state.profile?.username||"Admin",
+      numericDataVersion:2,
       updatedAt:now
-    },{merge:true});
+    };
 
+    if(numericVersion<2){
+      patch.totalKm=normalizeLegacyScalarValue(t.totalKm,10000);
+      patch.currentToOriginKm=normalizeLegacyScalarValue(t.currentToOriginKm,10000);
+      patch.transitHours=normalizeLegacyScalarValue(t.transitHours,1000);
+      patch.fastag=normalizeLegacyMoneyValue(t.fastag,freight);
+      patch.rtoTarpaulin=normalizeLegacyMoneyValue(t.rtoTarpaulin,freight);
+      patch.fixedExpenses=normalizeLegacyMoneyValue(t.fixedExpenses,freight);
+      patch.expenseRules=(Array.isArray(t.expenseRules)?t.expenseRules:[]).map(r=>({
+        ...r,
+        percent:normalizeLegacyScalarValue(r?.percent,100)
+      }));
+      patch.numericDataMigratedAt=now;
+      patch.numericDataMigratedBy=state.profile?.username||"Admin";
+    }
+    if(expenseVersion<3){
+      patch.legacyExpenseMigratedAt=now;
+      patch.legacyExpenseMigratedBy=state.profile?.username||"Admin";
+    }
+
+    batch.set(d.ref,patch,{merge:true});
     pending++; migrated++;
     if(pending===400){
       await batch.commit();
@@ -194,15 +223,17 @@ async function migrateExistingTripsToV3(){
   if(pending>0) await batch.commit();
 
   if(migrated>0){
-    await setDoc(doc(db,"settings","tripExpenseMigrationV3"),{
+    await setDoc(doc(db,"settings","tripNumericMigrationV2"),{
       completedAt:now,
       migratedTrips:migrated,
       completedBy:state.profile?.username||"Admin",
-      version:3
+      numericVersion:2,
+      expenseVersion:3
     },{merge:true});
   }
   return migrated;
 }
+
 
 function startLiveSync(){
   state.unsubs.forEach(f=>f()); state.unsubs=[];
@@ -752,8 +783,8 @@ function wireNewTrip(){
  const n=id=>Number($("#"+id).value||0);
  const m=id=>parseMoneyValue($("#"+id).value);
  const now=Date.now(),id=uid(),freight=m("fFreight"),pct=n("fPct");
- const weight=n("fWeight"),loadPerTon=m("fLoad"),unloadPerTon=m("fUnload");
- const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:$("#fVehicle").value,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:m("fAdvance"),weightTon:weight,currentToOriginKm:n("fOriginKm"),totalKm:n("fKm"),transitHours:n("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:m("fFixed"),fastag:m("fFastag"),rtoTarpaulin:m("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,expenseCalcVersion:3,expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Vehicle Placed",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
+ const weight=m("fWeight"),loadPerTon=m("fLoad"),unloadPerTon=m("fUnload");
+ const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:$("#fVehicle").value,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:m("fAdvance"),weightTon:weight,currentToOriginKm:m("fOriginKm"),totalKm:m("fKm"),transitHours:m("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:m("fFixed"),fastag:m("fFastag"),rtoTarpaulin:m("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,expenseCalcVersion:3,numericDataVersion:2,expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Vehicle Placed",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
  await setDoc(doc(db,"trips",id),trip);
  await createLiveNotification("New Trip Created",trip.vehicle+" — "+trip.from+" → "+trip.to,id,"trip_created");
  toast("Trip created");navigate("trips");});
@@ -770,14 +801,14 @@ function openEditTrip(id){
  <label><span>To</span><select id="eTo">${picker(state.locations.map(x=>x.name),t.to)}</select></label>
  <label><span>Freight</span><input id="eFreight" type="number" step="0.01" value="${moneyInputValue(t.freight||0)}"></label>
  <label><span>Advance</span><input id="eAdvance" type="number" step="0.01" value="${moneyInputValue(t.advance||0)}"></label>
- <label><span>Weight (Ton)</span><input id="eWeight" type="number" step="0.01" value="${Number(t.weightTon||0)}"></label>
- <label><span>Trip KM</span><input id="eKm" type="number" step="0.01" value="${Number(t.totalKm||0)}"></label>
- <label><span>Origin KM</span><input id="eOriginKm" type="number" step="0.01" value="${Number(t.currentToOriginKm||0)}"></label>
- <label><span>Transit Hours</span><input id="eHours" type="number" step="0.01" value="${Number(t.transitHours||0)}"></label>
+ <label><span>Weight (Ton)</span><input id="eWeight" type="number" step="0.01" value="${moneyInputValue(t.weightTon||0)}"></label>
+ <label><span>Trip KM</span><input id="eKm" type="number" step="0.01" value="${moneyInputValue(t.totalKm||0)}"></label>
+ <label><span>Origin KM</span><input id="eOriginKm" type="number" step="0.01" value="${moneyInputValue(t.currentToOriginKm||0)}"></label>
+ <label><span>Transit Hours</span><input id="eHours" type="number" step="0.01" value="${moneyInputValue(t.transitHours||0)}"></label>
  <label><span>Mileage</span><input id="eMileage" type="number" step="0.1" min="2.5" max="6.0" value="${Number(t.mileage||0).toFixed(1)}"></label>
  <label><span>Loading Expense</span><input id="eLoad" type="number" step="0.01" value="${moneyInputValue(t.loadingExpense||t.loadingExpensePerTon||0)}"></label>
  <label><span>Unloading Expense</span><input id="eUnload" type="number" step="0.01" value="${moneyInputValue(t.unloadingExpense||t.unloadingExpensePerTon||0)}"></label>
- <label><span>Other Expense %</span><input id="ePct" type="number" step="0.01" value="${pct}"></label>
+ <label><span>Other Expense %</span><input id="ePct" type="number" step="0.01" value="${moneyInputValue(pct)}"></label>
  <label><span>FASTag</span><input id="eFastag" type="number" step="0.01" value="${moneyInputValue(t.fastag||0)}"></label>
  <label><span>RTO / Tarpaulin</span><input id="eRto" type="number" step="0.01" value="${moneyInputValue(t.rtoTarpaulin||0)}"></label>
  <label><span>Fixed Expenses</span><input id="eFixed" type="number" step="0.01" value="${moneyInputValue(t.fixedExpenses||0)}"></label>
@@ -785,7 +816,7 @@ function openEditTrip(id){
  const n=id=>Number(m.querySelector(id)?.value||0);
  const moneyN=id=>parseMoneyValue(m.querySelector(id)?.value);
  m.querySelector("#saveEditTrip").onclick=async()=>{
-   const freight=moneyN("#eFreight"), mileage=n("#eMileage"), pctValue=n("#ePct");
+   const freight=moneyN("#eFreight"), mileage=n("#eMileage"), pctValue=moneyN("#ePct");
    if(freight<=0){toast("Enter a valid freight amount");return;}
    if(mileage<2.5||mileage>6.0){toast("Mileage must be between 2.5 and 6.0");return;}
    const patch={
@@ -796,10 +827,10 @@ function openEditTrip(id){
      to:m.querySelector("#eTo").value,
      freight,netFreight:freight,
      advance:moneyN("#eAdvance"),
-     weightTon:n("#eWeight"),
-     totalKm:n("#eKm"),
-     currentToOriginKm:n("#eOriginKm"),
-     transitHours:n("#eHours"),
+     weightTon:moneyN("#eWeight"),
+     totalKm:moneyN("#eKm"),
+     currentToOriginKm:moneyN("#eOriginKm"),
+     transitHours:moneyN("#eHours"),
      mileage,
      fuelRate:state.fuelRate,
      loadingExpensePerTon:moneyN("#eLoad"),
@@ -810,6 +841,7 @@ function openEditTrip(id){
      rtoTarpaulin:moneyN("#eRto"),
      fixedExpenses:moneyN("#eFixed"),
      expenseCalcVersion:3,
+     numericDataVersion:2,
      updatedAt:Date.now()
    };
    await setDoc(doc(db,"trips",id),patch,{merge:true});
