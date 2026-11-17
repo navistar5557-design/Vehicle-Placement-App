@@ -68,42 +68,32 @@ async function createLiveNotification(title,body,tripId="",type="general"){
 }
 
 function handlingExpenses(t,freight,weight){
-  const rawLoad=Number(t.loadingExpensePerTon||0);
-  const rawUnload=Number(t.unloadingExpensePerTon||0);
+  const load=Number(t.loadingExpensePerTon||0);
+  const unload=Number(t.unloadingExpensePerTon||0);
   const version=Number(t.expenseCalcVersion||0);
-  const freightPerTon=weight>0&&freight>0?freight/weight:0;
 
-  // Version 2+ records are explicitly stored as normal rupee-per-ton values.
-  if(version>=2 || weight<=1 || (rawLoad+rawUnload)<=0){
-    return {loading:rawLoad*weight,unloading:rawUnload*weight,legacyTotalMode:false,legacyDecimalCorrected:false};
+  // Version 3+ stores loading/unloading as total rupee amounts.
+  if(version>=3){
+    return {loading:load,unloading:unload,legacyTotalMode:false,legacyDecimalCorrected:false};
   }
 
-  // Some older Android records saved values such as 500.00 as 50000.
-  // Correct only clearly implausible per-ton values, and only for legacy data.
-  const normalizeLegacyPerTon=v=>{
-    if(v>=5000 && freightPerTon>0 && (v/100)<=freightPerTon) return v/100;
-    return v;
-  };
-  const load=normalizeLegacyPerTon(rawLoad);
-  const unload=normalizeLegacyPerTon(rawUnload);
-  const decimalCorrected=load!==rawLoad || unload!==rawUnload;
-  if(decimalCorrected){
-    return {loading:load*weight,unloading:unload*weight,legacyTotalMode:false,legacyDecimalCorrected:true};
+  // Version 2 explicitly used per-ton values.
+  if(version===2 || weight<=1 || (load+unload)<=0){
+    return {loading:load*weight,unloading:unload*weight,legacyTotalMode:false,legacyDecimalCorrected:false};
   }
 
-  // Separate compatibility for records where total handling was put in
-  // the newer per-ton fields.
-  const rawTotal=rawLoad+rawUnload;
+  // Older records may contain total loading/unloading values in these fields.
+  const rawTotal=load+unload;
   const multiplied=rawTotal*weight;
   const looksLikeLegacyTotal=
     rawTotal>=5000 &&
     freight>0 &&
-    rawTotal<=freight &&
+    rawTotal<=freight*2 &&
     multiplied>freight*1.25;
 
   return looksLikeLegacyTotal
-    ? {loading:rawLoad,unloading:rawUnload,legacyTotalMode:true,legacyDecimalCorrected:false}
-    : {loading:rawLoad*weight,unloading:rawUnload*weight,legacyTotalMode:false,legacyDecimalCorrected:false};
+    ? {loading:load,unloading:unload,legacyTotalMode:true,legacyDecimalCorrected:false}
+    : {loading:load*weight,unloading:unload*weight,legacyTotalMode:false,legacyDecimalCorrected:false};
 }
 
 function calcTrip(t){
@@ -658,8 +648,8 @@ function newTripHtml(){
   <label><span>Transit Hours</span><input id="fHours" type="number" min="0" step="0.01"></label>
   <label><span>Current Location to Origin KM</span><input id="fOriginKm" type="number" min="0" step="0.01"></label>
   <label><span>Vehicle Mileage (km/L)</span><select id="fMileage" required><option value="" selected disabled>Select Mileage</option>${(Array.from({length:36},(_,i)=>(2.5+i/10).toFixed(1))).map(x=>`<option>${x}</option>`).join("")}</select></label>
-  <label><span>Loading Expense / Ton</span><input id="fLoad" type="number" min="0" step="0.01"></label>
-  <label><span>Unloading Expense / Ton</span><input id="fUnload" type="number" min="0" step="0.01"></label>
+  <label><span>Loading Expense</span><input id="fLoad" type="number" min="0" step="0.01"></label>
+  <label><span>Unloading Expense</span><input id="fUnload" type="number" min="0" step="0.01"></label>
   <label><span>Other Expense %</span><input id="fPct" type="number" min="0" step="0.01"></label>
   <label><span>FASTag</span><input id="fFastag" type="number" min="0" step="0.01"></label>
   <label><span>RTO / Tarpaulin</span><input id="fRto" type="number" min="0" step="0.01"></label>
@@ -678,12 +668,7 @@ function wireNewTrip(){
  const v=$("#fVehicle");const setMileage=()=>{const rec=state.vehicles.find(x=>x.number===v.value);$("#fMileage").value=rec?Number(rec.mileage).toFixed(1):""};v.addEventListener("change",setMileage);
  $("#tripForm").addEventListener("submit",async e=>{e.preventDefault();const n=id=>Number($("#"+id).value||0),now=Date.now(),id=uid();const freight=n("fFreight"),pct=n("fPct");
  const weight=n("fWeight"),loadPerTon=n("fLoad"),unloadPerTon=n("fUnload");
- const freightPerTon=weight>0?freight/weight:0;
- if(weight>0 && freightPerTon>0 && (loadPerTon+unloadPerTon)>freightPerTon){
-   toast("Loading + unloading must be PER TON. The entered value is higher than freight/ton.");
-   return;
- }
- const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:$("#fVehicle").value,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:n("fAdvance"),weightTon:weight,currentToOriginKm:n("fOriginKm"),totalKm:n("fKm"),transitHours:n("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:n("fFixed"),fastag:n("fFastag"),rtoTarpaulin:n("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,expenseCalcVersion:2,expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Vehicle Placed",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
+ const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:$("#fVehicle").value,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:n("fAdvance"),weightTon:weight,currentToOriginKm:n("fOriginKm"),totalKm:n("fKm"),transitHours:n("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:n("fFixed"),fastag:n("fFastag"),rtoTarpaulin:n("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,expenseCalcVersion:3,expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Vehicle Placed",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
  await setDoc(doc(db,"trips",id),trip);
  await createLiveNotification("New Trip Created",trip.vehicle+" — "+trip.from+" → "+trip.to,id,"trip_created");
  toast("Trip created");navigate("trips");});
