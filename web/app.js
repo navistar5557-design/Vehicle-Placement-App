@@ -356,7 +356,7 @@ function navigate(page){
   $(".sidebar").classList.remove("open"); $("#menuBtn").setAttribute("aria-expanded","false");
   const hour=new Date().getHours();
   const greet=hour<12?"Good Morning":hour<17?"Good Afternoon":"Good Evening";
-  const titles={dashboard:[`${greet}, ${state.profile?.username||"User"} 👋`,"Here is your fleet & placement overview."],trips:["Trips","Live trip placement and status"],newtrip:["Create Trip","Add a new vehicle placement"],vehicles:["Vehicles","Vehicle master"],vendors:["Vendors","Vendor master"],locations:["Locations","Location master"],reports:["Reports","Operational and profitability summary"]};
+  const titles={dashboard:[`${greet},`,""],trips:["Trips","Live trip placement and status"],newtrip:["Create Trip","Add a new vehicle placement"],vehicles:["Vehicles","Vehicle master"],vendors:["Vendors","Vendor master"],locations:["Locations","Location master"],reports:["Reports","Operational and profitability summary"]};
   $("#pageTitle").textContent=titles[page]?.[0]||"CUBE";$("#pageSubtitle").textContent=titles[page]?.[1]||"";
   render();
 }
