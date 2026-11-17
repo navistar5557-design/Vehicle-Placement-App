@@ -15,7 +15,7 @@ data class Trip(
  val loadingExpensePerTon:Double=0.0,val unloadingExpensePerTon:Double=0.0,
  val createdBy:String="",val createdByEmail:String="",
  val status:String="Vehicle Placed",val statusUpdatedBy:String="",val statusUpdatedByEmail:String="",
- val statusUpdatedAt:Long=0L,val expenseCalcVersion:Int=0
+ val statusUpdatedAt:Long=0L,val expenseCalcVersion:Int=0,val numericDataVersion:Int=0
 ){
  val balance get()=freight-advance
  val advancePercent get()=if(freight>0)advance/freight*100 else 0.0
@@ -45,4 +45,37 @@ data class Trip(
  val totalExpenses get()=percentageExpenses+fuelExpense+fixedExpenses+fastag+rtoTarpaulin+loadingUnloading+loadingExpense+unloadingExpense
  val margin get()=freight-totalExpenses
  val marginPercent get()=if(freight>0)margin/freight*100 else 0.0
+}
+
+private fun normalizeLegacyScalar(value: Double, maxReasonable: Double): Double {
+    if (!value.isFinite() || value <= maxReasonable) return value
+    var v = value
+    while (v > maxReasonable && v / 100.0 <= maxReasonable) v /= 100.0
+    return v
+}
+
+private fun normalizeLegacyMoney(value: Double, freight: Double): Double {
+    if (!value.isFinite()) return 0.0
+    val cap = maxOf(100000.0, freight * 2.0)
+    return if (value > cap && value / 100.0 <= cap) value / 100.0 else value
+}
+
+fun Trip.normalizedNumericData(): Trip {
+    if (numericDataVersion >= 2) return this
+    val fixedFreight = freight
+    val normalizedRules = expenseRules.map {
+        it.copy(percent = normalizeLegacyScalar(it.percent, 100.0))
+    }
+    return copy(
+        currentToOriginKm = normalizeLegacyScalar(currentToOriginKm, 10000.0),
+        totalKm = normalizeLegacyScalar(totalKm, 10000.0),
+        transitHours = normalizeLegacyScalar(transitHours, 1000.0),
+        fixedExpenses = normalizeLegacyMoney(fixedExpenses, fixedFreight),
+        fastag = normalizeLegacyMoney(fastag, fixedFreight),
+        rtoTarpaulin = normalizeLegacyMoney(rtoTarpaulin, fixedFreight),
+        loadingExpensePerTon = normalizeLegacyMoney(loadingExpensePerTon, fixedFreight),
+        unloadingExpensePerTon = normalizeLegacyMoney(unloadingExpensePerTon, fixedFreight),
+        expenseRules = normalizedRules,
+        numericDataVersion = 2
+    )
 }
