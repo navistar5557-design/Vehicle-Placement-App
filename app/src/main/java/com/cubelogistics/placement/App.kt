@@ -1962,6 +1962,9 @@ private fun QuickAction(label: String, icon: ImageVector, modifier: Modifier = M
     }
 }
 
-fun String.num(): Double = toDoubleOrNull() ?: 0.0
+fun String.num(): Double {
+    val cleaned = trim().replace(",", "")
+    return cleaned.toDoubleOrNull() ?: 0.0
+}
 fun fmt(v: Double): String = String.format(java.util.Locale.US, "%.2f", v)
 fun money0(v: Double): String = String.format(java.util.Locale("en", "IN"), "%,.0f", v)
