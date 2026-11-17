@@ -228,6 +228,7 @@ private fun Trip.toFirestoreMap(): Map<String, Any> = mapOf(
     "loadingExpensePerTon" to loadingExpensePerTon,
     "unloadingExpensePerTon" to unloadingExpensePerTon,
     "expenseCalcVersion" to expenseCalcVersion,
+    "numericDataVersion" to numericDataVersion,
     "createdBy" to createdBy,
     "createdByEmail" to createdByEmail,
     "status" to status,
@@ -279,8 +280,9 @@ private fun com.google.firebase.firestore.DocumentSnapshot.toTripOrNull(): Trip?
             statusUpdatedBy = getString("statusUpdatedBy") ?: "",
             statusUpdatedByEmail = getString("statusUpdatedByEmail") ?: "",
             statusUpdatedAt = getLong("statusUpdatedAt") ?: 0L,
-            expenseCalcVersion = (getLong("expenseCalcVersion") ?: 0L).toInt()
-        )
+            expenseCalcVersion = (getLong("expenseCalcVersion") ?: 0L).toInt(),
+            numericDataVersion = (getLong("numericDataVersion") ?: 0L).toInt()
+        ).normalizedNumericData()
     } catch (_: Exception) {
         null
     }
