@@ -47,7 +47,7 @@ const uid = () => crypto.randomUUID ? crypto.randomUUID() : (Date.now()+"-"+Math
 let state = {
   user:null, profile:null, role:null,
   trips:[], vehicles:[], vendors:[], locations:[], fuelRate:100,
-  page:"dashboard", unsubs:[], dashboardFilter:"thisWeek", dashboardFrom:"", dashboardTo:"", notifications:[]
+  page:"dashboard", unsubs:[], dashboardFilter:"thisWeek", dashboardFrom:"", dashboardTo:"", trendFilter:"thisWeek", notifications:[]
 };
 
 function toast(msg){ const el=$("#toast"); el.textContent=msg; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2200); }
@@ -375,27 +375,50 @@ function render(){
   requestAnimationFrame(()=>requestAnimationFrame(()=>root.classList.add("page-enter")));
 }
 
-function getDashboardRange(){
+function getPeriodRange(filter,customFrom="",customTo=""){
   const now=new Date(); now.setHours(23,59,59,999);
   const startOfDay=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x};
   const endOfDay=d=>{const x=new Date(d);x.setHours(23,59,59,999);return x};
   let start,end=now,label="This Week";
-  if(state.dashboardFilter==="yesterday"){
-    const d=new Date();d.setDate(d.getDate()-1);start=startOfDay(d);end=endOfDay(d);label="Yesterday";
-  }else if(state.dashboardFilter==="last7"){
-    const d=new Date();d.setDate(d.getDate()-6);start=startOfDay(d);label="Last 7 Days";
-  }else if(state.dashboardFilter==="lastWeek"){
-    const d=new Date();const day=d.getDay()||7;d.setDate(d.getDate()-day-6);start=startOfDay(d);end=new Date(start);end.setDate(end.getDate()+6);end=endOfDay(end);label="Last Week";
-  }else if(state.dashboardFilter==="thisMonth"){
-    start=new Date(now.getFullYear(),now.getMonth(),1);label="This Month";
-  }else if(state.dashboardFilter==="lastMonth"){
-    start=new Date(now.getFullYear(),now.getMonth()-1,1);end=new Date(now.getFullYear(),now.getMonth(),0,23,59,59,999);label="Last Month";
-  }else if(state.dashboardFilter==="custom" && state.dashboardFrom && state.dashboardTo){
-    start=startOfDay(new Date(state.dashboardFrom+"T00:00:00"));end=endOfDay(new Date(state.dashboardTo+"T00:00:00"));label="Custom Range";
+
+  if(filter==="yesterday"){
+    const d=new Date();d.setDate(d.getDate()-1);
+    start=startOfDay(d);end=endOfDay(d);label="Yesterday";
+  }else if(filter==="last7"){
+    const d=new Date();d.setDate(d.getDate()-6);
+    start=startOfDay(d);label="Last 7 Days";
+  }else if(filter==="lastWeek"){
+    const d=new Date();const day=d.getDay()||7;
+    d.setDate(d.getDate()-day-6);
+    start=startOfDay(d);
+    end=new Date(start);end.setDate(end.getDate()+6);end=endOfDay(end);
+    label="Last Week";
+  }else if(filter==="thisMonth"){
+    start=new Date(now.getFullYear(),now.getMonth(),1);
+    label="This Month";
+  }else if(filter==="lastMonth"){
+    start=new Date(now.getFullYear(),now.getMonth()-1,1);
+    end=new Date(now.getFullYear(),now.getMonth(),0,23,59,59,999);
+    label="Last Month";
+  }else if(filter==="custom" && customFrom && customTo){
+    start=startOfDay(new Date(customFrom+"T00:00:00"));
+    end=endOfDay(new Date(customTo+"T00:00:00"));
+    label="Custom Range";
   }else{
-    const d=new Date();const day=d.getDay()||7;d.setDate(d.getDate()-day+1);start=startOfDay(d);label="This Week";
+    const d=new Date();const day=d.getDay()||7;
+    d.setDate(d.getDate()-day+1);
+    start=startOfDay(d);
+    label="This Week";
   }
   return {start:start.getTime(),end:end.getTime(),label};
+}
+
+function getDashboardRange(){
+  return getPeriodRange(state.dashboardFilter,state.dashboardFrom,state.dashboardTo);
+}
+
+function getTrendRange(){
+  return getPeriodRange(state.trendFilter||"thisWeek");
 }
 
 function dashboardTrendBuckets(trips,startMs,endMs){
@@ -417,6 +440,8 @@ function dashboardTrendBuckets(trips,startMs,endMs){
 function dashboardHtml(){
   const range=getDashboardRange();
   const trips=state.trips.filter(t=>Number(t.createdAt||0)>=range.start&&Number(t.createdAt||0)<=range.end);
+  const trendRange=getTrendRange();
+  const trendTrips=state.trips.filter(t=>Number(t.createdAt||0)>=trendRange.start&&Number(t.createdAt||0)<=trendRange.end);
   const activeVehicles=state.vehicles.filter(v=>v.active!==false);
   const placed=trips.filter(t=>(t.status||"Vehicle Placed")==="Vehicle Placed").length;
   const transit=trips.filter(t=>t.status==="In Transit").length;
@@ -448,9 +473,12 @@ function dashboardHtml(){
     return "₹ "+money(n);
   };
 
-  const days=dashboardTrendBuckets(trips,range.start,range.end);
+  const trendFreight=trendTrips.reduce((sum,t)=>sum+Number(t.freight||0),0);
+  const trendMargin=trendTrips.reduce((sum,t)=>sum+Number(t.margin||0),0);
+  const trendMarginPct=trendFreight?trendMargin/trendFreight*100:0;
+  const days=dashboardTrendBuckets(trendTrips,trendRange.start,trendRange.end);
   const totalTrendTrips=days.reduce((sum,d)=>sum+d.count,0);
-  const avgMarginPerTrip=totalTrendTrips?margin/totalTrendTrips:0;
+  const avgMarginPerTrip=totalTrendTrips?trendMargin/totalTrendTrips:0;
   const bestDay=days.reduce((best,d)=>!best||d.margin>best.margin?d:best,null);
 
   const axisMoney=n=>{
@@ -510,8 +538,8 @@ function dashboardHtml(){
     const h=Math.max(3,plot.bottom-y);
     const dotY=yMargin(d.margin);
     const avg=d.count?d.margin/d.count:0;
-    const groupStart=Math.floor(range.start+i*((range.end-range.start+1)/days.length));
-    const groupEnd=Math.floor(i===days.length-1?range.end:range.start+(i+1)*((range.end-range.start+1)/days.length)-1);
+    const groupStart=Math.floor(trendRange.start+i*((trendRange.end-trendRange.start+1)/days.length));
+    const groupEnd=Math.floor(i===days.length-1?trendRange.end:trendRange.start+(i+1)*((trendRange.end-trendRange.start+1)/days.length)-1);
     return `<g class="trend-svg-day" tabindex="0" role="button"
       data-start="${groupStart}" data-end="${groupEnd}"
       data-label="${esc(d.label)}" data-count="${d.count}"
@@ -561,7 +589,7 @@ function dashboardHtml(){
   const trendInsights=`
     <div class="trend-insights">
       <div class="trend-insight"><span>Trips</span><strong>${totalTrendTrips}</strong><small>Selected period</small></div>
-      <div class="trend-insight"><span>Total Margin</span><strong class="${margin<0?"negative":""}">${compact(margin)}</strong><small>${marginPct.toFixed(1)}% of revenue</small></div>
+      <div class="trend-insight"><span>Total Margin</span><strong class="${trendMargin<0?"negative":""}">${compact(trendMargin)}</strong><small>${trendMarginPct.toFixed(1)}% of revenue</small></div>
       <div class="trend-insight"><span>Avg / Trip</span><strong class="${avgMarginPerTrip<0?"negative":""}">${compact(avgMarginPerTrip)}</strong><small>Margin efficiency</small></div>
       <div class="trend-insight"><span>Best Period</span><strong>${esc(bestDay?.label||"-")}</strong><small>${bestDay?`${axisMoney(bestDay.margin)} margin`:"No data"}</small></div>
     </div>`;
@@ -613,21 +641,20 @@ function dashboardHtml(){
   <section class="neo-dashboard-grid">
     <article class="neo-panel trend-panel">
       <div class="trend-panel-head">
-        <div class="trend-title-wrap"><span class="trend-title-icon">▥</span><div><h3>Vehicle Placement Trend</h3><p>Trip volume and margin performance for ${esc(range.label)}</p></div></div>
-        <div class="legend"><span><i class="cyan-dot"></i>Trips</span><span><i class="purple-dot"></i>Margin</span></div>
+        <div class="trend-title-wrap"><span class="trend-title-icon">▥</span><div><h3>Vehicle Placement Trend</h3><p>Trip volume and margin performance for ${esc(trendRange.label)}</p></div></div>
+        <div class="trend-header-actions">
+          <select id="trendRange" aria-label="Trend period">
+            <option value="thisWeek" ${state.trendFilter==="thisWeek"?"selected":""}>This Week</option>
+            <option value="lastWeek" ${state.trendFilter==="lastWeek"?"selected":""}>Last Week</option>
+            <option value="last7" ${state.trendFilter==="last7"?"selected":""}>Last 7 Days</option>
+            <option value="thisMonth" ${state.trendFilter==="thisMonth"?"selected":""}>This Month</option>
+            <option value="lastMonth" ${state.trendFilter==="lastMonth"?"selected":""}>Last Month</option>
+          </select>
+          <div class="legend"><span><i class="cyan-dot"></i>Trips</span><span><i class="purple-dot"></i>Margin</span></div>
+        </div>
       </div>
       ${trendInsights}
       <div class="trend-chart">${chartHtml}</div>
-    </article>
-
-    <article class="neo-panel quick-panel">
-      <div class="panel-title"><span>⚡</span><h3>Quick Actions</h3></div>
-      <div class="quick-grid">
-        <button class="quick-action green" onclick="document.querySelector('[data-page=newtrip]').click()"><b>＋</b><span>New Trip</span></button>
-        <button class="quick-action cyan" onclick="document.querySelector('[data-page=vehicles]').click()"><b>🚚</b><span>Add Vehicle</span></button>
-        <button class="quick-action red" onclick="document.querySelector('[data-page=locations]').click()"><b class="location-pin" aria-hidden="true"><span></span></b><span>Add Location</span></button>
-        <button class="quick-action orange" onclick="document.querySelector('[data-page=reports]').click()"><b>▥</b><span>View Reports</span></button>
-      </div>
     </article>
 
     <article class="neo-panel utilization-panel">
@@ -682,6 +709,14 @@ function wireDashboard(){
     if(group?.classList.contains("trend-active")) return;
     document.querySelectorAll(".trend-svg-day").forEach(g=>g.classList.remove("trend-active","trend-muted"));
   };
+  const trendRangeSelect=$("#trendRange");
+  if(trendRangeSelect){
+    trendRangeSelect.addEventListener("change",e=>{
+      state.trendFilter=e.target.value;
+      render();
+    });
+  }
+
   const rangeSelect=$("#dashboardRange");
   if(rangeSelect){
     rangeSelect.addEventListener("change",e=>{
