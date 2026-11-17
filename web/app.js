@@ -738,13 +738,53 @@ function wireDashboard(){
     requestAnimationFrame(tick);
   });
 
+  const trendTooltip=$("#trendTooltip");
+  const positionTrendTooltip=(group,event)=>{
+    if(!trendTooltip)return;
+    const plot=document.querySelector(".trend-plot");
+    if(!plot)return;
+    const plotRect=plot.getBoundingClientRect();
+    let x=plotRect.width/2,y=74;
+    if(event?.clientX){
+      x=event.clientX-plotRect.left;
+      y=event.clientY-plotRect.top-12;
+    }else{
+      const gRect=group.getBoundingClientRect();
+      x=gRect.left-plotRect.left+gRect.width/2;
+      y=gRect.top-plotRect.top+10;
+    }
+    x=Math.max(96,Math.min(plotRect.width-96,x));
+    y=Math.max(64,Math.min(plotRect.height-18,y));
+    trendTooltip.style.left=x+"px";
+    trendTooltip.style.top=y+"px";
+  };
+  const showTrendTooltip=(group,event)=>{
+    if(!trendTooltip)return;
+    const marginValue=Number(group.dataset.margin||0);
+    const avgValue=Number(group.dataset.avg||0);
+    trendTooltip.innerHTML=`<strong>${esc(group.dataset.label||"Selected period")}</strong>
+      <div><span>Trips</span><b>${Number(group.dataset.count||0)}</b></div>
+      <div><span>Margin</span><b class="${marginValue<0?"negative":""}">₹ ${money(marginValue)}</b></div>
+      <div><span>Avg / Trip</span><b class="${avgValue<0?"negative":""}">₹ ${money(avgValue)}</b></div>
+      <small>Click for trip details</small>`;
+    trendTooltip.classList.add("visible");
+    trendTooltip.setAttribute("aria-hidden","false");
+    positionTrendTooltip(group,event);
+  };
+  const hideTrendTooltip=()=>{
+    if(!trendTooltip)return;
+    trendTooltip.classList.remove("visible");
+    trendTooltip.setAttribute("aria-hidden","true");
+  };
+
   document.querySelectorAll(".trend-svg-day").forEach(group=>{
-    group.addEventListener("mouseenter",()=>setTrendFocus(group,false));
-    group.addEventListener("mouseleave",()=>clearTrendHover(group));
-    group.addEventListener("focus",()=>setTrendFocus(group,false));
-    group.addEventListener("blur",()=>clearTrendHover(group));
-    group.addEventListener("click",()=>{setTrendFocus(group,true);openTrendDay(group);});
-    group.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();setTrendFocus(group,true);openTrendDay(group);}});
+    group.addEventListener("mouseenter",e=>{setTrendFocus(group,false);showTrendTooltip(group,e);});
+    group.addEventListener("mousemove",e=>positionTrendTooltip(group,e));
+    group.addEventListener("mouseleave",()=>{clearTrendHover(group);hideTrendTooltip();});
+    group.addEventListener("focus",()=>{setTrendFocus(group,false);showTrendTooltip(group);});
+    group.addEventListener("blur",()=>{clearTrendHover(group);hideTrendTooltip();});
+    group.addEventListener("click",()=>{setTrendFocus(group,true);hideTrendTooltip();openTrendDay(group);});
+    group.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();setTrendFocus(group,true);hideTrendTooltip();openTrendDay(group);}});
   });
 
   const openKpi=(type)=>{
