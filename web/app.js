@@ -20,6 +20,15 @@ const db = getFirestore(app);
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));
+const parseMoneyValue = v => {
+  const cleaned=String(v??"").replace(/,/g,"").trim();
+  const n=Number(cleaned);
+  return Number.isFinite(n)?n:0;
+};
+const moneyInputValue = v => {
+  const n=Number(v||0);
+  return Number.isInteger(n)?String(n):String(Number(n.toFixed(2)));
+};
 const dateTime = ms => ms ? new Date(ms).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}) : "-";
 const esc = v => String(v ?? "").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const uid = () => crypto.randomUUID ? crypto.randomUUID() : (Date.now()+"-"+Math.random().toString(16).slice(2));
@@ -68,41 +77,41 @@ async function createLiveNotification(title,body,tripId="",type="general"){
 }
 
 function handlingExpenses(t,freight,weight){
-  const load=Number(t.loadingExpensePerTon||0);
-  const unload=Number(t.unloadingExpensePerTon||0);
+  const load=parseMoneyValue(t.loadingExpensePerTon);
+  const unload=parseMoneyValue(t.unloadingExpensePerTon);
   const version=Number(t.expenseCalcVersion||0);
+  const rawTotal=load+unload;
 
-  // Version 3+ stores loading/unloading as total rupee amounts.
-  if(version>=3){
+  // Version 3+ stores TOTAL loading/unloading rupee amounts.
+  if(version>=3 || weight<=1 || rawTotal<=0){
     return {loading:load,unloading:unload,legacyTotalMode:false,legacyDecimalCorrected:false};
   }
 
-  // Version 2 explicitly used per-ton values.
-  if(version===2 || weight<=1 || (load+unload)<=0){
-    return {loading:load*weight,unloading:unload*weight,legacyTotalMode:false,legacyDecimalCorrected:false};
-  }
-
-  // Older records may contain total loading/unloading values in these fields.
-  const rawTotal=load+unload;
+  // Older Version 2 builds could receive total amounts such as 45000.00.
+  // Do not multiply those values by vehicle tonnage when that would create
+  // an obviously unrealistic expense.
   const multiplied=rawTotal*weight;
-  const looksLikeLegacyTotal=
+  const looksLikeTotalAmount=
     rawTotal>=5000 &&
     freight>0 &&
     rawTotal<=freight*2 &&
     multiplied>freight*1.25;
 
-  return looksLikeLegacyTotal
-    ? {loading:load,unloading:unload,legacyTotalMode:true,legacyDecimalCorrected:false}
-    : {loading:load*weight,unloading:unload*weight,legacyTotalMode:false,legacyDecimalCorrected:false};
+  if(looksLikeTotalAmount){
+    return {loading:load,unloading:unload,legacyTotalMode:true,legacyDecimalCorrected:false};
+  }
+
+  // Genuine older per-ton values are still supported.
+  return {loading:load*weight,unloading:unload*weight,legacyTotalMode:false,legacyDecimalCorrected:false};
 }
 
 function calcTrip(t){
-  const freight=Number(t.freight||0), weight=Number(t.weightTon||0), km=Number(t.totalKm||0), mileage=Number(t.mileage||0), fuelRate=Number(t.fuelRate||0);
+  const freight=parseMoneyValue(t.freight), weight=Number(t.weightTon||0), km=Number(t.totalKm||0), mileage=Number(t.mileage||0), fuelRate=parseMoneyValue(t.fuelRate);
   const pct=(t.expenseRules||[]).reduce((s,r)=>s+freight*Number(r.percent||0)/100,0);
   const fuel=mileage>0?(km/mileage)*fuelRate:0;
   const handling=handlingExpenses(t,freight,weight);
-  const legacyLU=Number(t.loadingUnloading||0);
-  const exp=pct+fuel+Number(t.fixedExpenses||0)+Number(t.fastag||0)+Number(t.rtoTarpaulin||0)+legacyLU+handling.loading+handling.unloading;
+  const legacyLU=parseMoneyValue(t.loadingUnloading);
+  const exp=pct+fuel+parseMoneyValue(t.fixedExpenses)+parseMoneyValue(t.fastag)+parseMoneyValue(t.rtoTarpaulin)+legacyLU+handling.loading+handling.unloading;
   const margin=freight-exp;
   return {
     ...t,
@@ -666,9 +675,12 @@ function wireNewTrip(){
    ["fFreight","fAdvance","fWeight","fKm","fHours","fOriginKm","fLoad","fUnload","fPct","fFastag","fRto","fFixed"].forEach(id=>{const el=$("#"+id);if(el)el.value="";});
  }
  const v=$("#fVehicle");const setMileage=()=>{const rec=state.vehicles.find(x=>x.number===v.value);$("#fMileage").value=rec?Number(rec.mileage).toFixed(1):""};v.addEventListener("change",setMileage);
- $("#tripForm").addEventListener("submit",async e=>{e.preventDefault();const n=id=>Number($("#"+id).value||0),now=Date.now(),id=uid();const freight=n("fFreight"),pct=n("fPct");
- const weight=n("fWeight"),loadPerTon=n("fLoad"),unloadPerTon=n("fUnload");
- const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:$("#fVehicle").value,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:n("fAdvance"),weightTon:weight,currentToOriginKm:n("fOriginKm"),totalKm:n("fKm"),transitHours:n("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:n("fFixed"),fastag:n("fFastag"),rtoTarpaulin:n("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,expenseCalcVersion:3,expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Vehicle Placed",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
+ $("#tripForm").addEventListener("submit",async e=>{e.preventDefault();
+ const n=id=>Number($("#"+id).value||0);
+ const m=id=>parseMoneyValue($("#"+id).value);
+ const now=Date.now(),id=uid(),freight=m("fFreight"),pct=n("fPct");
+ const weight=n("fWeight"),loadPerTon=m("fLoad"),unloadPerTon=m("fUnload");
+ const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:$("#fVehicle").value,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:m("fAdvance"),weightTon:weight,currentToOriginKm:n("fOriginKm"),totalKm:n("fKm"),transitHours:n("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:m("fFixed"),fastag:m("fFastag"),rtoTarpaulin:m("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,expenseCalcVersion:3,expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Vehicle Placed",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
  await setDoc(doc(db,"trips",id),trip);
  await createLiveNotification("New Trip Created",trip.vehicle+" — "+trip.from+" → "+trip.to,id,"trip_created");
  toast("Trip created");navigate("trips");});
@@ -683,23 +695,24 @@ function openEditTrip(id){
  <label><span>Current Location</span><select id="eCurrent">${picker(state.locations.map(x=>x.name),t.currentLocation)}</select></label>
  <label><span>From</span><select id="eFrom">${picker(state.locations.map(x=>x.name),t.from)}</select></label>
  <label><span>To</span><select id="eTo">${picker(state.locations.map(x=>x.name),t.to)}</select></label>
- <label><span>Freight</span><input id="eFreight" type="number" step="0.01" value="${Number(t.freight||0)}"></label>
- <label><span>Advance</span><input id="eAdvance" type="number" step="0.01" value="${Number(t.advance||0)}"></label>
+ <label><span>Freight</span><input id="eFreight" type="number" step="0.01" value="${moneyInputValue(t.freight||0)}"></label>
+ <label><span>Advance</span><input id="eAdvance" type="number" step="0.01" value="${moneyInputValue(t.advance||0)}"></label>
  <label><span>Weight (Ton)</span><input id="eWeight" type="number" step="0.01" value="${Number(t.weightTon||0)}"></label>
  <label><span>Trip KM</span><input id="eKm" type="number" step="0.01" value="${Number(t.totalKm||0)}"></label>
  <label><span>Origin KM</span><input id="eOriginKm" type="number" step="0.01" value="${Number(t.currentToOriginKm||0)}"></label>
  <label><span>Transit Hours</span><input id="eHours" type="number" step="0.01" value="${Number(t.transitHours||0)}"></label>
  <label><span>Mileage</span><input id="eMileage" type="number" step="0.1" min="2.5" max="6.0" value="${Number(t.mileage||0).toFixed(1)}"></label>
- <label><span>Loading Expense</span><input id="eLoad" type="number" step="0.01" value="${Number(t.loadingExpense||t.loadingExpensePerTon||0)}"></label>
- <label><span>Unloading Expense</span><input id="eUnload" type="number" step="0.01" value="${Number(t.unloadingExpense||t.unloadingExpensePerTon||0)}"></label>
+ <label><span>Loading Expense</span><input id="eLoad" type="number" step="0.01" value="${moneyInputValue(t.loadingExpense||t.loadingExpensePerTon||0)}"></label>
+ <label><span>Unloading Expense</span><input id="eUnload" type="number" step="0.01" value="${moneyInputValue(t.unloadingExpense||t.unloadingExpensePerTon||0)}"></label>
  <label><span>Other Expense %</span><input id="ePct" type="number" step="0.01" value="${pct}"></label>
- <label><span>FASTag</span><input id="eFastag" type="number" step="0.01" value="${Number(t.fastag||0)}"></label>
- <label><span>RTO / Tarpaulin</span><input id="eRto" type="number" step="0.01" value="${Number(t.rtoTarpaulin||0)}"></label>
- <label><span>Fixed Expenses</span><input id="eFixed" type="number" step="0.01" value="${Number(t.fixedExpenses||0)}"></label>
+ <label><span>FASTag</span><input id="eFastag" type="number" step="0.01" value="${moneyInputValue(t.fastag||0)}"></label>
+ <label><span>RTO / Tarpaulin</span><input id="eRto" type="number" step="0.01" value="${moneyInputValue(t.rtoTarpaulin||0)}"></label>
+ <label><span>Fixed Expenses</span><input id="eFixed" type="number" step="0.01" value="${moneyInputValue(t.fixedExpenses||0)}"></label>
  </div><button id="saveEditTrip" class="primary wide" style="margin-top:14px">Update Trip</button>`);
  const n=id=>Number(m.querySelector(id)?.value||0);
+ const moneyN=id=>parseMoneyValue(m.querySelector(id)?.value);
  m.querySelector("#saveEditTrip").onclick=async()=>{
-   const freight=n("#eFreight"), mileage=n("#eMileage"), pctValue=n("#ePct");
+   const freight=moneyN("#eFreight"), mileage=n("#eMileage"), pctValue=n("#ePct");
    if(freight<=0){toast("Enter a valid freight amount");return;}
    if(mileage<2.5||mileage>6.0){toast("Mileage must be between 2.5 and 6.0");return;}
    const patch={
@@ -709,20 +722,20 @@ function openEditTrip(id){
      from:m.querySelector("#eFrom").value,
      to:m.querySelector("#eTo").value,
      freight,netFreight:freight,
-     advance:n("#eAdvance"),
+     advance:moneyN("#eAdvance"),
      weightTon:n("#eWeight"),
      totalKm:n("#eKm"),
      currentToOriginKm:n("#eOriginKm"),
      transitHours:n("#eHours"),
      mileage,
      fuelRate:state.fuelRate,
-     loadingExpensePerTon:n("#eLoad"),
-     unloadingExpensePerTon:n("#eUnload"),
+     loadingExpensePerTon:moneyN("#eLoad"),
+     unloadingExpensePerTon:moneyN("#eUnload"),
      loadingUnloading:0,
      expenseRules:pctValue>0?[{name:"Other Expense",percent:pctValue}]:[],
-     fastag:n("#eFastag"),
-     rtoTarpaulin:n("#eRto"),
-     fixedExpenses:n("#eFixed"),
+     fastag:moneyN("#eFastag"),
+     rtoTarpaulin:moneyN("#eRto"),
+     fixedExpenses:moneyN("#eFixed"),
      expenseCalcVersion:3,
      updatedAt:Date.now()
    };
