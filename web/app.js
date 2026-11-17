@@ -845,7 +845,11 @@ function openEditTrip(id){
      updatedAt:Date.now()
    };
    await setDoc(doc(db,"trips",id),patch,{merge:true});
-   m.remove();toast("Trip updated");
+   const updated=calcTrip({...t,...patch});
+   state.trips=state.trips.map(x=>x.id===id?updated:x);
+   m.remove();
+   render();
+   toast("Trip updated");
  };
 }
 
