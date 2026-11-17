@@ -69,8 +69,8 @@ fun StyledTripEntryScreen(store: Store, createdBy: String = "", createdByEmail: 
     val booking = if (a <= 0) "To Pay at Unloading" else if (f > 0) ((a / f) * 100).toInt().toString() + "% Advance" else "-"
     val fuelExpense = if (mileage > 0) (km.num() / mileage) * store.fuelRate else 0.0
     val percentExpense = f * expensePct.num() / 100.0
-    val loadingExpense = loadingPerTon.num() * weight.num()
-    val unloadingExpense = unloadingPerTon.num() * weight.num()
+    val loadingExpense = loadingPerTon.num()
+    val unloadingExpense = unloadingPerTon.num()
     val totalExpense = percentExpense + fuelExpense + fastag.num() + rto.num() + loadingExpense + unloadingExpense + fixed.num()
     val margin = f - totalExpense
 
@@ -109,13 +109,13 @@ fun StyledTripEntryScreen(store: Store, createdBy: String = "", createdByEmail: 
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.weight(1f)) {
-                StyledNumberField("Loading Expense / Ton (₹)", loadingPerTon) { loadingPerTon = it }
+                StyledNumberField("Loading Expense (₹)", loadingPerTon) { loadingPerTon = it }
             }
             Box(Modifier.weight(1f)) {
-                StyledNumberField("Unloading Expense / Ton (₹)", unloadingPerTon) { unloadingPerTon = it }
+                StyledNumberField("Unloading Expense (₹)", unloadingPerTon) { unloadingPerTon = it }
             }
         }
-        if (weight.num() > 0 && (loadingPerTon.num() > 0 || unloadingPerTon.num() > 0)) {
+        if (loadingPerTon.num() > 0 || unloadingPerTon.num() > 0) {
             Spacer(Modifier.height(6.dp))
             Text(
                 "Loading ₹" + money0(loadingExpense) + "  •  Unloading ₹" + money0(unloadingExpense) +
@@ -207,12 +207,8 @@ fun StyledTripEntryScreen(store: Store, createdBy: String = "", createdByEmail: 
             Button(
                 onClick = {
                     val w = weight.num()
-                    val handlingPerTon = loadingPerTon.num() + unloadingPerTon.num()
-                    val freightPerTon = if (w > 0) f / w else 0.0
                     if (vendor.isBlank() || vehicle.isBlank() || f <= 0) {
                         message = "Vendor, vehicle and freight are required"
-                    } else if (w > 0 && freightPerTon > 0 && handlingPerTon > freightPerTon) {
-                        message = "Loading + unloading must be entered PER TON. The entered value is higher than freight/ton."
                     } else {
                         val trip = Trip(
                             id = UUID.randomUUID().toString(),
@@ -244,7 +240,7 @@ fun StyledTripEntryScreen(store: Store, createdBy: String = "", createdByEmail: 
                             statusUpdatedBy = createdBy,
                             statusUpdatedByEmail = createdByEmail,
                             statusUpdatedAt = System.currentTimeMillis(),
-                            expenseCalcVersion = 2
+                            expenseCalcVersion = 3
                         )
                         val trips = store.trips()
                         trips.add(trip)
@@ -442,18 +438,18 @@ private fun TripEditDialog(
     var current by remember(trip.id) { mutableStateOf(trip.currentLocation) }
     var from by remember(trip.id) { mutableStateOf(trip.from) }
     var to by remember(trip.id) { mutableStateOf(trip.to) }
-    var freight by remember(trip.id) { mutableStateOf(trip.freight.toString()) }
-    var advance by remember(trip.id) { mutableStateOf(trip.advance.toString()) }
+    var freight by remember(trip.id) { mutableStateOf(rupeeInput(trip.freight)) }
+    var advance by remember(trip.id) { mutableStateOf(rupeeInput(trip.advance)) }
     var weight by remember(trip.id) { mutableStateOf(trip.weightTon.toString()) }
     var originKm by remember(trip.id) { mutableStateOf(trip.currentToOriginKm.toString()) }
     var km by remember(trip.id) { mutableStateOf(trip.totalKm.toString()) }
     var hours by remember(trip.id) { mutableStateOf(trip.transitHours.toString()) }
     var mileage by remember(trip.id) { mutableStateOf(String.format(Locale.US, "%.1f", trip.mileage)) }
-    var fastag by remember(trip.id) { mutableStateOf(trip.fastag.toString()) }
-    var rto by remember(trip.id) { mutableStateOf(trip.rtoTarpaulin.toString()) }
-    var fixed by remember(trip.id) { mutableStateOf(trip.fixedExpenses.toString()) }
-    var loadingPerTon by remember(trip.id) { mutableStateOf(trip.loadingExpensePerTon.toString()) }
-    var unloadingPerTon by remember(trip.id) { mutableStateOf(trip.unloadingExpensePerTon.toString()) }
+    var fastag by remember(trip.id) { mutableStateOf(rupeeInput(trip.fastag)) }
+    var rto by remember(trip.id) { mutableStateOf(rupeeInput(trip.rtoTarpaulin)) }
+    var fixed by remember(trip.id) { mutableStateOf(rupeeInput(trip.fixedExpenses)) }
+    var loadingPerTon by remember(trip.id) { mutableStateOf(rupeeInput(trip.loadingExpense)) }
+    var unloadingPerTon by remember(trip.id) { mutableStateOf(rupeeInput(trip.unloadingExpense)) }
     var otherPct by remember(trip.id) { mutableStateOf(trip.expenseRules.firstOrNull()?.percent?.toString() ?: "0") }
     var error by remember(trip.id) { mutableStateOf("") }
 
@@ -496,8 +492,8 @@ private fun TripEditDialog(
                 }
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Box(Modifier.weight(1f)) { StyledNumberField("Loading / Ton", loadingPerTon) { loadingPerTon = it } }
-                    Box(Modifier.weight(1f)) { StyledNumberField("Unloading / Ton", unloadingPerTon) { unloadingPerTon = it } }
+                    Box(Modifier.weight(1f)) { StyledNumberField("Loading Expense", loadingPerTon) { loadingPerTon = it } }
+                    Box(Modifier.weight(1f)) { StyledNumberField("Unloading Expense", unloadingPerTon) { unloadingPerTon = it } }
                 }
                 Spacer(Modifier.height(6.dp))
                 StyledNumberField("Other Expense %", otherPct) { otherPct = it }
@@ -545,7 +541,8 @@ private fun TripEditDialog(
                                     loadingUnloading = 0.0,
                                     expenseRules = if (otherPct.num() > 0) listOf(ExpenseRule("Other Expense", otherPct.num())) else emptyList(),
                                     loadingExpensePerTon = loadingPerTon.num(),
-                                    unloadingExpensePerTon = unloadingPerTon.num()
+                                    unloadingExpensePerTon = unloadingPerTon.num(),
+                                    expenseCalcVersion = 3
                                 )
                             )
                             ""
@@ -1325,6 +1322,10 @@ private fun EmptyCard(title: String, subtitle: String) {
         }
     }
 }
+
+private fun rupeeInput(value: Double): String =
+    if (value % 1.0 == 0.0) String.format(Locale.US, "%.0f", value)
+    else String.format(Locale.US, "%.2f", value).trimEnd('0').trimEnd('.')
 
 private fun styledDay(value: Long): String = SimpleDateFormat("dd-MM-yyyy", Locale.US).format(Date(value))
 
