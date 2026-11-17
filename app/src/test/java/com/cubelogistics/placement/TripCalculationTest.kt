@@ -41,25 +41,22 @@ class TripCalculationTest {
  @Test fun loadingExpensePerTon() = assertEquals(1000.0, trip(loadingPerTon = 100.0).loadingExpense, 0.01)
  @Test fun unloadingExpensePerTon() = assertEquals(500.0, trip(unloadingPerTon = 50.0).unloadingExpense, 0.01)
  @Test fun perTonExpensesReduceMargin() = assertEquals(72400.0, trip(loadingPerTon = 100.0, unloadingPerTon = 50.0).margin, 0.01)
- @Test fun legacyDecimalPerTonValuesAreDividedBy100() {
-  val t = trip(freight = 64500.0, loadingPerTon = 50000.0, unloadingPerTon = 25000.0)
-  assertEquals(5000.0, t.loadingExpense, 0.01)
-  assertEquals(2500.0, t.unloadingExpense, 0.01)
-  assertEquals(true, t.legacyDecimalCorrected)
-  assertEquals(false, t.legacyHandlingCorrected)
- }
- @Test fun legacyTotalHandlingIsNotMultipliedAgain() {
-  val t = trip(freight = 64500.0, loadingPerTon = 4500.0, unloadingPerTon = 4000.0)
-  assertEquals(4500.0, t.loadingExpense, 0.01)
-  assertEquals(4000.0, t.unloadingExpense, 0.01)
+ @Test fun legacyLargeHandlingValuesAreTreatedAsTotals() {
+  val t = trip(freight = 64500.0, loadingPerTon = 45000.0, unloadingPerTon = 0.0)
+  assertEquals(45000.0, t.loadingExpense, 0.01)
+  assertEquals(0.0, t.unloadingExpense, 0.01)
   assertEquals(true, t.legacyHandlingCorrected)
  }
- @Test fun version2AlwaysUsesPerTonHandling() {
+ @Test fun version2KeepsPerTonBehavior() {
   val t = trip(freight = 64500.0, loadingPerTon = 500.0, unloadingPerTon = 250.0, expenseCalcVersion = 2)
   assertEquals(5000.0, t.loadingExpense, 0.01)
   assertEquals(2500.0, t.unloadingExpense, 0.01)
-  assertEquals(false, t.legacyDecimalCorrected)
-  assertEquals(false, t.legacyHandlingCorrected)
+ }
+ @Test fun version3UsesTotalHandlingAmounts() {
+  val t = trip(freight = 64500.0, loadingPerTon = 45000.0, unloadingPerTon = 5000.0, expenseCalcVersion = 3)
+  assertEquals(45000.0, t.loadingExpense, 0.01)
+  assertEquals(5000.0, t.unloadingExpense, 0.01)
+  assertEquals(50000.0, t.loadingExpense + t.unloadingExpense, 0.01)
  }
  @Test fun zeroKmSafe() = assertEquals(0.0, trip(km = 0.0).perKmFreight, 0.01)
  @Test fun zeroMileageSafe() = assertEquals(0.0, trip(mileage = 0.0).fuelExpense, 0.01)
