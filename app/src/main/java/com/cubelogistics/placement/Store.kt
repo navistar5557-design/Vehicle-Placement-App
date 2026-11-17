@@ -11,6 +11,7 @@ class Store(context:Context){
  var onVendorRemoved: ((String) -> Unit)? = null
  var onLocationRemoved: ((String) -> Unit)? = null
  var onTripRemoved: ((String) -> Unit)? = null
+ var onTripUpsert: ((Trip) -> Unit)? = null
  private var suppressCloudCallback = false
 
  fun withoutCloudCallback(block: () -> Unit) {
@@ -59,10 +60,14 @@ class Store(context:Context){
  }
  fun trips():MutableList<Trip>{val a=JSONArray(p.getString("trips","[]"));return MutableList(a.length()){i->decodeTrip(a.getJSONObject(i))}}
  fun saveTrips(x:List<Trip>){
-  val removed=if(!suppressCloudCallback) trips().map{it.id}.toSet()-x.map{it.id}.toSet() else emptySet()
+  val before=if(!suppressCloudCallback) trips().associateBy{it.id} else emptyMap()
+  val removed=if(!suppressCloudCallback) before.keys-x.map{it.id}.toSet() else emptySet()
   val a=JSONArray();x.forEach{a.put(encodeTrip(it))}
   p.edit().putString("trips",a.toString()).apply()
-  if(!suppressCloudCallback) removed.forEach{onTripRemoved?.invoke(it)}
+  if(!suppressCloudCallback) {
+   removed.forEach{onTripRemoved?.invoke(it)}
+   x.filter{before[it.id]!=it}.forEach{onTripUpsert?.invoke(it)}
+  }
   changed()
  }
 
