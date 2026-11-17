@@ -449,45 +449,123 @@ function dashboardHtml(){
   };
 
   const days=dashboardTrendBuckets(trips,range.start,range.end);
+  const totalTrendTrips=days.reduce((sum,d)=>sum+d.count,0);
+  const avgMarginPerTrip=totalTrendTrips?margin/totalTrendTrips:0;
+  const bestDay=days.reduce((best,d)=>!best||d.margin>best.margin?d:best,null);
+
+  const axisMoney=n=>{
+    const a=Math.abs(Number(n||0));
+    const sign=Number(n||0)<0?"-":"";
+    if(a>=100000)return sign+"₹"+(a/100000).toFixed(a>=1000000?1:2)+"L";
+    if(a>=1000)return sign+"₹"+(a/1000).toFixed(a>=10000?0:1)+"K";
+    return sign+"₹"+Math.round(a);
+  };
+
   const maxCount=Math.max(1,...days.map(d=>d.count));
-  const maxMargin=Math.max(1,...days.map(d=>Math.abs(d.margin)));
-  const plot={left:48,right:680,top:18,bottom:158};
-  const step=(plot.right-plot.left)/(days.length-1);
+  const rawMarginMin=Math.min(0,...days.map(d=>Number(d.margin||0)));
+  const rawMarginMax=Math.max(0,...days.map(d=>Number(d.margin||0)));
+  let marginSpan=Math.max(1,rawMarginMax-rawMarginMin);
+  const marginMin=rawMarginMin<0?rawMarginMin-marginSpan*.12:0;
+  const marginMax=rawMarginMax>0?rawMarginMax+marginSpan*.12:Math.max(1,marginSpan);
+  marginSpan=Math.max(1,marginMax-marginMin);
+
+  const plot={left:54,right:690,top:24,bottom:188};
+  const step=days.length>1?(plot.right-plot.left)/(days.length-1):0;
+  const xAt=i=>days.length>1?plot.left+i*step:(plot.left+plot.right)/2;
   const yCount=v=>plot.bottom-(v/maxCount)*(plot.bottom-plot.top);
-  const yMargin=v=>plot.bottom-(Math.abs(v)/maxMargin)*(plot.bottom-plot.top);
-  const linePoints=days.map((d,i)=>`${plot.left+i*step},${yMargin(d.margin)}`).join(" ");
-  const countTicks=[0,.25,.5,.75,1].map(p=>Math.round(maxCount*p));
-  const chartBars=days.map((d,i)=>{
-    const x=plot.left+i*step-17;
-    const y=yCount(d.count);
-    const h=Math.max(2,plot.bottom-y);
-    const dotY=yMargin(d.margin);
-    return `<g class="trend-svg-day" tabindex="0" role="button" data-start="${Math.floor(range.start+i*((range.end-range.start+1)/days.length))}" data-end="${Math.floor(i===days.length-1?range.end:range.start+(i+1)*((range.end-range.start+1)/days.length)-1)}" aria-label="${esc(d.label)}: ${d.count} trips">
-      <rect class="trend-svg-hit" x="${Math.max(0,x-16)}" y="8" width="66" height="172" rx="8"></rect>
-      <rect class="trend-svg-bar" x="${x}" y="${plot.bottom-h}" width="34" height="${h}" rx="7">
-        <title>${esc(d.label)} — ${d.count} trips</title>
-      </rect>
-      <circle class="trend-svg-dot" cx="${plot.left+i*step}" cy="${dotY}" r="5">
-        <title>${esc(d.label)} — Margin ₹${money(d.margin)}</title>
-      </circle>
-      <text class="trend-svg-label" x="${plot.left+i*step}" y="178" text-anchor="middle">${esc(d.label)}</text>
-    </g>`;
-  }).join("");
+  const yMargin=v=>plot.bottom-((Number(v||0)-marginMin)/marginSpan)*(plot.bottom-plot.top);
+  const zeroY=yMargin(0);
+
+  const points=days.map((d,i)=>({x:xAt(i),y:yMargin(d.margin)}));
+  const smoothPath=pts=>{
+    if(!pts.length)return "";
+    if(pts.length===1)return `M ${pts[0].x} ${pts[0].y}`;
+    let path=`M ${pts[0].x} ${pts[0].y}`;
+    for(let i=0;i<pts.length-1;i++){
+      const p=pts[i],n=pts[i+1];
+      const midX=(p.x+n.x)/2;
+      path+=` C ${midX} ${p.y}, ${midX} ${n.y}, ${n.x} ${n.y}`;
+    }
+    return path;
+  };
+  const linePath=smoothPath(points);
+
+  const countTicks=[0,.25,.5,.75,1].map(p=>Math.round(maxCount*p)).filter((v,i,a)=>a.indexOf(v)===i);
+  const marginTicks=[marginMin,0,marginMax].filter((v,i,a)=>i===0||Math.abs(v-a[i-1])>1);
+
   const chartGrid=countTicks.map(v=>{
     const y=yCount(v);
-    return `<g><line class="trend-gridline" x1="48" x2="680" y1="${y}" y2="${y}"/><text class="trend-y-label" x="40" y="${y+4}" text-anchor="end">${v}</text></g>`;
+    return `<g><line class="trend-gridline" x1="${plot.left}" x2="${plot.right}" y1="${y}" y2="${y}"/><text class="trend-y-label" x="${plot.left-12}" y="${y+4}" text-anchor="end">${v}</text></g>`;
   }).join("");
-  const chartHtml=`<svg class="trend-svg" viewBox="0 0 700 190" preserveAspectRatio="none" role="img" aria-label="Seven day trip and margin trend">
+
+  const rightAxis=marginTicks.map(v=>{
+    const y=yMargin(v);
+    return `<text class="trend-margin-axis-label" x="748" y="${y+4}" text-anchor="end">${esc(axisMoney(v))}</text>`;
+  }).join("");
+
+  const chartBars=days.map((d,i)=>{
+    const x=xAt(i);
+    const barW=days.length<=3?30:days.length<=5?24:20;
+    const y=yCount(d.count);
+    const h=Math.max(3,plot.bottom-y);
+    const dotY=yMargin(d.margin);
+    const avg=d.count?d.margin/d.count:0;
+    const groupStart=Math.floor(range.start+i*((range.end-range.start+1)/days.length));
+    const groupEnd=Math.floor(i===days.length-1?range.end:range.start+(i+1)*((range.end-range.start+1)/days.length)-1);
+    return `<g class="trend-svg-day" tabindex="0" role="button"
+      data-start="${groupStart}" data-end="${groupEnd}"
+      data-label="${esc(d.label)}" data-count="${d.count}"
+      data-margin="${Number(d.margin||0)}" data-avg="${Number(avg||0)}"
+      aria-label="${esc(d.label)}: ${d.count} trips, margin ₹${money(d.margin)}">
+      <rect class="trend-svg-hit" x="${Math.max(0,x-32)}" y="${plot.top-6}" width="64" height="${plot.bottom-plot.top+36}" rx="10"></rect>
+      <rect class="trend-svg-bar" x="${x-barW/2}" y="${plot.bottom-h}" width="${barW}" height="${h}" rx="7">
+        <title>${esc(d.label)} — ${d.count} trips</title>
+      </rect>
+      <circle class="trend-svg-dot-ring" cx="${x}" cy="${dotY}" r="7"></circle>
+      <circle class="trend-svg-dot" cx="${x}" cy="${dotY}" r="4.25">
+        <title>${esc(d.label)} — Margin ₹${money(d.margin)}</title>
+      </circle>
+      <text class="trend-bar-value" x="${x}" y="${Math.max(plot.top+9,plot.bottom-h-8)}" text-anchor="middle">${d.count||""}</text>
+      <text class="trend-svg-label" x="${x}" y="216" text-anchor="middle">${esc(d.label)}</text>
+    </g>`;
+  }).join("");
+
+  const chartHtml=`<div class="trend-plot">
+    <svg class="trend-svg" viewBox="0 0 760 230" preserveAspectRatio="none" role="img" aria-label="Trip count and vehicle margin trend">
       <defs>
         <linearGradient id="tripBarGradient" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#2f8cff"/><stop offset="100%" stop-color="#0d4e9b"/>
+          <stop offset="0%" stop-color="#2d8cff"/>
+          <stop offset="55%" stop-color="#116bd3"/>
+          <stop offset="100%" stop-color="#0b438f"/>
         </linearGradient>
-        <filter id="trendGlow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <linearGradient id="marginLineGradient" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#7c3aed"/>
+          <stop offset="55%" stop-color="#9d45f5"/>
+          <stop offset="100%" stop-color="#f97316"/>
+        </linearGradient>
+        <filter id="trendSoftShadow" x="-40%" y="-40%" width="180%" height="180%">
+          <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#0b438f" flood-opacity=".18"/>
+        </filter>
       </defs>
       ${chartGrid}
-      <polyline class="trend-svg-line" points="${linePoints}"/>
+      <line class="trend-zero-line" x1="${plot.left}" x2="${plot.right}" y1="${zeroY}" y2="${zeroY}"></line>
+      <text class="trend-axis-caption" x="${plot.left}" y="12">TRIPS</text>
+      <text class="trend-axis-caption trend-axis-caption-right" x="748" y="12" text-anchor="end">MARGIN</text>
+      ${rightAxis}
+      <path class="trend-svg-line" d="${linePath}"></path>
       ${chartBars}
-    </svg>`;
+    </svg>
+    <div class="trend-tooltip" id="trendTooltip" aria-hidden="true"></div>
+  </div>`;
+
+  const trendInsights=`
+    <div class="trend-insights">
+      <div class="trend-insight"><span>Trips</span><strong>${totalTrendTrips}</strong><small>Selected period</small></div>
+      <div class="trend-insight"><span>Total Margin</span><strong class="${margin<0?"negative":""}">${compact(margin)}</strong><small>${marginPct.toFixed(1)}% of revenue</small></div>
+      <div class="trend-insight"><span>Avg / Trip</span><strong class="${avgMarginPerTrip<0?"negative":""}">${compact(avgMarginPerTrip)}</strong><small>Margin efficiency</small></div>
+      <div class="trend-insight"><span>Best Period</span><strong>${esc(bestDay?.label||"-")}</strong><small>${bestDay?`${axisMoney(bestDay.margin)} margin`:"No data"}</small></div>
+    </div>`;
+
 
   const hour=new Date().getHours();
   const greeting=hour<12?"Good Morning":hour<17?"Good Afternoon":"Good Evening";
@@ -534,7 +612,11 @@ function dashboardHtml(){
 
   <section class="neo-dashboard-grid">
     <article class="neo-panel trend-panel">
-      <div class="panel-title"><span>▥</span><h3>Vehicle Placement Trend</h3><div class="legend"><i class="cyan-dot"></i> Trips <i class="purple-dot"></i> Margin</div></div>
+      <div class="trend-panel-head">
+        <div class="trend-title-wrap"><span class="trend-title-icon">▥</span><div><h3>Vehicle Placement Trend</h3><p>Trip volume and margin performance for ${esc(range.label)}</p></div></div>
+        <div class="legend"><span><i class="cyan-dot"></i>Trips</span><span><i class="purple-dot"></i>Margin</span></div>
+      </div>
+      ${trendInsights}
       <div class="trend-chart">${chartHtml}</div>
     </article>
 
