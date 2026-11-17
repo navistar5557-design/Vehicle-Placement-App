@@ -2162,3 +2162,190 @@ body{animation:pearlDrift 22s ease-in-out infinite}
   display:none!important;
   content:none!important;
 }
+
+
+/* v0.3.54 soft pastel web dashboard */
+#appView{
+  background:#f6f8fc!important;
+}
+
+/* Calm the overall pearl/neon surface without changing layout. */
+#appView .content{
+  background:
+    radial-gradient(circle at 82% 8%,rgba(151,132,205,.035),transparent 28%),
+    radial-gradient(circle at 10% 18%,rgba(91,154,199,.035),transparent 30%),
+    #f6f8fc!important;
+}
+#appView .sidebar{
+  background:linear-gradient(180deg,rgba(255,255,255,.97),rgba(247,249,253,.95))!important;
+  box-shadow:8px 0 26px rgba(49,63,98,.045)!important;
+}
+#appView .sidebar::after{
+  filter:saturate(.62) brightness(.94) contrast(.94)!important;
+  opacity:.84!important;
+}
+#appView .topbar{
+  background:rgba(255,255,255,.90)!important;
+  box-shadow:0 6px 20px rgba(49,63,98,.045)!important;
+}
+
+/* Softer selected navigation: still obvious, no neon flare. */
+#appView #nav button:hover{
+  background:linear-gradient(135deg,rgba(92,157,201,.08),rgba(135,113,190,.07))!important;
+  border-color:rgba(90,125,177,.12)!important;
+}
+#appView #nav button.active{
+  background:linear-gradient(135deg,#5faed8 0%,#5b83c7 55%,#8170c5 100%)!important;
+  border-color:rgba(255,255,255,.78)!important;
+  box-shadow:0 6px 16px rgba(65,91,151,.16),inset 0 1px 0 rgba(255,255,255,.72)!important;
+}
+#appView #nav button.active .nav-ico{
+  background:rgba(255,255,255,.14)!important;
+  box-shadow:none!important;
+}
+
+/* KPI cards: pearl white with restrained pastel accents. */
+#appView .neo-kpi,
+#appView .neo-kpi.cyan,
+#appView .neo-kpi.purple,
+#appView .neo-kpi.orange,
+#appView .neo-kpi.green{
+  background:linear-gradient(145deg,rgba(255,255,255,.985),rgba(248,250,253,.975))!important;
+  border:1px solid rgba(181,193,214,.62)!important;
+  box-shadow:0 7px 18px rgba(47,61,101,.055),inset 0 1px 0 #fff!important;
+}
+#appView .neo-kpi::before{
+  opacity:.035!important;
+  filter:saturate(.6)!important;
+}
+#appView .neo-kpi::after{
+  opacity:.36!important;
+  filter:saturate(.62)!important;
+  height:2px!important;
+}
+#appView .neo-kpi:hover{
+  box-shadow:0 10px 22px rgba(47,61,101,.08),inset 0 1px 0 #fff!important;
+}
+#appView .neo-kpi img{
+  filter:saturate(.72) brightness(.97)!important;
+}
+
+/* Main dashboard panels. */
+#appView .neo-panel,
+#appView .dashboard-filterbar{
+  background:rgba(255,255,255,.94)!important;
+  border-color:rgba(190,199,218,.62)!important;
+  box-shadow:0 7px 18px rgba(48,60,96,.045),inset 0 1px 0 rgba(255,255,255,.98)!important;
+}
+#appView .trend-chart{
+  background:linear-gradient(180deg,rgba(249,251,254,.72),rgba(255,255,255,.34))!important;
+}
+
+/* Trend chart: retain data contrast, remove electric glow. */
+#appView .trend-svg-bar{
+  opacity:.86!important;
+  filter:drop-shadow(0 3px 4px rgba(44,91,145,.10)) saturate(.74)!important;
+}
+#appView .trend-svg-line{
+  stroke:#8067bd!important;
+  filter:none!important;
+  opacity:.90!important;
+}
+#appView .trend-svg-dot{
+  fill:#e99a45!important;
+  filter:none!important;
+}
+#appView .legend .purple-dot{
+  background:#e99a45!important;
+  box-shadow:none!important;
+}
+#appView .legend .cyan-dot{
+  background:#416fa9!important;
+  box-shadow:none!important;
+}
+#appView .trend-svg-day.trend-active .trend-svg-bar{
+  filter:drop-shadow(0 5px 7px rgba(44,91,145,.14)) saturate(.8)!important;
+}
+#appView .trend-svg-day.trend-active .trend-svg-dot{
+  filter:none!important;
+}
+
+/* Quick actions: pastel outlines instead of neon-lit cards. */
+#appView .quick-action{
+  background:rgba(255,255,255,.90)!important;
+  box-shadow:0 5px 13px rgba(45,59,94,.045)!important;
+}
+#appView .quick-action.cyan{
+  border-color:rgba(91,165,196,.32)!important;
+  box-shadow:inset 0 0 18px rgba(91,165,196,.035),0 5px 13px rgba(45,59,94,.045)!important;
+}
+#appView .quick-action.green{
+  border-color:rgba(105,177,132,.30)!important;
+  box-shadow:inset 0 0 18px rgba(105,177,132,.035),0 5px 13px rgba(45,59,94,.045)!important;
+}
+#appView .quick-action.orange{
+  border-color:rgba(213,157,91,.30)!important;
+  box-shadow:inset 0 0 18px rgba(213,157,91,.035),0 5px 13px rgba(45,59,94,.045)!important;
+}
+#appView .quick-action.red{
+  border-color:rgba(203,115,115,.28)!important;
+  box-shadow:inset 0 0 18px rgba(203,115,115,.035),0 5px 13px rgba(45,59,94,.045)!important;
+}
+#appView .quick-action:hover{
+  background:#fff!important;
+  box-shadow:0 8px 18px rgba(45,59,94,.07)!important;
+}
+#appView .quick-action b,
+#appView .quick-action img{
+  filter:saturate(.72) brightness(.97)!important;
+}
+#appView .location-pin{
+  background:linear-gradient(180deg,#df7777,#b94f4f)!important;
+  box-shadow:0 5px 10px rgba(157,72,72,.14),inset 0 1px 0 rgba(255,255,255,.45)!important;
+}
+
+/* Fleet utilization: cooler, softer teal/green with minimal aura. */
+#appView .gauge{
+  background:
+    radial-gradient(circle at 35% 24%,rgba(255,255,255,.98),rgba(255,255,255,0) 26%),
+    conic-gradient(from 220deg,#65b9c5 0deg,#82cf91 calc(var(--gauge-progress)*2.8deg),rgba(220,227,237,.58) calc(var(--gauge-progress)*2.8deg) 280deg,transparent 280deg)!important;
+  filter:drop-shadow(0 7px 15px rgba(62,128,137,.08))!important;
+}
+#appView .gauge::after{
+  border-color:rgba(93,166,173,.08)!important;
+  box-shadow:0 0 0 5px rgba(93,166,173,.018),0 0 14px rgba(93,166,173,.045)!important;
+}
+#appView .gauge:hover{
+  filter:drop-shadow(0 10px 18px rgba(62,128,137,.11))!important;
+}
+
+/* Header controls/avatar: keep brand presence but reduce electric cyan/purple. */
+#appView .top-avatar{
+  background:linear-gradient(135deg,#5faec6,#477ec1 56%,#7869b4)!important;
+  box-shadow:0 5px 13px rgba(55,91,148,.14)!important;
+}
+#appView .top-search-wrap,
+#appView .top-user,
+#appView .notification-btn{
+  box-shadow:0 5px 14px rgba(45,64,105,.045),inset 0 1px 0 #fff!important;
+}
+
+/* Alerts/status accents should read clearly without fluorescent glow. */
+#appView .sync-state::after{
+  background:#5aa86d!important;
+  animation:none!important;
+}
+#appView .badge,
+#appView .recent-panel img,
+#appView .alerts-panel img{
+  filter:saturate(.78)!important;
+}
+
+/* Reduce bright ambient animation while preserving motion. */
+#appView .neo-kpi,
+#appView .neo-panel,
+#appView .quick-action,
+#appView #nav button.active,
+#appView .gauge{
+  --shadow-hover:0 10px 22px rgba(45,59,94,.08)!important;
+}
