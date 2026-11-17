@@ -140,6 +140,70 @@ async function loadProfile(user){
   state.role=role;
 }
 
+async function migrateExistingTripsToV3(){
+  if(!isAdmin()) return 0;
+
+  const snap=await getDocs(collection(db,"trips"));
+  let batch=writeBatch(db), pending=0, migrated=0;
+  const now=Date.now();
+
+  for(const d of snap.docs){
+    const t=d.data();
+    const version=Number(t.expenseCalcVersion||0);
+    if(version>=3) continue;
+
+    const freight=parseMoneyValue(t.freight);
+    const weight=Number(t.weightTon||0);
+    const load=parseMoneyValue(t.loadingExpensePerTon);
+    const unload=parseMoneyValue(t.unloadingExpensePerTon);
+    const rawTotal=load+unload;
+
+    let totalLoading=load;
+    let totalUnloading=unload;
+
+    if(weight>1 && rawTotal>0){
+      const freightPerTon=freight>0 ? freight/weight : 0;
+      const clearlyTotal=
+        rawTotal>=5000 &&
+        freightPerTon>0 &&
+        rawTotal>freightPerTon*1.25;
+
+      if(!clearlyTotal){
+        totalLoading=load*weight;
+        totalUnloading=unload*weight;
+      }
+    }
+
+    batch.set(d.ref,{
+      loadingExpensePerTon:totalLoading,
+      unloadingExpensePerTon:totalUnloading,
+      expenseCalcVersion:3,
+      legacyExpenseMigratedAt:now,
+      legacyExpenseMigratedBy:state.profile?.username||"Admin",
+      updatedAt:now
+    },{merge:true});
+
+    pending++; migrated++;
+    if(pending===400){
+      await batch.commit();
+      batch=writeBatch(db);
+      pending=0;
+    }
+  }
+
+  if(pending>0) await batch.commit();
+
+  if(migrated>0){
+    await setDoc(doc(db,"settings","tripExpenseMigrationV3"),{
+      completedAt:now,
+      migratedTrips:migrated,
+      completedBy:state.profile?.username||"Admin",
+      version:3
+    },{merge:true});
+  }
+  return migrated;
+}
+
 function startLiveSync(){
   state.unsubs.forEach(f=>f()); state.unsubs=[];
   setSync("Connecting...");
@@ -155,13 +219,22 @@ function startLiveSync(){
   },err=>console.warn("Notifications listener unavailable",err)));
 }
 
-function showApp(){
+async function showApp(){
   $("#loginView").classList.add("hidden"); $("#appView").classList.remove("hidden");
   const avatar=$("#topAvatar"); if(avatar) avatar.textContent=(state.profile.username||"CU").trim().slice(0,2).toUpperCase();
   const topUserName=$("#topUserName"); if(topUserName) topUserName.textContent=state.profile.username||"User";
   const topUserRole=$("#topUserRole"); if(topUserRole) topUserRole.textContent=state.role.name||state.profile.roleId||"User";
   const newTripBtn=document.querySelector('[data-page="newtrip"]'); if(newTripBtn) newTripBtn.style.display=canCreateTrips()?"":"none";
   ["vehicles","vendors","locations"].forEach(p=>{const b=document.querySelector(`[data-page="${p}"]`);if(b)b.style.display=canManageMasters()?"":"none";});
+
+  try{
+    const migrated=await migrateExistingTripsToV3();
+    if(migrated>0) toast(migrated+" existing trip"+(migrated===1?"":"s")+" corrected");
+  }catch(err){
+    console.error("Existing trip migration failed",err);
+    toast("Existing trip correction could not complete");
+  }
+
   startLiveSync(); navigate("dashboard");
 }
 function showLogin(){ $("#appView").classList.add("hidden"); $("#loginView").classList.remove("hidden"); }
@@ -228,7 +301,7 @@ document.querySelector(".forgot-password-web")?.addEventListener("click",async()
 onAuthStateChanged(auth,async user=>{
   state.user=user;
   if(!user){state.profile=null;state.role=null;state.unsubs.forEach(f=>f());state.unsubs=[];showLogin();return;}
-  try{await loadProfile(user);showApp();}catch(e){await signOut(auth);$("#loginError").textContent=e.message;}
+  try{await loadProfile(user);await showApp();}catch(e){await signOut(auth);$("#loginError").textContent=e.message;}
 });
 $("#logoutBtn").addEventListener("click",()=>signOut(auth));
 $("#notificationBtn")?.addEventListener("click",openNotificationCenter);
