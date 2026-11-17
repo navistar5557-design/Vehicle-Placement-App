@@ -240,7 +240,8 @@ fun StyledTripEntryScreen(store: Store, createdBy: String = "", createdByEmail: 
                             statusUpdatedBy = createdBy,
                             statusUpdatedByEmail = createdByEmail,
                             statusUpdatedAt = System.currentTimeMillis(),
-                            expenseCalcVersion = 3
+                            expenseCalcVersion = 3,
+                            numericDataVersion = 2
                         )
                         val trips = store.trips()
                         trips.add(trip)
@@ -392,8 +393,7 @@ fun StyledTripListScreen(
             trip = trip,
             onDismiss = { editing = null },
             onSave = { updated ->
-                val updatedTrips = store.trips().map { if (it.id == updated.id) updated else it }.toMutableList()
-                store.saveTrips(updatedTrips)
+                store.upsertTrip(updated)
                 trips = store.trips()
                 editing = null
             }
@@ -440,17 +440,17 @@ private fun TripEditDialog(
     var to by remember(trip.id) { mutableStateOf(trip.to) }
     var freight by remember(trip.id) { mutableStateOf(rupeeInput(trip.freight)) }
     var advance by remember(trip.id) { mutableStateOf(rupeeInput(trip.advance)) }
-    var weight by remember(trip.id) { mutableStateOf(trip.weightTon.toString()) }
-    var originKm by remember(trip.id) { mutableStateOf(trip.currentToOriginKm.toString()) }
-    var km by remember(trip.id) { mutableStateOf(trip.totalKm.toString()) }
-    var hours by remember(trip.id) { mutableStateOf(trip.transitHours.toString()) }
+    var weight by remember(trip.id) { mutableStateOf(numberInput(trip.weightTon)) }
+    var originKm by remember(trip.id) { mutableStateOf(numberInput(trip.currentToOriginKm)) }
+    var km by remember(trip.id) { mutableStateOf(numberInput(trip.totalKm)) }
+    var hours by remember(trip.id) { mutableStateOf(numberInput(trip.transitHours)) }
     var mileage by remember(trip.id) { mutableStateOf(String.format(Locale.US, "%.1f", trip.mileage)) }
     var fastag by remember(trip.id) { mutableStateOf(rupeeInput(trip.fastag)) }
     var rto by remember(trip.id) { mutableStateOf(rupeeInput(trip.rtoTarpaulin)) }
     var fixed by remember(trip.id) { mutableStateOf(rupeeInput(trip.fixedExpenses)) }
     var loadingPerTon by remember(trip.id) { mutableStateOf(rupeeInput(trip.loadingExpense)) }
     var unloadingPerTon by remember(trip.id) { mutableStateOf(rupeeInput(trip.unloadingExpense)) }
-    var otherPct by remember(trip.id) { mutableStateOf(trip.expenseRules.firstOrNull()?.percent?.toString() ?: "0") }
+    var otherPct by remember(trip.id) { mutableStateOf(numberInput(trip.expenseRules.firstOrNull()?.percent ?: 0.0)) }
     var error by remember(trip.id) { mutableStateOf("") }
 
     AlertDialog(
@@ -542,7 +542,8 @@ private fun TripEditDialog(
                                     expenseRules = if (otherPct.num() > 0) listOf(ExpenseRule("Other Expense", otherPct.num())) else emptyList(),
                                     loadingExpensePerTon = loadingPerTon.num(),
                                     unloadingExpensePerTon = unloadingPerTon.num(),
-                                    expenseCalcVersion = 3
+                                    expenseCalcVersion = 3,
+                            numericDataVersion = 2
                                 )
                             )
                             ""
@@ -1326,6 +1327,10 @@ private fun EmptyCard(title: String, subtitle: String) {
 private fun rupeeInput(value: Double): String =
     if (value % 1.0 == 0.0) String.format(Locale.US, "%.0f", value)
     else String.format(Locale.US, "%.2f", value).trimEnd('0').trimEnd('.')
+
+private fun numberInput(value: Double): String =
+    if (value % 1.0 == 0.0) String.format(Locale.US, "%.0f", value)
+    else String.format(Locale.US, "%.4f", value).trimEnd('0').trimEnd('.')
 
 private fun styledDay(value: Long): String = SimpleDateFormat("dd-MM-yyyy", Locale.US).format(Date(value))
 
