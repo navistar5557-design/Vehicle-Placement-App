@@ -30,6 +30,10 @@ class FirestoreSync(private val context: Context, private val store: Store) {
         store.onTripRemoved = { tripId ->
             firestore.collection("trips").document(tripId).delete()
         }
+        store.onTripUpsert = { trip ->
+            firestore.collection("trips").document(trip.id)
+                .set(trip.toFirestoreMap(), SetOptions.merge())
+        }
     }
 
     fun startAutomaticSync(onComplete: (Result<Unit>) -> Unit = {}) {
