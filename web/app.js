@@ -676,15 +676,59 @@ function wireNewTrip(){
 
 function openEditTrip(id){
  const t=state.trips.find(x=>x.id===id);if(!t||!isAdmin())return;
+ const pct=Number(t.expenseRules?.[0]?.percent||0);
  const m=modal("Edit Trip",`<div class="form-grid">
  <label><span>Vendor</span><select id="eVendor">${picker(state.vendors.map(x=>x.name),t.vendor)}</select></label>
  <label><span>Vehicle</span><select id="eVehicle">${picker(state.vehicles.map(x=>x.number),t.vehicle)}</select></label>
+ <label><span>Current Location</span><select id="eCurrent">${picker(state.locations.map(x=>x.name),t.currentLocation)}</select></label>
  <label><span>From</span><select id="eFrom">${picker(state.locations.map(x=>x.name),t.from)}</select></label>
  <label><span>To</span><select id="eTo">${picker(state.locations.map(x=>x.name),t.to)}</select></label>
- <label><span>Freight</span><input id="eFreight" type="number" value="${Number(t.freight||0)}"></label>
- <label><span>Advance</span><input id="eAdvance" type="number" value="${Number(t.advance||0)}"></label>
+ <label><span>Freight</span><input id="eFreight" type="number" step="0.01" value="${Number(t.freight||0)}"></label>
+ <label><span>Advance</span><input id="eAdvance" type="number" step="0.01" value="${Number(t.advance||0)}"></label>
+ <label><span>Weight (Ton)</span><input id="eWeight" type="number" step="0.01" value="${Number(t.weightTon||0)}"></label>
+ <label><span>Trip KM</span><input id="eKm" type="number" step="0.01" value="${Number(t.totalKm||0)}"></label>
+ <label><span>Origin KM</span><input id="eOriginKm" type="number" step="0.01" value="${Number(t.currentToOriginKm||0)}"></label>
+ <label><span>Transit Hours</span><input id="eHours" type="number" step="0.01" value="${Number(t.transitHours||0)}"></label>
+ <label><span>Mileage</span><input id="eMileage" type="number" step="0.1" min="2.5" max="6.0" value="${Number(t.mileage||0).toFixed(1)}"></label>
+ <label><span>Loading Expense</span><input id="eLoad" type="number" step="0.01" value="${Number(t.loadingExpense||t.loadingExpensePerTon||0)}"></label>
+ <label><span>Unloading Expense</span><input id="eUnload" type="number" step="0.01" value="${Number(t.unloadingExpense||t.unloadingExpensePerTon||0)}"></label>
+ <label><span>Other Expense %</span><input id="ePct" type="number" step="0.01" value="${pct}"></label>
+ <label><span>FASTag</span><input id="eFastag" type="number" step="0.01" value="${Number(t.fastag||0)}"></label>
+ <label><span>RTO / Tarpaulin</span><input id="eRto" type="number" step="0.01" value="${Number(t.rtoTarpaulin||0)}"></label>
+ <label><span>Fixed Expenses</span><input id="eFixed" type="number" step="0.01" value="${Number(t.fixedExpenses||0)}"></label>
  </div><button id="saveEditTrip" class="primary wide" style="margin-top:14px">Update Trip</button>`);
- m.querySelector("#saveEditTrip").onclick=async()=>{const freight=Number(m.querySelector("#eFreight").value||0);await setDoc(doc(db,"trips",id),{vendor:m.querySelector("#eVendor").value,vehicle:m.querySelector("#eVehicle").value,from:m.querySelector("#eFrom").value,to:m.querySelector("#eTo").value,freight,netFreight:freight,advance:Number(m.querySelector("#eAdvance").value||0),updatedAt:Date.now()},{merge:true});m.remove();toast("Trip updated");};
+ const n=id=>Number(m.querySelector(id)?.value||0);
+ m.querySelector("#saveEditTrip").onclick=async()=>{
+   const freight=n("#eFreight"), mileage=n("#eMileage"), pctValue=n("#ePct");
+   if(freight<=0){toast("Enter a valid freight amount");return;}
+   if(mileage<2.5||mileage>6.0){toast("Mileage must be between 2.5 and 6.0");return;}
+   const patch={
+     vendor:m.querySelector("#eVendor").value,
+     vehicle:m.querySelector("#eVehicle").value,
+     currentLocation:m.querySelector("#eCurrent").value,
+     from:m.querySelector("#eFrom").value,
+     to:m.querySelector("#eTo").value,
+     freight,netFreight:freight,
+     advance:n("#eAdvance"),
+     weightTon:n("#eWeight"),
+     totalKm:n("#eKm"),
+     currentToOriginKm:n("#eOriginKm"),
+     transitHours:n("#eHours"),
+     mileage,
+     fuelRate:state.fuelRate,
+     loadingExpensePerTon:n("#eLoad"),
+     unloadingExpensePerTon:n("#eUnload"),
+     loadingUnloading:0,
+     expenseRules:pctValue>0?[{name:"Other Expense",percent:pctValue}]:[],
+     fastag:n("#eFastag"),
+     rtoTarpaulin:n("#eRto"),
+     fixedExpenses:n("#eFixed"),
+     expenseCalcVersion:3,
+     updatedAt:Date.now()
+   };
+   await setDoc(doc(db,"trips",id),patch,{merge:true});
+   m.remove();toast("Trip updated");
+ };
 }
 
 function masterHtml(type){
