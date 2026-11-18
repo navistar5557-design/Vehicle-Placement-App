@@ -1014,6 +1014,27 @@ function isTripOpenStatus(status){
 function activeTripForVehicle(vehicle,excludeId=""){
   return state.trips.find(t=>t.id!==excludeId&&t.vehicle===vehicle&&isTripOpenStatus(t.status));
 }
+function vehicleAvailability(vehicleOrNumber,excludeTripId=""){
+  const vehicle=typeof vehicleOrNumber==="string"
+    ? state.vehicles.find(v=>v.number===vehicleOrNumber)
+    : vehicleOrNumber;
+  if(!vehicle) return {key:"unknown",label:"Unknown"};
+  if(vehicle.active===false) return {key:"maintenance",label:"Maintenance / Inactive"};
+  const trip=activeTripForVehicle(vehicle.number,excludeTripId);
+  if(!trip) return {key:"available",label:"Available"};
+  const status=trip.status||"Vehicle Placed";
+  if(status==="In Transit") return {key:"transit",label:"In Transit",trip};
+  if(["Reached","Unloading"].includes(status)) return {key:"unloading",label:"At Unloading",trip};
+  if(status==="Loading") return {key:"loading",label:"Loading",trip};
+  return {key:"assigned",label:"Assigned",trip};
+}
+function vehiclePickerOptions(selected="",excludeTripId=""){
+  return state.vehicles.map(v=>{
+    const availability=vehicleAvailability(v,excludeTripId);
+    const disabled=availability.key!=="available"&&v.number!==selected;
+    return `<option value="${esc(v.number)}" ${v.number===selected?"selected":""} ${disabled?"disabled":""}>${esc(v.number)} — ${esc(availability.label)}</option>`;
+  }).join("");
+}
 function showDuplicateTrip(existing){
   modal("Vehicle Already Assigned",`
     <div class="duplicate-warning">
@@ -1039,7 +1060,7 @@ function newTripHtml(){
  return `<form id="tripForm" class="card" autocomplete="off">
  <div class="form-grid">
   <label><span>Vendor / Transporter</span><select id="fVendor" required>${picker(active(state.vendors).map(x=>x.name),"","Select Vendor / Transporter")}</select></label>
-  <label><span>Vehicle No</span><select id="fVehicle" required>${picker(active(state.vehicles).map(x=>x.number),"","Select Vehicle No")}</select></label>
+  <label><span>Vehicle No</span><select id="fVehicle" required><option value="" selected disabled>Select Vehicle No</option>${vehiclePickerOptions()}</select><small class="field-help">Only available vehicles can be selected.</small></label>
   <label><span>Current Location</span><select id="fCurrent">${picker(active(state.locations).map(x=>x.name),"","Select Current Location")}</select></label>
   <label><span>From</span><select id="fFrom" required>${picker(active(state.locations).map(x=>x.name),"","Select From Location")}</select></label>
   <label><span>To</span><select id="fTo" required>${picker(active(state.locations).map(x=>x.name),"","Select To Location")}</select></label>
@@ -1087,7 +1108,7 @@ function openEditTrip(id){
  const pct=Number(t.expenseRules?.[0]?.percent||0);
  const m=modal("Edit Trip",`<div class="form-grid">
  <label><span>Vendor</span><select id="eVendor">${picker(state.vendors.map(x=>x.name),t.vendor)}</select></label>
- <label><span>Vehicle</span><select id="eVehicle">${picker(state.vehicles.map(x=>x.number),t.vehicle)}</select></label>
+ <label><span>Vehicle</span><select id="eVehicle">${vehiclePickerOptions(t.vehicle,t.id)}</select></label>
  <label><span>Current Location</span><select id="eCurrent">${picker(state.locations.map(x=>x.name),t.currentLocation)}</select></label>
  <label><span>From</span><select id="eFrom">${picker(state.locations.map(x=>x.name),t.from)}</select></label>
  <label><span>To</span><select id="eTo">${picker(state.locations.map(x=>x.name),t.to)}</select></label>
@@ -1153,7 +1174,7 @@ function masterHtml(type){
  const data=type==="vehicles"?state.vehicles:type==="vendors"?state.vendors:state.locations;
  const singular=type==="vehicles"?"Vehicle":type==="vendors"?"Vendor":"Location";
  return `<div class="section-head"><h3>${singular} Master</h3><button id="addMaster" class="primary">+ Add ${singular}</button></div>
- <div class="list">${data.map(x=>{const key=type==="vehicles"?x.number:x.name;return `<div class="list-row"><div class="grow"><strong>${esc(key)}</strong><small>${type==="vehicles"?esc(Number(x.mileage).toFixed(1)+" km/L"):(x.active===false?"Inactive":"Active")}</small></div>${isAdmin()?`<button class="secondary edit-master" data-key="${esc(key)}">Edit</button><button class="danger delete-master" data-key="${esc(key)}">Delete</button>`:""}</div>`}).join("")}</div>`;
+ <div class="list">${data.map(x=>{const key=type==="vehicles"?x.number:x.name;const av=type==="vehicles"?vehicleAvailability(x):null;return `<div class="list-row"><div class="grow"><strong>${esc(key)}</strong><small>${type==="vehicles"?esc(Number(x.mileage).toFixed(1)+" km/L"):(x.active===false?"Inactive":"Active")}</small></div>${type==="vehicles"?`<span class="availability-badge ${av.key}">${esc(av.label)}</span>`:""}${isAdmin()?`<button class="secondary edit-master" data-key="${esc(key)}">Edit</button><button class="danger delete-master" data-key="${esc(key)}">Delete</button>`:""}</div>`}).join("")}</div>`;
 }
 function wireMaster(type){
  $("#addMaster")?.addEventListener("click",()=>openMaster(type,null));
