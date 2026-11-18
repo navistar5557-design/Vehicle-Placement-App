@@ -490,21 +490,79 @@ document.addEventListener("keydown",e=>{
 $("#menuBtn").addEventListener("click",()=>$("#menuBtn").setAttribute("aria-expanded",$(".sidebar").classList.toggle("open")));
 $("#nav").addEventListener("click",e=>{const b=e.target.closest("[data-page]");if(b)navigate(b.dataset.page);});
 
+function restoreStandardTopbar(){
+ const titleBlock=$("#topbarTitleBlock");
+ const search=$("#topSearchWrap");
+ const topActions=$(".top-actions");
+ if(titleBlock && !$("#pageTitle")){
+   titleBlock.className="topbar-title-block";
+   titleBlock.innerHTML='<h2 id="pageTitle">Dashboard</h2><p id="pageSubtitle"></p>';
+ }
+ if(search && topActions && search.parentElement!==topActions.parentElement){
+   topActions.parentElement.insertBefore(search,topActions);
+ }
+ search?.classList.remove("dashboard-relocated-search");
+}
+function dashboardHeaderSummaryHtml(){
+ const start=new Date();start.setHours(0,0,0,0);
+ const today=state.trips.filter(t=>Number(t.createdAt||0)>=start.getTime());
+ const active=state.trips.filter(t=>isTripOpenStatus(t.status)).length;
+ const transit=state.trips.filter(t=>t.status==="In Transit").length;
+ const completed=state.trips.filter(t=>t.status==="Completed"&&Number(t.statusUpdatedAt||0)>=start.getTime()).length;
+ const revenue=today.reduce((sum,t)=>sum+Number(t.freight||0),0);
+ const margin=today.reduce((sum,t)=>sum+Number(t.margin||0),0);
+ const low=today.filter(t=>Number(t.margin||0)<0||Number(t.marginPercent||0)<Number(state.minMarginPercent||10)).length;
+ const delayed=state.trips.filter(t=>isTripOpenStatus(t.status)&&Number(t.transitHours||0)>0&&Number(t.createdAt||0)+Number(t.transitHours||0)*3600000<Date.now()).length;
+ return `<div class="header-ops-summary">
+   <div class="header-ops-title"><span>☀</span><strong>Today's Operations</strong><button id="copyDailySummary" class="text-link" type="button">Copy</button></div>
+   <div class="header-ops-metrics">
+     <div><span>Trips</span><b>${today.length}</b></div>
+     <div><span>Active</span><b>${active}</b></div>
+     <div><span>Transit</span><b>${transit}</b></div>
+     <div><span>Completed</span><b>${completed}</b></div>
+     <div><span>Revenue</span><b>₹ ${money(revenue)}</b></div>
+     <div><span>Margin</span><b class="${margin<0?"negative-value":"positive-value"}">₹ ${money(margin)}</b></div>
+     <div><span>Low Margin</span><b>${low}</b></div>
+     <div><span>Delayed</span><b>${delayed}</b></div>
+   </div>
+ </div>`;
+}
+function configureTopbarForPage(page){
+ if(page!=="dashboard"){
+   restoreStandardTopbar();
+   return;
+ }
+ const titleBlock=$("#topbarTitleBlock");
+ if(titleBlock){
+   titleBlock.className="topbar-title-block dashboard-header-summary";
+   titleBlock.innerHTML=dashboardHeaderSummaryHtml();
+ }
+ const search=$("#topSearchWrap");
+ const slot=$("#dashboardSearchSlot");
+ if(search&&slot){
+   slot.appendChild(search);
+   search.classList.add("dashboard-relocated-search");
+ }
+}
+
 function navigate(page){
   state.page=page;
   document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
   $(".sidebar").classList.remove("open"); $("#menuBtn").setAttribute("aria-expanded","false");
-  const hour=new Date().getHours();
-  const greet=hour<12?"Good Morning":hour<17?"Good Afternoon":"Good Evening";
-  const titles={dashboard:[`${greet},`,""],trips:["Trips","Live trip placement and status"],newtrip:["Create Trip","Add a new vehicle placement"],vehicles:["Vehicles","Vehicle master"],vendors:["Vendors","Vendor master"],locations:["Locations","Location master"],reports:["Reports","Operational and profitability summary"]};
-  $("#pageTitle").textContent=titles[page]?.[0]||"CUBE";$("#pageSubtitle").textContent=titles[page]?.[1]||"";
+  if(page!=="dashboard"){
+    restoreStandardTopbar();
+    const titles={trips:["Trips","Live trip placement and status"],newtrip:["Create Trip","Add a new vehicle placement"],vehicles:["Vehicles","Vehicle master"],vendors:["Vendors","Vendor master"],locations:["Locations","Location master"],reports:["Reports","Operational and profitability summary"]};
+    $("#pageTitle").textContent=titles[page]?.[0]||"CUBE";
+    $("#pageSubtitle").textContent=titles[page]?.[1]||"";
+  }
   render();
+  configureTopbarForPage(page);
 }
 
 function render(){
   if(!state.profile)return;
   const root=$("#pageContent");
-  if(state.page==="dashboard"){root.innerHTML=dashboardHtml();wireDashboard();}
+  if(state.page==="dashboard"){root.innerHTML=dashboardHtml();configureTopbarForPage("dashboard");wireDashboard();}
   if(state.page==="trips"){root.innerHTML=tripsHtml();wireTrips();}
   if(state.page==="newtrip"){root.innerHTML=newTripHtml();wireNewTrip();}
   if(state.page==="vehicles"){root.innerHTML=masterHtml("vehicles");wireMaster("vehicles");}
@@ -770,22 +828,7 @@ function dashboardHtml(){
       </div>
     </div>
 
-    <article class="daily-summary-panel daily-summary-compact">
-      <div class="compact-summary-head">
-        <div><span class="compact-summary-icon">☀</span><strong>Today's Operations</strong></div>
-        <button id="copyDailySummary" class="text-link" type="button">Copy</button>
-      </div>
-      <div class="daily-summary-grid">
-        <div><span>Trips</span><strong>${todayTrips.length}</strong></div>
-        <div><span>Active</span><strong>${todayActive}</strong></div>
-        <div><span>Transit</span><strong>${todayInTransit}</strong></div>
-        <div><span>Completed</span><strong>${completedToday}</strong></div>
-        <div><span>Revenue</span><strong>₹ ${money(todayRevenue)}</strong></div>
-        <div><span>Margin</span><strong class="${todayMargin<0?"negative-value":"positive-value"}">₹ ${money(todayMargin)}</strong></div>
-        <div><span>Low Margin</span><strong>${todayLowMargin}</strong></div>
-        <div><span>Delayed</span><strong>${delayed}</strong></div>
-      </div>
-    </article>
+    <div id="dashboardSearchSlot" class="dashboard-search-slot"></div>
   </section>
 
   <section class="neo-kpis">
