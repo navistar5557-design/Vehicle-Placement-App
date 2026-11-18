@@ -87,11 +87,55 @@ async function createLiveNotification(title,body,tripId="",type="general"){
   });
 }
 
-async function persistTrip(id,data,merge=true){
+const AUDIT_FIELDS={
+  vendor:"Vendor",vehicle:"Vehicle",currentLocation:"Current Location",from:"From",to:"To",
+  freight:"Freight",advance:"Advance",weightTon:"Weight",totalKm:"Trip KM",currentToOriginKm:"Origin KM",
+  transitHours:"Transit Hours",mileage:"Mileage",loadingExpensePerTon:"Loading Expense",
+  unloadingExpensePerTon:"Unloading Expense",fastag:"FASTag",rtoTarpaulin:"RTO / Tarpaulin",
+  fixedExpenses:"Fixed Expenses",status:"Status"
+};
+function auditValue(v){
+  if(Array.isArray(v)) return JSON.stringify(v);
+  if(v&&typeof v==="object") return JSON.stringify(v);
+  return String(v??"");
+}
+function tripAuditChanges(before={},after={}){
+  const changes=[];
+  for(const [key,label] of Object.entries(AUDIT_FIELDS)){
+    const a=auditValue(before?.[key]),b=auditValue(after?.[key]);
+    if(a!==b) changes.push({field:key,label,before:a,after:b});
+  }
+  const oldPct=Number(before?.expenseRules?.[0]?.percent||0);
+  const newPct=Number(after?.expenseRules?.[0]?.percent||0);
+  if(oldPct!==newPct) changes.push({field:"otherExpensePercent",label:"Other Expense %",before:String(oldPct),after:String(newPct)});
+  return changes;
+}
+async function logTripAudit(tripId,action,before={},after={},note=""){
+  const changes=tripAuditChanges(before,after);
+  const id=uid();
+  try{
+    await setDoc(doc(db,"tripAudit",id),{
+      id,tripId,action,note,changes,
+      tripNumber:after?.tripNumber||before?.tripNumber||"",
+      vehicle:after?.vehicle||before?.vehicle||"",
+      createdAt:Date.now(),
+      userId:state.profile?.uid||"",
+      username:state.profile?.username||"User",
+      email:state.profile?.loginEmail||""
+    });
+  }catch(error){
+    console.warn("Audit history write failed",error);
+  }
+}
+
+async function persistTrip(id,data,merge=true,auditAction="EDIT"){
   try{
     const payload={...data,updatedAt:Date.now()};
+    const before=state.trips.find(t=>t.id===id)||{};
     if(merge) await setDoc(doc(db,"trips",id),payload,{merge:true});
     else await setDoc(doc(db,"trips",id),payload);
+    const after=merge?{...before,...payload}:payload;
+    await logTripAudit(id,auditAction,before,after);
     return payload;
   }catch(error){
     console.error("Trip database write failed",error);
@@ -102,6 +146,8 @@ async function persistTrip(id,data,merge=true){
 
 async function removeTripFromDatabase(id){
   try{
+    const before=state.trips.find(t=>t.id===id)||{};
+    await logTripAudit(id,"DELETE",before,{},"Trip deleted");
     await deleteDoc(doc(db,"trips",id));
   }catch(error){
     console.error("Trip database delete failed",error);
@@ -884,7 +930,7 @@ function tripTable(rows,actions=true){
  <td>${esc(dateTime(t.createdAt))}</td><td><strong>${esc(t.vehicle)}</strong></td><td>${esc(t.from)} → ${esc(t.to)}</td><td>${esc(t.vendor)}</td><td>${statusBadge(t.status)}</td>
  <td>₹ ${money(t.freight)}</td><td>₹ ${money(t.margin)} (${Number(t.marginPercent||0).toFixed(1)}%)</td>
  <td><div class="audit">Created: ${esc(t.createdBy||t.createdByEmail||"Legacy")}</div><div class="audit">Status: ${esc(t.statusUpdatedBy||t.statusUpdatedByEmail||"-")} · ${esc(dateTime(t.statusUpdatedAt))}</div></td>
- ${actions?`<td class="actions"><button class="secondary status-btn" data-id="${esc(t.id)}">Status</button> ${isAdmin()?'<button class="secondary edit-trip" data-id="'+esc(t.id)+'">Edit</button> ':''}${canDeleteTrips()?'<button class="danger delete-trip" data-id="'+esc(t.id)+'">Delete</button>':''}</td>`:""}
+ ${actions?`<td class="actions"><button class="secondary status-btn" data-id="${esc(t.id)}">Status</button> <button class="secondary audit-trip" data-id="${esc(t.id)}">History</button> ${isAdmin()?'<button class="secondary edit-trip" data-id="'+esc(t.id)+'">Edit</button> ':''}${canDeleteTrips()?'<button class="danger delete-trip" data-id="'+esc(t.id)+'">Delete</button>':''}</td>`:""}
  </tr>`).join("")}</tbody></table></div>`;
 }
 
@@ -899,6 +945,25 @@ function wireTripButtons(){
  document.querySelectorAll(".status-btn").forEach(b=>b.onclick=()=>openStatus(b.dataset.id));
  document.querySelectorAll(".delete-trip").forEach(b=>b.onclick=()=>deleteTrip(b.dataset.id));
  document.querySelectorAll(".edit-trip").forEach(b=>b.onclick=()=>openEditTrip(b.dataset.id));
+ document.querySelectorAll(".audit-trip").forEach(b=>b.onclick=()=>openTripAudit(b.dataset.id));
+}
+
+async function openTripAudit(tripId){
+ const m=modal("Trip History",'<div class="empty">Loading history...</div>');
+ try{
+   const snap=await getDocs(collection(db,"tripAudit"));
+   const rows=snap.docs.map(d=>d.data()).filter(x=>x.tripId===tripId).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
+   m.querySelector(".modal-body").innerHTML=rows.length?`
+     <div class="audit-timeline">${rows.map(a=>`<div class="audit-event">
+       <div class="audit-event-head"><strong>${esc(a.action||"UPDATE")}</strong><span>${esc(dateTime(a.createdAt))}</span></div>
+       <div class="audit-event-user">${esc(a.username||a.email||"User")}${a.note?" · "+esc(a.note):""}</div>
+       ${(a.changes||[]).length?`<div class="audit-changes">${a.changes.map(c=>`<div><b>${esc(c.label||c.field)}</b><span>${esc(c.before||"—")} → ${esc(c.after||"—")}</span></div>`).join("")}</div>`:'<div class="audit-event-user">No field-level changes recorded.</div>'}
+     </div>`).join("")}</div>`
+     :'<div class="empty">No audit history recorded for this trip yet.</div>';
+ }catch(error){
+   console.error(error);
+   m.querySelector(".modal-body").innerHTML='<div class="empty">Unable to load audit history.</div>';
+ }
 }
 
 function modal(title,html){
@@ -911,7 +976,7 @@ function openStatus(id){
  m.querySelector("#saveStatus").onclick=async()=>{
    const status=m.querySelector("#statusSelect").value;
    const oldStatus=t.status||"Vehicle Placed";
-   await persistTrip(id,{status,statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:Date.now()},true);
+   await persistTrip(id,{status,statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:Date.now()},true,"STATUS");
    if(status!==oldStatus){
      await createLiveNotification("Trip Status: "+status,(t.vehicle||"Vehicle")+" updated by "+state.profile.username,id,"trip_status");
    }
@@ -969,7 +1034,7 @@ function wireNewTrip(){
  const now=Date.now(),id=uid(),freight=m("fFreight"),pct=n("fPct");
  const weight=m("fWeight"),loadPerTon=m("fLoad"),unloadPerTon=m("fUnload");
  const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:$("#fVehicle").value,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:m("fAdvance"),weightTon:weight,currentToOriginKm:m("fOriginKm"),totalKm:m("fKm"),transitHours:m("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:m("fFixed"),fastag:m("fFastag"),rtoTarpaulin:m("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,expenseCalcVersion:3,numericDataVersion:2,expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Vehicle Placed",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
- await persistTrip(id,trip,false);
+ await persistTrip(id,trip,false,"CREATE");
  await createLiveNotification("New Trip Created",trip.vehicle+" — "+trip.from+" → "+trip.to,id,"trip_created");
  toast("Trip created");navigate("trips");});
 }
@@ -1028,7 +1093,7 @@ function openEditTrip(id){
      numericDataVersion:2,
      updatedAt:Date.now()
    };
-   await persistTrip(id,patch,true);
+   await persistTrip(id,patch,true,"EDIT");
    const updated=calcTrip({...t,...patch});
    state.trips=state.trips.map(x=>x.id===id?updated:x);
    m.remove();
