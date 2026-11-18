@@ -46,7 +46,7 @@ const uid = () => crypto.randomUUID ? crypto.randomUUID() : (Date.now()+"-"+Math
 
 let state = {
   user:null, profile:null, role:null,
-  trips:[], vehicles:[], vendors:[], locations:[], fuelRate:100,
+  trips:[], vehicles:[], vendors:[], locations:[], fuelRate:100, minMarginPercent:10,
   page:"dashboard", unsubs:[], dashboardFilter:"thisWeek", dashboardFrom:"", dashboardTo:"", trendFilter:"thisWeek", notifications:[]
 };
 
@@ -329,6 +329,9 @@ function startLiveSync(){
   watch("vendors",rows=>state.vendors=rows.map(x=>({name:x.name||x.id,active:x.active!==false})).sort((a,b)=>a.name.localeCompare(b.name)));
   watch("locations",rows=>state.locations=rows.map(x=>({name:x.name||x.id,active:x.active!==false})).sort((a,b)=>a.name.localeCompare(b.name)));
   state.unsubs.push(onSnapshot(doc(db,"settings","fuelRate"),d=>{ if(d.exists()) state.fuelRate=Number(d.data().value||100); render(); }));
+  state.unsubs.push(onSnapshot(doc(db,"settings","profitability"),d=>{
+    if(d.exists()) state.minMarginPercent=Number(d.data().minMarginPercent??10);
+  },err=>console.warn("Profitability settings unavailable",err)));
   state.unsubs.push(onSnapshot(collection(db,"notifications"),snap=>{
     state.notifications=snap.docs.map(d=>({id:d.id,...d.data()})).filter(visibleNotification).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0)).slice(0,50);
     updateNotificationBadge();
@@ -1087,6 +1090,10 @@ function newTripHtml(){
   <label><span>Fixed Expenses</span><input id="fFixed" type="number" min="0" step="0.01"></label>
  </div>
  <div class="summary-row"><div class="summary"><span>Fuel Rate</span><strong>₹ ${money(state.fuelRate)}/L</strong></div><div class="summary"><span>Initial Status</span><strong>Created</strong></div><div class="summary"><span>Created By</span><strong>${esc(state.profile.username)}</strong></div></div>
+ <div id="profitabilityPreview" class="profitability-preview neutral">
+   <div><span>Estimated Margin</span><strong>Enter freight and expenses</strong></div>
+   <small>Margin warning threshold: ${Number(state.minMarginPercent||10).toFixed(1)}%</small>
+ </div>
  <button class="primary" style="margin-top:16px" type="submit">Save Trip</button>
  </form>`;
 }
@@ -1096,7 +1103,37 @@ function wireNewTrip(){
    form.reset();
    ["fFreight","fAdvance","fWeight","fKm","fHours","fOriginKm","fLoad","fUnload","fPct","fFastag","fRto","fFixed"].forEach(id=>{const el=$("#"+id);if(el)el.value="";});
  }
- const v=$("#fVehicle");const setMileage=()=>{const rec=state.vehicles.find(x=>x.number===v.value);$("#fMileage").value=rec?Number(rec.mileage).toFixed(1):""};v.addEventListener("change",setMileage);
+ const v=$("#fVehicle");const setMileage=()=>{const rec=state.vehicles.find(x=>x.number===v.value);$("#fMileage").value=rec?Number(rec.mileage).toFixed(1):"";previewProfitability();};
+ const formNumber=id=>parseMoneyValue($("#"+id)?.value);
+ const previewProfitability=()=>{
+   const preview=$("#profitabilityPreview"); if(!preview)return null;
+   const freight=formNumber("fFreight");
+   if(freight<=0){
+     preview.className="profitability-preview neutral";
+     preview.innerHTML='<div><span>Estimated Margin</span><strong>Enter freight and expenses</strong></div><small>Margin warning threshold: '+Number(state.minMarginPercent||10).toFixed(1)+'%</small>';
+     return null;
+   }
+   const temp=calcTrip({
+     freight,netFreight:freight,
+     totalKm:formNumber("fKm"),mileage:Number($("#fMileage")?.value||0),fuelRate:state.fuelRate,
+     fixedExpenses:formNumber("fFixed"),fastag:formNumber("fFastag"),rtoTarpaulin:formNumber("fRto"),
+     loadingUnloading:0,loadingExpensePerTon:formNumber("fLoad"),unloadingExpensePerTon:formNumber("fUnload"),
+     expenseCalcVersion:3,weightTon:formNumber("fWeight"),
+     expenseRules:formNumber("fPct")>0?[{name:"Other Expense",percent:formNumber("fPct")}]:[]
+   });
+   const threshold=Number(state.minMarginPercent||10);
+   const health=temp.margin<0?"danger":temp.marginPercent<threshold?"warning":"healthy";
+   const label=temp.margin<0?"Negative Margin":temp.marginPercent<threshold?"Low Margin":"Healthy Margin";
+   preview.className="profitability-preview "+health;
+   preview.innerHTML='<div><span>'+label+'</span><strong>₹ '+money(temp.margin)+' · '+temp.marginPercent.toFixed(1)+'%</strong></div><small>Total expense ₹ '+money(temp.totalExpenses)+' · Minimum target '+threshold.toFixed(1)+'%</small>';
+   return temp;
+ };
+ ["fFreight","fWeight","fKm","fLoad","fUnload","fPct","fFastag","fRto","fFixed","fMileage"].forEach(id=>{
+   $("#"+id)?.addEventListener("input",previewProfitability);
+   $("#"+id)?.addEventListener("change",previewProfitability);
+ });
+ v.addEventListener("change",setMileage);
+ previewProfitability();
  $("#tripForm").addEventListener("submit",async e=>{e.preventDefault();
  const n=id=>Number($("#"+id).value||0);
  const m=id=>parseMoneyValue($("#"+id).value);
@@ -1105,9 +1142,19 @@ function wireNewTrip(){
  const selectedVehicle=$("#fVehicle").value;
  const existing=activeTripForVehicle(selectedVehicle);
  if(existing){showDuplicateTrip(existing);return;}
+ const preview=previewProfitability();
+ const threshold=Number(state.minMarginPercent||10);
+ if(preview && (preview.margin<0 || preview.marginPercent<threshold)){
+   const ok=confirm((preview.margin<0?"Negative":"Low")+" margin: ₹ "+money(preview.margin)+" ("+preview.marginPercent.toFixed(1)+"%). Save this trip anyway?");
+   if(!ok)return;
+ }
  const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:selectedVehicle,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:m("fAdvance"),weightTon:weight,currentToOriginKm:m("fOriginKm"),totalKm:m("fKm"),transitHours:m("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:m("fFixed"),fastag:m("fFastag"),rtoTarpaulin:m("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,expenseCalcVersion:3,numericDataVersion:2,expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Created",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
  await persistTrip(id,trip,false,"CREATE");
  await createLiveNotification("New Trip Created",trip.vehicle+" — "+trip.from+" → "+trip.to,id,"trip_created");
+ const savedCalc=calcTrip(trip);
+ if(savedCalc.margin<0 || savedCalc.marginPercent<Number(state.minMarginPercent||10)){
+   await createLiveNotification("Margin Warning",trip.vehicle+" margin ₹"+money(savedCalc.margin)+" ("+savedCalc.marginPercent.toFixed(1)+"%)",id,"margin_warning");
+ }
  toast("Trip created");navigate("trips");});
 }
 
