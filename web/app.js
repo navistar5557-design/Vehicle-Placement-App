@@ -1253,9 +1253,46 @@ function openMaster(type,key){
 }
 async function deleteMaster(type,key){if(!isAdmin()||!confirm("Delete "+key+" from master? Existing trips will be kept."))return;await deleteDoc(doc(db,type,docId(key)));toast("Deleted from master");}
 
+function vendorPerformanceRows(){
+ const groups=new Map();
+ state.trips.forEach(t=>{
+   const key=t.vendor||"Unassigned";
+   const g=groups.get(key)||{vendor:key,trips:0,freight:0,margin:0,km:0,weight:0,completed:0,cancelled:0};
+   g.trips++;g.freight+=Number(t.freight||0);g.margin+=Number(t.margin||0);
+   g.km+=Number(t.totalKm||0);g.weight+=Number(t.weightTon||0);
+   if(t.status==="Completed")g.completed++;
+   if(t.status==="Cancelled")g.cancelled++;
+   groups.set(key,g);
+ });
+ return [...groups.values()].map(g=>({
+   ...g,
+   avgMargin:g.trips?g.margin/g.trips:0,
+   freightPerKm:g.km?g.freight/g.km:0,
+   freightPerTon:g.weight?g.freight/g.weight:0,
+   completionRate:g.trips?g.completed/g.trips*100:0
+ })).sort((a,b)=>b.margin-a.margin);
+}
+function vendorPerformanceHtml(){
+ const rows=vendorPerformanceRows();
+ const top=rows[0];
+ return `<section class="performance-section">
+   <div class="section-head performance-head"><div><h3>Vendor Performance</h3><p>Commercial and operational performance by transporter</p></div>${top?`<span class="performance-highlight">Top margin: ${esc(top.vendor)} · ₹ ${money(top.margin)}</span>`:""}</div>
+   <div class="performance-table-wrap"><table class="performance-table">
+    <thead><tr><th>Vendor</th><th>Trips</th><th>Freight</th><th>Margin</th><th>Avg Margin / Trip</th><th>₹ / KM</th><th>₹ / Ton</th><th>Completed</th><th>Completion</th></tr></thead>
+    <tbody>${rows.map((r,i)=>`<tr>
+      <td><div class="ranked-name"><span>${i+1}</span><strong>${esc(r.vendor)}</strong></div></td>
+      <td>${r.trips}</td><td>₹ ${money(r.freight)}</td>
+      <td class="${r.margin<0?"negative-value":"positive-value"}">₹ ${money(r.margin)}</td>
+      <td>₹ ${money(r.avgMargin)}</td><td>₹ ${money(r.freightPerKm)}</td><td>₹ ${money(r.freightPerTon)}</td>
+      <td>${r.completed}${r.cancelled?` <small>· ${r.cancelled} cancelled</small>`:""}</td><td>${r.completionRate.toFixed(0)}%</td>
+    </tr>`).join("")||'<tr><td colspan="9" class="empty">No vendor performance data yet.</td></tr>'}</tbody>
+   </table></div>
+ </section>`;
+}
 function reportsHtml(){
  const freight=state.trips.reduce((s,t)=>s+Number(t.freight||0),0),exp=state.trips.reduce((s,t)=>s+t.totalExpenses,0),margin=state.trips.reduce((s,t)=>s+t.margin,0);
  return `<div class="grid kpis"><div class="kpi"><div class="label">Freight</div><div class="value">₹ ${money(freight)}</div></div><div class="kpi"><div class="label">Expenses</div><div class="value">₹ ${money(exp)}</div></div><div class="kpi green"><div class="label">Margin</div><div class="value">₹ ${money(margin)}</div></div><div class="kpi"><div class="label">Trips</div><div class="value">${state.trips.length}</div></div></div>
+ ${vendorPerformanceHtml()}
  <div class="section-head"><h3>Trip Detail Report</h3><button id="csvBtn" class="secondary">Download CSV</button></div>${tripTable(state.trips,false)}`;
 }
 
