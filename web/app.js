@@ -1289,10 +1289,52 @@ function vendorPerformanceHtml(){
    </table></div>
  </section>`;
 }
+function vehicleUtilization30Days(vehicleNo){
+ const end=Date.now(),start=end-30*86400000;
+ let occupied=0;
+ state.trips.filter(t=>t.vehicle===vehicleNo).forEach(t=>{
+   const a=Math.max(start,Number(t.createdAt||0));
+   let b=isTripOpenStatus(t.status)?end:Number(t.statusUpdatedAt||t.updatedAt||t.createdAt||0);
+   b=Math.min(end,Math.max(a,b));
+   occupied+=Math.max(0,b-a);
+ });
+ return Math.min(100,occupied/(30*86400000)*100);
+}
+function vehiclePerformanceRows(){
+ return state.vehicles.map(v=>{
+   const trips=state.trips.filter(t=>t.vehicle===v.number);
+   const revenue=trips.reduce((s,t)=>s+Number(t.freight||0),0);
+   const expenses=trips.reduce((s,t)=>s+Number(t.totalExpenses||0),0);
+   const margin=trips.reduce((s,t)=>s+Number(t.margin||0),0);
+   const km=trips.reduce((s,t)=>s+Number(t.totalKm||0),0);
+   const mileageValues=trips.map(t=>Number(t.mileage||0)).filter(x=>x>0);
+   const avgMileage=mileageValues.length?mileageValues.reduce((a,b)=>a+b,0)/mileageValues.length:Number(v.mileage||0);
+   const availability=vehicleAvailability(v);
+   return {vehicle:v.number,trips:trips.length,revenue,expenses,margin,km,avgMileage,utilization:vehicleUtilization30Days(v.number),availability};
+ }).sort((a,b)=>b.margin-a.margin);
+}
+function vehiclePerformanceHtml(){
+ const rows=vehiclePerformanceRows();
+ return `<section class="performance-section">
+   <div class="section-head performance-head"><div><h3>Vehicle Performance</h3><p>Revenue, cost, KM, profitability and rolling 30-day utilization</p></div></div>
+   <div class="performance-table-wrap"><table class="performance-table">
+    <thead><tr><th>Vehicle</th><th>Status</th><th>Trips</th><th>Total KM</th><th>Revenue</th><th>Expenses</th><th>Margin</th><th>Avg Mileage</th><th>30D Utilization</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr>
+      <td><strong>${esc(r.vehicle)}</strong></td>
+      <td><span class="availability-badge ${esc(r.availability.key)}">${esc(r.availability.label)}</span></td>
+      <td>${r.trips}</td><td>${money(r.km)}</td><td>₹ ${money(r.revenue)}</td><td>₹ ${money(r.expenses)}</td>
+      <td class="${r.margin<0?"negative-value":"positive-value"}">₹ ${money(r.margin)}</td>
+      <td>${Number(r.avgMileage||0).toFixed(1)} km/L</td><td>${r.utilization.toFixed(0)}%</td>
+    </tr>`).join("")||'<tr><td colspan="9" class="empty">No vehicle performance data yet.</td></tr>'}</tbody>
+   </table></div>
+ </section>`;
+}
+
 function reportsHtml(){
  const freight=state.trips.reduce((s,t)=>s+Number(t.freight||0),0),exp=state.trips.reduce((s,t)=>s+t.totalExpenses,0),margin=state.trips.reduce((s,t)=>s+t.margin,0);
  return `<div class="grid kpis"><div class="kpi"><div class="label">Freight</div><div class="value">₹ ${money(freight)}</div></div><div class="kpi"><div class="label">Expenses</div><div class="value">₹ ${money(exp)}</div></div><div class="kpi green"><div class="label">Margin</div><div class="value">₹ ${money(margin)}</div></div><div class="kpi"><div class="label">Trips</div><div class="value">${state.trips.length}</div></div></div>
  ${vendorPerformanceHtml()}
+ ${vehiclePerformanceHtml()}
  <div class="section-head"><h3>Trip Detail Report</h3><button id="csvBtn" class="secondary">Download CSV</button></div>${tripTable(state.trips,false)}`;
 }
 
