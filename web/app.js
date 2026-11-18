@@ -51,7 +51,17 @@ let state = {
 };
 
 function toast(msg){ const el=$("#toast"); el.textContent=msg; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2200); }
-function setSync(text, ok=true){ const el=$("#syncState"); el.textContent=(ok?"● ":"● ")+text; el.style.color=ok?"#087A36":"#B42318"; }
+function setSync(text, ok=true, mode="synced"){
+ const el=$("#syncState"); if(!el)return;
+ el.textContent="● "+text;
+ el.dataset.state=mode;
+ el.classList.toggle("sync-error",!ok);
+ el.title="Database status: "+text;
+}
+function syncedNow(){
+ const t=new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
+ setSync("Synced · "+t,true,"synced");
+}
 function normalizeUsername(v){ return v.trim().toLowerCase().replace(/[^a-z0-9._-]/g,""); }
 function loginIdentity(v){ const s=v.trim(); return s.includes("@") ? s : normalizeUsername(s)+"@cube.internal"; }
 function isAdmin(){ return !!(state.role?.canManageUsers && state.role?.canManageMasters); }
@@ -130,15 +140,18 @@ async function logTripAudit(tripId,action,before={},after={},note=""){
 
 async function persistTrip(id,data,merge=true,auditAction="EDIT"){
   try{
+    setSync("Saving...",true,"saving");
     const payload={...data,updatedAt:Date.now()};
     const before=state.trips.find(t=>t.id===id)||{};
     if(merge) await setDoc(doc(db,"trips",id),payload,{merge:true});
     else await setDoc(doc(db,"trips",id),payload);
     const after=merge?{...before,...payload}:payload;
     await logTripAudit(id,auditAction,before,after);
+    syncedNow();
     return payload;
   }catch(error){
     console.error("Trip database write failed",error);
+    setSync("Sync error",false,"error");
     toast("Database update failed. Please check connection and try again.");
     throw error;
   }
@@ -146,11 +159,14 @@ async function persistTrip(id,data,merge=true,auditAction="EDIT"){
 
 async function removeTripFromDatabase(id){
   try{
+    setSync("Saving...",true,"saving");
     const before=state.trips.find(t=>t.id===id)||{};
     await logTripAudit(id,"DELETE",before,{},"Trip deleted");
     await deleteDoc(doc(db,"trips",id));
+    syncedNow();
   }catch(error){
     console.error("Trip database delete failed",error);
+    setSync("Sync error",false,"error");
     toast("Database delete failed. Please check connection and try again.");
     throw error;
   }
@@ -306,8 +322,8 @@ async function migrateExistingTripsToV3(){
 
 function startLiveSync(){
   state.unsubs.forEach(f=>f()); state.unsubs=[];
-  setSync("Connecting...");
-  const watch=(name,cb)=>state.unsubs.push(onSnapshot(collection(db,name),snap=>{cb(snap.docs.map(d=>({id:d.id,...d.data()}))); setSync("Live Sync"); render();},err=>{console.error(err);setSync("Sync error",false);}));
+  setSync(navigator.onLine?"Connecting...":"Offline",navigator.onLine,navigator.onLine?"connecting":"offline");
+  const watch=(name,cb)=>state.unsubs.push(onSnapshot(collection(db,name),snap=>{cb(snap.docs.map(d=>({id:d.id,...d.data()}))); syncedNow(); render();},err=>{console.error(err);setSync("Sync error",false,"error");}));
   watch("trips",rows=>state.trips=rows.map(calcTrip).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0)));
   watch("vehicles",rows=>state.vehicles=rows.map(x=>({number:x.number||x.id,mileage:Number(x.mileage||0),active:x.active!==false})).sort((a,b)=>a.number.localeCompare(b.number)));
   watch("vendors",rows=>state.vendors=rows.map(x=>({name:x.name||x.id,active:x.active!==false})).sort((a,b)=>a.name.localeCompare(b.name)));
@@ -413,6 +429,9 @@ $("#globalSearch")?.addEventListener("keydown",e=>{
     setTimeout(()=>{const box=$("#tripSearch");if(box){box.value=q;box.dispatchEvent(new Event("input"));}},0);
   }
 });
+window.addEventListener("offline",()=>setSync("Offline",false,"offline"));
+window.addEventListener("online",()=>{setSync("Reconnecting...",true,"connecting");startLiveSync();});
+
 document.addEventListener("keydown",e=>{
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();$("#globalSearch")?.focus();}
 });
