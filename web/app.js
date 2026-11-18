@@ -961,11 +961,57 @@ function tripTable(rows,actions=true){
 }
 
 function tripsHtml(){
- return `<div class="section-head"><h3>Trip List</h3><div class="toolbar"><input id="tripSearch" placeholder="Search vehicle, vendor, route..."><select id="tripStatusFilter"><option>All Status</option>${TRIP_STATUSES.map(x=>`<option>${esc(x)}</option>`).join("")}</select></div></div><div id="tripTableHost">${tripTable(state.trips)}</div>`;
+ const vendorOptions=[...new Set(state.trips.map(t=>t.vendor).filter(Boolean))].sort();
+ const vehicleOptions=[...new Set(state.trips.map(t=>t.vehicle).filter(Boolean))].sort();
+ return `<div class="section-head trip-search-head"><div><h3>Trip List</h3><p>Search and filter live trip records</p></div></div>
+ <div class="advanced-search card">
+   <div class="advanced-search-grid">
+     <label><span>Search</span><input id="tripSearch" placeholder="Trip ID, vehicle, vendor, route, creator..."></label>
+     <label><span>Status</span><select id="tripStatusFilter"><option>All Status</option>${TRIP_STATUSES.map(x=>`<option>${esc(x)}</option>`).join("")}</select></label>
+     <label><span>Vehicle</span><select id="tripVehicleFilter"><option value="">All Vehicles</option>${vehicleOptions.map(x=>`<option>${esc(x)}</option>`).join("")}</select></label>
+     <label><span>Vendor</span><select id="tripVendorFilter"><option value="">All Vendors</option>${vendorOptions.map(x=>`<option>${esc(x)}</option>`).join("")}</select></label>
+     <label><span>From Date</span><input id="tripDateFrom" type="date"></label>
+     <label><span>To Date</span><input id="tripDateTo" type="date"></label>
+   </div>
+   <div class="advanced-search-footer"><span id="tripResultCount">${state.trips.length} trips</span><button id="clearTripFilters" class="secondary" type="button">Clear Filters</button></div>
+ </div>
+ <div id="tripTableHost">${tripTable(state.trips)}</div>`;
 }
 function wireTrips(){
- const apply=()=>{const q=$("#tripSearch").value.toLowerCase(),s=$("#tripStatusFilter").value;const rows=state.trips.filter(t=>(s==="All Status"||(t.status||"Vehicle Placed")===s)&&[t.vehicle,t.vendor,t.from,t.to,t.createdBy].join(" ").toLowerCase().includes(q));$("#tripTableHost").innerHTML=tripTable(rows);wireTripButtons();};
- $("#tripSearch").addEventListener("input",apply);$("#tripStatusFilter").addEventListener("change",apply);wireTripButtons();
+ const apply=()=>{
+   const q=($("#tripSearch")?.value||"").trim().toLowerCase();
+   const status=$("#tripStatusFilter")?.value||"All Status";
+   const vehicle=$("#tripVehicleFilter")?.value||"";
+   const vendor=$("#tripVendorFilter")?.value||"";
+   const from=$("#tripDateFrom")?.value||"";
+   const to=$("#tripDateTo")?.value||"";
+   const fromMs=from?new Date(from+"T00:00:00").getTime():0;
+   const toMs=to?new Date(to+"T23:59:59.999").getTime():Number.MAX_SAFE_INTEGER;
+   const rows=state.trips.filter(t=>{
+     const created=Number(t.createdAt||0);
+     const haystack=[
+       t.tripNumber,t.id,t.vehicle,t.vendor,t.currentLocation,t.from,t.to,t.status,t.createdBy,t.createdByEmail,
+       dateTime(t.createdAt)
+     ].join(" ").toLowerCase();
+     return (status==="All Status"||(t.status||"Vehicle Placed")===status)
+       &&(!vehicle||t.vehicle===vehicle)
+       &&(!vendor||t.vendor===vendor)
+       &&created>=fromMs&&created<=toMs
+       &&(!q||haystack.includes(q));
+   });
+   $("#tripTableHost").innerHTML=tripTable(rows);
+   const count=$("#tripResultCount");if(count)count.textContent=rows.length+" trip"+(rows.length===1?"":"s");
+   wireTripButtons();
+ };
+ ["tripSearch","tripStatusFilter","tripVehicleFilter","tripVendorFilter","tripDateFrom","tripDateTo"].forEach(id=>{
+   $("#"+id)?.addEventListener(id==="tripSearch"?"input":"change",apply);
+ });
+ $("#clearTripFilters")?.addEventListener("click",()=>{
+   ["tripSearch","tripVehicleFilter","tripVendorFilter","tripDateFrom","tripDateTo"].forEach(id=>{const el=$("#"+id);if(el)el.value="";});
+   if($("#tripStatusFilter"))$("#tripStatusFilter").value="All Status";
+   apply();
+ });
+ wireTripButtons();
 }
 function wireTripButtons(){
  document.querySelectorAll(".status-btn").forEach(b=>b.onclick=()=>openStatus(b.dataset.id));
