@@ -106,7 +106,9 @@ fun CubeApp(store: Store) {
         fun runAutomaticSync() {
             if (syncInProgress) return
             syncInProgress = true
-            firestoreSync.startAutomaticSync { result -> finishSync(result, "Sync completed") }
+            firestoreSync.startAutomaticSync(
+                onRemoteChange = { syncVersion++ }
+            ) { result -> finishSync(result, "Live sync connected") }
         }
 
         fun updateFromDatabase() {
@@ -175,6 +177,7 @@ fun CubeApp(store: Store) {
                 onLogout = {
                     loginPrefs.edit().putBoolean("remember_login", false).apply()
                     LiveNotificationCenter.stop()
+                    firestoreSync.stopLiveSync()
                     auth.signOut()
                     profile = null
                     loggedIn = false
