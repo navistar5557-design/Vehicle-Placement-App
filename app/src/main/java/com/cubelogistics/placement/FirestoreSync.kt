@@ -344,6 +344,12 @@ private fun Trip.toFirestoreMap(): Map<String, Any> = mapOf(
     "updatedAt" to System.currentTimeMillis()
 )
 
+private fun com.google.firebase.firestore.DocumentSnapshot.numberValue(name: String, default: Double = 0.0): Double =
+    (get(name) as? Number)?.toDouble() ?: default
+
+private fun com.google.firebase.firestore.DocumentSnapshot.longValue(name: String, default: Long = 0L): Long =
+    (get(name) as? Number)?.toLong() ?: default
+
 private fun com.google.firebase.firestore.DocumentSnapshot.toTripOrNull(): Trip? {
     val rules = (get("expenseRules") as? List<*>)
         ?.mapNotNull { row ->
@@ -357,36 +363,36 @@ private fun com.google.firebase.firestore.DocumentSnapshot.toTripOrNull(): Trip?
     return try {
         Trip(
             id = getString("id") ?: id,
-            createdAt = getLong("createdAt") ?: 0L,
+            createdAt = longValue("createdAt"),
             vendor = getString("vendor") ?: "",
             vehicle = getString("vehicle") ?: "",
             currentLocation = getString("currentLocation") ?: "",
             from = getString("from") ?: "",
             to = getString("to") ?: "",
-            freight = getDouble("freight") ?: 0.0,
-            netFreight = getDouble("netFreight") ?: getDouble("freight") ?: 0.0,
-            advance = getDouble("advance") ?: 0.0,
-            weightTon = getDouble("weightTon") ?: 0.0,
-            currentToOriginKm = getDouble("currentToOriginKm") ?: 0.0,
-            totalKm = getDouble("totalKm") ?: 0.0,
-            transitHours = getDouble("transitHours") ?: 0.0,
-            mileage = getDouble("mileage") ?: 0.0,
-            fuelRate = getDouble("fuelRate") ?: 0.0,
-            fixedExpenses = getDouble("fixedExpenses") ?: 0.0,
-            fastag = getDouble("fastag") ?: 0.0,
-            rtoTarpaulin = getDouble("rtoTarpaulin") ?: 0.0,
-            loadingUnloading = getDouble("loadingUnloading") ?: 0.0,
+            freight = numberValue("freight"),
+            netFreight = numberValue("netFreight", numberValue("freight")),
+            advance = numberValue("advance"),
+            weightTon = numberValue("weightTon"),
+            currentToOriginKm = numberValue("currentToOriginKm"),
+            totalKm = numberValue("totalKm"),
+            transitHours = numberValue("transitHours"),
+            mileage = numberValue("mileage"),
+            fuelRate = numberValue("fuelRate"),
+            fixedExpenses = numberValue("fixedExpenses"),
+            fastag = numberValue("fastag"),
+            rtoTarpaulin = numberValue("rtoTarpaulin"),
+            loadingUnloading = numberValue("loadingUnloading"),
             expenseRules = rules,
-            loadingExpensePerTon = getDouble("loadingExpensePerTon") ?: 0.0,
-            unloadingExpensePerTon = getDouble("unloadingExpensePerTon") ?: 0.0,
+            loadingExpensePerTon = numberValue("loadingExpensePerTon"),
+            unloadingExpensePerTon = numberValue("unloadingExpensePerTon"),
             createdBy = getString("createdBy") ?: "",
             createdByEmail = getString("createdByEmail") ?: "",
             status = getString("status") ?: "Vehicle Placed",
             statusUpdatedBy = getString("statusUpdatedBy") ?: "",
             statusUpdatedByEmail = getString("statusUpdatedByEmail") ?: "",
-            statusUpdatedAt = getLong("statusUpdatedAt") ?: 0L,
-            expenseCalcVersion = (getLong("expenseCalcVersion") ?: 0L).toInt(),
-            numericDataVersion = (getLong("numericDataVersion") ?: 0L).toInt()
+            statusUpdatedAt = longValue("statusUpdatedAt"),
+            expenseCalcVersion = longValue("expenseCalcVersion").toInt(),
+            numericDataVersion = longValue("numericDataVersion").toInt()
         ).normalizedNumericData()
     } catch (_: Exception) {
         null
