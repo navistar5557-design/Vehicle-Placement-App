@@ -562,7 +562,11 @@ function navigate(page){
 function render(){
   if(!state.profile)return;
   const root=$("#pageContent");
-  if(state.page==="dashboard"){root.innerHTML=dashboardHtml();configureTopbarForPage("dashboard");wireDashboard();}
+  if(state.page==="dashboard"){
+    const search=$("#topSearchWrap"),topActions=$(".top-actions");
+    if(search&&topActions&&root.contains(search)) topActions.parentElement.insertBefore(search,topActions);
+    root.innerHTML=dashboardHtml();configureTopbarForPage("dashboard");wireDashboard();
+  }
   if(state.page==="trips"){root.innerHTML=tripsHtml();wireTrips();}
   if(state.page==="newtrip"){root.innerHTML=newTripHtml();wireNewTrip();}
   if(state.page==="vehicles"){root.innerHTML=masterHtml("vehicles");wireMaster("vehicles");}
