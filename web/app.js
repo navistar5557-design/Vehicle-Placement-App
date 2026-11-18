@@ -539,7 +539,7 @@ function dashboardHtml(){
   const marginPct=freight?margin/freight*100:0;
 
   const activeVehicleNos=new Set(
-    trips.filter(t=>["Vehicle Placed","In Transit"].includes(t.status||"Vehicle Placed"))
+    trips.filter(t=>isTripOpenStatus(t.status))
       .map(t=>t.vehicle).filter(Boolean)
   );
   const inTrip=Math.min(activeVehicleNos.size,activeVehicles.length);
@@ -549,7 +549,7 @@ function dashboardHtml(){
   const today=new Date(); today.setHours(0,0,0,0);
   const completedToday=trips.filter(t=>t.status==="Completed" && Number(t.statusUpdatedAt||0)>=today.getTime()).length;
   const delayed=trips.filter(t=>{
-    if(t.status==="Completed") return false;
+    if(["Completed","Cancelled"].includes(t.status)) return false;
     const hrs=Number(t.transitHours||0);
     return hrs>0 && Number(t.createdAt||0)+hrs*3600000 < Date.now();
   }).length;
@@ -942,7 +942,11 @@ function wireDashboard(){
   });
 }
 
-function statusBadge(s){const c=s==="Completed"?"completed":s==="In Transit"?"transit":"placed";return `<span class="badge ${c}">${esc(s||"Vehicle Placed")}</span>`;}
+function statusBadge(s){
+ const status=s||"Vehicle Placed";
+ const c=status==="Completed"?"completed":status==="Cancelled"?"cancelled":status==="In Transit"?"transit":status==="Loading"?"loading":status==="Reached"?"reached":status==="Unloading"?"unloading":status==="Created"?"created":"placed";
+ return `<span class="badge ${c}">${esc(status)}</span>`;
+}
 function tripTable(rows,actions=true){
  if(!rows.length)return '<div class="card empty">No trips available.</div>';
  return `<div class="table-wrap"><table><thead><tr><th>Date</th><th>Vehicle</th><th>Route</th><th>Vendor</th><th>Status</th><th>Freight</th><th>Margin</th><th>Audit</th>${actions?"<th>Actions</th>":""}</tr></thead><tbody>${rows.map(t=>`<tr>
@@ -954,7 +958,7 @@ function tripTable(rows,actions=true){
 }
 
 function tripsHtml(){
- return `<div class="section-head"><h3>Trip List</h3><div class="toolbar"><input id="tripSearch" placeholder="Search vehicle, vendor, route..."><select id="tripStatusFilter"><option>All Status</option><option>Vehicle Placed</option><option>In Transit</option><option>Completed</option></select></div></div><div id="tripTableHost">${tripTable(state.trips)}</div>`;
+ return `<div class="section-head"><h3>Trip List</h3><div class="toolbar"><input id="tripSearch" placeholder="Search vehicle, vendor, route..."><select id="tripStatusFilter"><option>All Status</option>${TRIP_STATUSES.map(x=>`<option>${esc(x)}</option>`).join("")}</select></div></div><div id="tripTableHost">${tripTable(state.trips)}</div>`;
 }
 function wireTrips(){
  const apply=()=>{const q=$("#tripSearch").value.toLowerCase(),s=$("#tripStatusFilter").value;const rows=state.trips.filter(t=>(s==="All Status"||(t.status||"Vehicle Placed")===s)&&[t.vehicle,t.vendor,t.from,t.to,t.createdBy].join(" ").toLowerCase().includes(q));$("#tripTableHost").innerHTML=tripTable(rows);wireTripButtons();};
@@ -990,7 +994,7 @@ function modal(title,html){
 }
 function openStatus(id){
  const t=state.trips.find(x=>x.id===id);if(!t)return;
- const m=modal("Update Trip Status",`<label>Trip Status<select id="statusSelect"><option>Vehicle Placed</option><option>In Transit</option><option>Completed</option></select></label><p class="note">Current: ${esc(t.status||"Vehicle Placed")}</p><button id="saveStatus" class="primary wide">Update Status</button>`);
+ const m=modal("Update Trip Status",`<label>Trip Status<select id="statusSelect">${TRIP_STATUSES.map(x=>`<option>${esc(x)}</option>`).join("")}</select></label><p class="note">Current: ${esc(t.status||"Vehicle Placed")}</p><button id="saveStatus" class="primary wide">Update Status</button>`);
  m.querySelector("#statusSelect").value=t.status||"Vehicle Placed";
  m.querySelector("#saveStatus").onclick=async()=>{
    const status=m.querySelector("#statusSelect").value;
@@ -1008,8 +1012,11 @@ async function deleteTrip(id){
  toast("Trip deleted");
 }
 
+const TRIP_STATUSES=["Created","Vehicle Placed","Loading","In Transit","Reached","Unloading","Completed","Cancelled"];
+const ACTIVE_TRIP_STATUSES=new Set(["Created","Vehicle Placed","Loading","In Transit","Reached","Unloading"]);
+
 function isTripOpenStatus(status){
-  return !["Completed","Cancelled"].includes(status||"Vehicle Placed");
+  return ACTIVE_TRIP_STATUSES.has(status||"Vehicle Placed");
 }
 function activeTripForVehicle(vehicle,excludeId=""){
   return state.trips.find(t=>t.id!==excludeId&&t.vehicle===vehicle&&isTripOpenStatus(t.status));
@@ -1026,7 +1033,8 @@ function vehicleAvailability(vehicleOrNumber,excludeTripId=""){
   if(status==="In Transit") return {key:"transit",label:"In Transit",trip};
   if(["Reached","Unloading"].includes(status)) return {key:"unloading",label:"At Unloading",trip};
   if(status==="Loading") return {key:"loading",label:"Loading",trip};
-  return {key:"assigned",label:"Assigned",trip};
+  if(status==="Created") return {key:"reserved",label:"Reserved",trip};
+  return {key:"assigned",label:"Vehicle Placed",trip};
 }
 function vehiclePickerOptions(selected="",excludeTripId=""){
   return state.vehicles.map(v=>{
@@ -1078,7 +1086,7 @@ function newTripHtml(){
   <label><span>RTO / Tarpaulin</span><input id="fRto" type="number" min="0" step="0.01"></label>
   <label><span>Fixed Expenses</span><input id="fFixed" type="number" min="0" step="0.01"></label>
  </div>
- <div class="summary-row"><div class="summary"><span>Fuel Rate</span><strong>₹ ${money(state.fuelRate)}/L</strong></div><div class="summary"><span>Initial Status</span><strong>Vehicle Placed</strong></div><div class="summary"><span>Created By</span><strong>${esc(state.profile.username)}</strong></div></div>
+ <div class="summary-row"><div class="summary"><span>Fuel Rate</span><strong>₹ ${money(state.fuelRate)}/L</strong></div><div class="summary"><span>Initial Status</span><strong>Created</strong></div><div class="summary"><span>Created By</span><strong>${esc(state.profile.username)}</strong></div></div>
  <button class="primary" style="margin-top:16px" type="submit">Save Trip</button>
  </form>`;
 }
@@ -1097,7 +1105,7 @@ function wireNewTrip(){
  const selectedVehicle=$("#fVehicle").value;
  const existing=activeTripForVehicle(selectedVehicle);
  if(existing){showDuplicateTrip(existing);return;}
- const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:selectedVehicle,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:m("fAdvance"),weightTon:weight,currentToOriginKm:m("fOriginKm"),totalKm:m("fKm"),transitHours:m("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:m("fFixed"),fastag:m("fFastag"),rtoTarpaulin:m("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,expenseCalcVersion:3,numericDataVersion:2,expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Vehicle Placed",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
+ const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:selectedVehicle,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:m("fAdvance"),weightTon:weight,currentToOriginKm:m("fOriginKm"),totalKm:m("fKm"),transitHours:m("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:m("fFixed"),fastag:m("fFastag"),rtoTarpaulin:m("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,expenseCalcVersion:3,numericDataVersion:2,expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Created",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
  await persistTrip(id,trip,false,"CREATE");
  await createLiveNotification("New Trip Created",trip.vehicle+" — "+trip.from+" → "+trip.to,id,"trip_created");
  toast("Trip created");navigate("trips");});
