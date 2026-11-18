@@ -1,6 +1,6 @@
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 import { getMessaging, getToken, onMessage, isSupported as messagingSupported } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-messaging.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-storage.js";
 import {
@@ -19,6 +19,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+const WEB_VERSION = "0.4.18";
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));
@@ -49,7 +50,8 @@ const uid = () => crypto.randomUUID ? crypto.randomUUID() : (Date.now()+"-"+Math
 let state = {
   user:null, profile:null, role:null,
   trips:[], vehicles:[], vendors:[], locations:[], fuelRate:100, minMarginPercent:10,
-  page:"dashboard", unsubs:[], dashboardFilter:"thisWeek", dashboardFrom:"", dashboardTo:"", trendFilter:"thisWeek", notifications:[]
+  page:"dashboard", unsubs:[], dashboardFilter:"thisWeek", dashboardFrom:"", dashboardTo:"", trendFilter:"thisWeek", notifications:[],
+  settingsTab:"users", settingsRoles:[], settingsUsers:[], settingsLoading:false, settingsLoaded:false
 };
 
 function toast(msg){ const el=$("#toast"); el.textContent=msg; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2200); }
