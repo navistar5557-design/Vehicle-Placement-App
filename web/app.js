@@ -1008,6 +1008,27 @@ async function deleteTrip(id){
  toast("Trip deleted");
 }
 
+function isTripOpenStatus(status){
+  return !["Completed","Cancelled"].includes(status||"Vehicle Placed");
+}
+function activeTripForVehicle(vehicle,excludeId=""){
+  return state.trips.find(t=>t.id!==excludeId&&t.vehicle===vehicle&&isTripOpenStatus(t.status));
+}
+function showDuplicateTrip(existing){
+  modal("Vehicle Already Assigned",`
+    <div class="duplicate-warning">
+      <strong>${esc(existing.vehicle||"Vehicle")} already has an active trip.</strong>
+      <p>${esc(existing.from||"-")} → ${esc(existing.to||"-")}</p>
+      <div class="mini-summary">
+        <div><span>Status</span><strong>${esc(existing.status||"Vehicle Placed")}</strong></div>
+        <div><span>Created</span><strong>${esc(dateTime(existing.createdAt))}</strong></div>
+        <div><span>Trip</span><strong>${esc(existing.tripNumber||existing.id?.slice(0,8)||"-")}</strong></div>
+      </div>
+      <p class="note">Complete or cancel the current trip before creating another active trip for this vehicle.</p>
+    </div>
+  `);
+}
+
 function active(arr){return arr.filter(x=>x.active!==false)}
 function picker(opts,selected="",placeholder=""){
   const head=placeholder?`<option value="" ${selected?"":"selected"} disabled>${esc(placeholder)}</option>`:"";
@@ -1052,7 +1073,10 @@ function wireNewTrip(){
  const m=id=>parseMoneyValue($("#"+id).value);
  const now=Date.now(),id=uid(),freight=m("fFreight"),pct=n("fPct");
  const weight=m("fWeight"),loadPerTon=m("fLoad"),unloadPerTon=m("fUnload");
- const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:$("#fVehicle").value,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:m("fAdvance"),weightTon:weight,currentToOriginKm:m("fOriginKm"),totalKm:m("fKm"),transitHours:m("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:m("fFixed"),fastag:m("fFastag"),rtoTarpaulin:m("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,expenseCalcVersion:3,numericDataVersion:2,expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Vehicle Placed",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
+ const selectedVehicle=$("#fVehicle").value;
+ const existing=activeTripForVehicle(selectedVehicle);
+ if(existing){showDuplicateTrip(existing);return;}
+ const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:selectedVehicle,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:m("fAdvance"),weightTon:weight,currentToOriginKm:m("fOriginKm"),totalKm:m("fKm"),transitHours:m("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:m("fFixed"),fastag:m("fFastag"),rtoTarpaulin:m("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,expenseCalcVersion:3,numericDataVersion:2,expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Vehicle Placed",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
  await persistTrip(id,trip,false,"CREATE");
  await createLiveNotification("New Trip Created",trip.vehicle+" — "+trip.from+" → "+trip.to,id,"trip_created");
  toast("Trip created");navigate("trips");});
@@ -1085,6 +1109,9 @@ function openEditTrip(id){
  const moneyN=id=>parseMoneyValue(m.querySelector(id)?.value);
  m.querySelector("#saveEditTrip").onclick=async()=>{
    const freight=moneyN("#eFreight"), mileage=n("#eMileage"), pctValue=moneyN("#ePct");
+   const selectedVehicle=m.querySelector("#eVehicle").value;
+   const conflicting=activeTripForVehicle(selectedVehicle,id);
+   if(conflicting){showDuplicateTrip(conflicting);return;}
    if(freight<=0){toast("Enter a valid freight amount");return;}
    if(mileage<2.5||mileage>6.0){toast("Mileage must be between 2.5 and 6.0");return;}
    const patch={
