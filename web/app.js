@@ -90,7 +90,8 @@ async function createLiveNotification(title,body,tripId="",type="general"){
 async function persistTrip(id,data,merge=true){
   try{
     const payload={...data,updatedAt:Date.now()};
-    await setDoc(doc(db,"trips",id),payload,{merge});
+    if(merge) await setDoc(doc(db,"trips",id),payload,{merge:true});
+    else await setDoc(doc(db,"trips",id),payload);
     return payload;
   }catch(error){
     console.error("Trip database write failed",error);
