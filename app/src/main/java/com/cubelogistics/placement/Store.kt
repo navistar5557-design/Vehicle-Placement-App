@@ -12,6 +12,10 @@ class Store(context:Context){
  var onLocationRemoved: ((String) -> Unit)? = null
  var onTripRemoved: ((String) -> Unit)? = null
  var onTripUpsert: ((Trip) -> Unit)? = null
+ var onVehicleUpsert: ((Vehicle) -> Unit)? = null
+ var onVendorUpsert: ((Vendor) -> Unit)? = null
+ var onLocationUpsert: ((Location) -> Unit)? = null
+ var onFuelRateChanged: ((Double) -> Unit)? = null
  private var suppressCloudCallback = false
 
  fun withoutCloudCallback(block: () -> Unit) {
@@ -27,6 +31,7 @@ class Store(context:Context){
   get() = p.getFloat("fuel_rate", 100f).toDouble()
   set(value) {
    p.edit().putFloat("fuel_rate", value.toFloat()).apply()
+   if (!suppressCloudCallback) onFuelRateChanged?.invoke(value)
    changed()
   }
 
@@ -36,26 +41,38 @@ class Store(context:Context){
   return MutableList(a.length()){i->a.getJSONObject(i).let{Vehicle(it.getString("n"),it.getDouble("m"),it.optBoolean("a",true))}}
  }
  fun saveVehicles(x:List<Vehicle>){
-  val removed=if(!suppressCloudCallback) vehicles().map{it.number}.toSet()-x.map{it.number}.toSet() else emptySet()
+  val before=if(!suppressCloudCallback) vehicles().associateBy{it.number} else emptyMap()
+  val removed=if(!suppressCloudCallback) before.keys-x.map{it.number}.toSet() else emptySet()
   val a=JSONArray();x.forEach{a.put(JSONObject().put("n",it.number).put("m",it.mileage).put("a",it.active))}
   p.edit().putString("vehicles",a.toString()).apply()
-  if(!suppressCloudCallback) removed.forEach{onVehicleRemoved?.invoke(it)}
+  if(!suppressCloudCallback) {
+   removed.forEach{onVehicleRemoved?.invoke(it)}
+   x.filter{before[it.number]!=it}.forEach{onVehicleUpsert?.invoke(it)}
+  }
   changed()
  }
  fun vendors():MutableList<Vendor>{if(!p.contains("vendors"))return mutableListOf(Vendor("GLOBAL TRP"));val a=JSONArray(p.getString("vendors","[]"));return MutableList(a.length()){Vendor(a.getJSONObject(it).getString("n"),a.getJSONObject(it).optBoolean("a",true))}}
  fun saveVendors(x:List<Vendor>){
-  val removed=if(!suppressCloudCallback) vendors().map{it.name}.toSet()-x.map{it.name}.toSet() else emptySet()
+  val before=if(!suppressCloudCallback) vendors().associateBy{it.name} else emptyMap()
+  val removed=if(!suppressCloudCallback) before.keys-x.map{it.name}.toSet() else emptySet()
   val a=JSONArray();x.forEach{a.put(JSONObject().put("n",it.name).put("a",it.active))}
   p.edit().putString("vendors",a.toString()).apply()
-  if(!suppressCloudCallback) removed.forEach{onVendorRemoved?.invoke(it)}
+  if(!suppressCloudCallback) {
+   removed.forEach{onVendorRemoved?.invoke(it)}
+   x.filter{before[it.name]!=it}.forEach{onVendorUpsert?.invoke(it)}
+  }
   changed()
  }
  fun locations():MutableList<Location>{if(!p.contains("locations"))return mutableListOf(Location("NAVI MUMBAI"),Location("BHIWANDI"),Location("ERODE"));val a=JSONArray(p.getString("locations","[]"));return MutableList(a.length()){Location(a.getJSONObject(it).getString("n"),a.getJSONObject(it).optBoolean("a",true))}}
  fun saveLocations(x:List<Location>){
-  val removed=if(!suppressCloudCallback) locations().map{it.name}.toSet()-x.map{it.name}.toSet() else emptySet()
+  val before=if(!suppressCloudCallback) locations().associateBy{it.name} else emptyMap()
+  val removed=if(!suppressCloudCallback) before.keys-x.map{it.name}.toSet() else emptySet()
   val a=JSONArray();x.forEach{a.put(JSONObject().put("n",it.name).put("a",it.active))}
   p.edit().putString("locations",a.toString()).apply()
-  if(!suppressCloudCallback) removed.forEach{onLocationRemoved?.invoke(it)}
+  if(!suppressCloudCallback) {
+   removed.forEach{onLocationRemoved?.invoke(it)}
+   x.filter{before[it.name]!=it}.forEach{onLocationUpsert?.invoke(it)}
+  }
   changed()
  }
  fun trips():MutableList<Trip>{val a=JSONArray(p.getString("trips","[]"));return MutableList(a.length()){i->decodeTrip(a.getJSONObject(i))}}
