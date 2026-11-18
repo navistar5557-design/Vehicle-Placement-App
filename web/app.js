@@ -1077,7 +1077,7 @@ function tripTable(rows,actions=true){
  <td><strong class="trip-number">${esc(displayTripNumber(t))}</strong></td><td>${esc(dateTime(t.createdAt))}</td><td><strong>${esc(t.vehicle)}</strong></td><td>${esc(t.from)} → ${esc(t.to)}</td><td>${esc(t.vendor)}</td><td>${statusBadge(t.status)}</td>
  <td>₹ ${money(t.freight)}</td><td>₹ ${money(t.margin)} (${Number(t.marginPercent||0).toFixed(1)}%)</td>
  <td><div class="audit">Created: ${esc(t.createdBy||t.createdByEmail||"Legacy")}</div><div class="audit">Status: ${esc(t.statusUpdatedBy||t.statusUpdatedByEmail||"-")} · ${esc(dateTime(t.statusUpdatedAt))}</div></td>
- ${actions?`<td class="actions"><button class="secondary status-btn" data-id="${esc(t.id)}">Status</button> <button class="secondary docs-trip" data-id="${esc(t.id)}">Documents${(t.attachments||[]).length?` (${(t.attachments||[]).length})`:""}</button> <button class="secondary audit-trip" data-id="${esc(t.id)}">History</button> ${isAdmin()?'<button class="secondary edit-trip" data-id="'+esc(t.id)+'">Edit</button> ':''}${canDeleteTrips()?'<button class="danger delete-trip" data-id="'+esc(t.id)+'">Delete</button>':''}</td>`:""}
+ ${actions?`<td class="actions compact-actions"><div class="trip-action-menu"><button class="secondary trip-actions-toggle" type="button" data-id="${esc(t.id)}" aria-expanded="false">Actions <span>▾</span></button><div class="trip-actions-panel hidden" data-menu-for="${esc(t.id)}"><button class="trip-action-item status-btn" data-id="${esc(t.id)}">Status</button><button class="trip-action-item docs-trip" data-id="${esc(t.id)}">Documents${(t.attachments||[]).length?` (${(t.attachments||[]).length})`:""}</button><button class="trip-action-item audit-trip" data-id="${esc(t.id)}">History</button>${isAdmin()?'<button class="trip-action-item edit-trip" data-id="'+esc(t.id)+'">Edit</button>':''}${canDeleteTrips()?'<button class="trip-action-item danger-item delete-trip" data-id="'+esc(t.id)+'">Delete</button>':''}</div></div></td>`:""}
  </tr>`).join("")}</tbody></table></div>`;
 }
 
@@ -1134,12 +1134,36 @@ function wireTrips(){
  });
  wireTripButtons();
 }
+if(!document.documentElement.dataset.tripActionOutsideHandler){
+ document.documentElement.dataset.tripActionOutsideHandler="1";
+ document.addEventListener("click",e=>{
+   if(!e.target.closest(".trip-action-menu"))closeTripActionMenus();
+ });
+}
+function closeTripActionMenus(except=null){
+ document.querySelectorAll(".trip-actions-panel").forEach(panel=>{
+   if(panel!==except)panel.classList.add("hidden");
+ });
+ document.querySelectorAll(".trip-actions-toggle").forEach(btn=>{
+   const panel=document.querySelector('[data-menu-for="'+CSS.escape(btn.dataset.id)+'"]');
+   btn.setAttribute("aria-expanded",panel&&!panel.classList.contains("hidden")?"true":"false");
+ });
+}
 function wireTripButtons(){
- document.querySelectorAll(".status-btn").forEach(b=>b.onclick=()=>openStatus(b.dataset.id));
- document.querySelectorAll(".delete-trip").forEach(b=>b.onclick=()=>deleteTrip(b.dataset.id));
- document.querySelectorAll(".edit-trip").forEach(b=>b.onclick=()=>openEditTrip(b.dataset.id));
- document.querySelectorAll(".audit-trip").forEach(b=>b.onclick=()=>openTripAudit(b.dataset.id));
- document.querySelectorAll(".docs-trip").forEach(b=>b.onclick=()=>openTripDocuments(b.dataset.id));
+ document.querySelectorAll(".trip-actions-toggle").forEach(btn=>btn.onclick=e=>{
+   e.stopPropagation();
+   const panel=document.querySelector('[data-menu-for="'+CSS.escape(btn.dataset.id)+'"]');
+   if(!panel)return;
+   const opening=panel.classList.contains("hidden");
+   closeTripActionMenus(panel);
+   panel.classList.toggle("hidden",!opening);
+   btn.setAttribute("aria-expanded",opening?"true":"false");
+ });
+ document.querySelectorAll(".status-btn").forEach(b=>b.onclick=()=>{closeTripActionMenus();openStatus(b.dataset.id);});
+ document.querySelectorAll(".delete-trip").forEach(b=>b.onclick=()=>{closeTripActionMenus();deleteTrip(b.dataset.id);});
+ document.querySelectorAll(".edit-trip").forEach(b=>b.onclick=()=>{closeTripActionMenus();openEditTrip(b.dataset.id);});
+ document.querySelectorAll(".audit-trip").forEach(b=>b.onclick=()=>{closeTripActionMenus();openTripAudit(b.dataset.id);});
+ document.querySelectorAll(".docs-trip").forEach(b=>b.onclick=()=>{closeTripActionMenus();openTripDocuments(b.dataset.id);});
 }
 
 async function openTripDocuments(tripId){
