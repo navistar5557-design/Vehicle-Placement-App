@@ -510,7 +510,7 @@ function render(){
   if(state.page==="vehicles"){root.innerHTML=masterHtml("vehicles");wireMaster("vehicles");}
   if(state.page==="vendors"){root.innerHTML=masterHtml("vendors");wireMaster("vendors");}
   if(state.page==="locations"){root.innerHTML=masterHtml("locations");wireMaster("locations");}
-  if(state.page==="reports")root.innerHTML=reportsHtml();
+  if(state.page==="reports"){root.innerHTML=reportsHtml();wireReports();}
   root.classList.remove("page-enter");
   requestAnimationFrame(()=>requestAnimationFrame(()=>root.classList.add("page-enter")));
 }
@@ -776,7 +776,7 @@ function dashboardHtml(){
     </article>
     <article class="neo-kpi purple" role="button" tabindex="0" data-kpi="trips" aria-label="View trip details">
       <img src="./icon-trips.svg" alt="" />
-      <div><span>Total Trips</span><strong>${trips.length}</strong><small>${placed+transit} currently active</small></div>
+      <div><span>Total Trips</span><strong>${trips.length}</strong><small>${inTrip} currently active</small></div>
     </article>
     <article class="neo-kpi orange" role="button" tabindex="0" data-kpi="revenue" aria-label="View revenue details">
       <img src="./icon-revenue.svg" alt="" />
@@ -1567,10 +1567,21 @@ function vehiclePerformanceHtml(){
 function reportsHtml(){
  const freight=state.trips.reduce((s,t)=>s+Number(t.freight||0),0),exp=state.trips.reduce((s,t)=>s+t.totalExpenses,0),margin=state.trips.reduce((s,t)=>s+t.margin,0);
  return `<div class="grid kpis"><div class="kpi"><div class="label">Freight</div><div class="value">₹ ${money(freight)}</div></div><div class="kpi"><div class="label">Expenses</div><div class="value">₹ ${money(exp)}</div></div><div class="kpi green"><div class="label">Margin</div><div class="value">₹ ${money(margin)}</div></div><div class="kpi"><div class="label">Trips</div><div class="value">${state.trips.length}</div></div></div>
+ ${isAdmin()?`<div class="report-setting-card"><div><strong>Margin Alert Threshold</strong><small>Trips below this margin % are flagged as low-margin.</small></div><div class="report-setting-control"><input id="marginThresholdInput" type="number" min="-100" max="100" step="0.5" value="${Number(state.minMarginPercent||10)}"><span>%</span><button id="saveMarginThreshold" class="secondary" type="button">Save</button></div></div>`:""}
  ${vendorPerformanceHtml()}
  ${vehiclePerformanceHtml()}
  <div class="section-head"><h3>Trip Detail Report</h3><button id="csvBtn" class="secondary">Download CSV</button></div>${tripTable(state.trips,false)}`;
 }
 
-document.addEventListener("click",e=>{if(e.target?.id==="csvBtn"){const headers=["Date","Vendor","Vehicle","Current Location","From","To","Status","Freight","Expenses","Margin","Created By","Status Updated By","Status Updated At"];const rows=state.trips.map(t=>[dateTime(t.createdAt),t.vendor,t.vehicle,t.currentLocation,t.from,t.to,t.status,t.freight,t.totalExpenses,t.margin,t.createdBy||t.createdByEmail,t.statusUpdatedBy||t.statusUpdatedByEmail,dateTime(t.statusUpdatedAt)]);const csv=[headers,...rows].map(r=>r.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="cube-trip-report.csv";a.click();URL.revokeObjectURL(a.href);}});
+function wireReports(){
+ $("#saveMarginThreshold")?.addEventListener("click",async()=>{
+   const value=Number($("#marginThresholdInput")?.value||10);
+   if(!Number.isFinite(value)){toast("Enter a valid margin threshold");return;}
+   await setDoc(doc(db,"settings","profitability"),{minMarginPercent:value,updatedAt:Date.now(),updatedBy:state.profile.username},{merge:true});
+   state.minMarginPercent=value;
+   toast("Margin threshold updated");
+ });
+}
+
+document.addEventListener("click",e=>{if(e.target?.id==="csvBtn"){const headers=["Trip ID","Date","Vendor","Vehicle","Current Location","From","To","Status","Freight","Expenses","Margin","Created By","Status Updated By","Status Updated At"];const rows=state.trips.map(t=>[displayTripNumber(t),dateTime(t.createdAt),t.vendor,t.vehicle,t.currentLocation,t.from,t.to,t.status,t.freight,t.totalExpenses,t.margin,t.createdBy||t.createdByEmail,t.statusUpdatedBy||t.statusUpdatedByEmail,dateTime(t.statusUpdatedAt)]);const csv=[headers,...rows].map(r=>r.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="cube-trip-report.csv";a.click();URL.revokeObjectURL(a.href);}});
 
