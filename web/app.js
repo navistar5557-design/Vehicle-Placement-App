@@ -749,24 +749,43 @@ function dashboardHtml(){
   const greeting=hour<12?"Good Morning":hour<17?"Good Afternoon":"Good Evening";
 
   return `
-  <section class="dashboard-filterbar">
-    <div class="filter-title"><strong>Dashboard Period</strong><span>${esc(range.label)}</span></div>
-    <div class="filter-controls">
-      <select id="dashboardRange">
-        <option value="thisWeek" ${state.dashboardFilter==="thisWeek"?"selected":""}>This Week</option>
-        <option value="lastWeek" ${state.dashboardFilter==="lastWeek"?"selected":""}>Last Week</option>
-        <option value="last7" ${state.dashboardFilter==="last7"?"selected":""}>Last 7 Days</option>
-        <option value="yesterday" ${state.dashboardFilter==="yesterday"?"selected":""}>Yesterday</option>
-        <option value="thisMonth" ${state.dashboardFilter==="thisMonth"?"selected":""}>This Month</option>
-        <option value="lastMonth" ${state.dashboardFilter==="lastMonth"?"selected":""}>Last Month</option>
-        <option value="custom" ${state.dashboardFilter==="custom"?"selected":""}>Custom Range</option>
-      </select>
-      <div id="customRangeFields" class="custom-range-fields ${state.dashboardFilter==="custom"?"":"hidden"}">
-        <label>From <input id="dashboardFrom" type="date" value="${esc(state.dashboardFrom)}"></label>
-        <label>To <input id="dashboardTo" type="date" value="${esc(state.dashboardTo)}"></label>
-        <button id="applyDashboardRange" class="primary" type="button">Apply</button>
+  <section class="dashboard-topstrip">
+    <div class="dashboard-filterbar compact-dashboard-filter">
+      <div class="filter-title"><strong>Dashboard Period</strong><span>${esc(range.label)}</span></div>
+      <div class="filter-controls">
+        <select id="dashboardRange">
+          <option value="thisWeek" ${state.dashboardFilter==="thisWeek"?"selected":""}>This Week</option>
+          <option value="lastWeek" ${state.dashboardFilter==="lastWeek"?"selected":""}>Last Week</option>
+          <option value="last7" ${state.dashboardFilter==="last7"?"selected":""}>Last 7 Days</option>
+          <option value="yesterday" ${state.dashboardFilter==="yesterday"?"selected":""}>Yesterday</option>
+          <option value="thisMonth" ${state.dashboardFilter==="thisMonth"?"selected":""}>This Month</option>
+          <option value="lastMonth" ${state.dashboardFilter==="lastMonth"?"selected":""}>Last Month</option>
+          <option value="custom" ${state.dashboardFilter==="custom"?"selected":""}>Custom Range</option>
+        </select>
+        <div id="customRangeFields" class="custom-range-fields ${state.dashboardFilter==="custom"?"":"hidden"}">
+          <label>From <input id="dashboardFrom" type="date" value="${esc(state.dashboardFrom)}"></label>
+          <label>To <input id="dashboardTo" type="date" value="${esc(state.dashboardTo)}"></label>
+          <button id="applyDashboardRange" class="primary" type="button">Apply</button>
+        </div>
       </div>
     </div>
+
+    <article class="daily-summary-panel daily-summary-compact">
+      <div class="compact-summary-head">
+        <div><span class="compact-summary-icon">☀</span><strong>Today's Operations</strong></div>
+        <button id="copyDailySummary" class="text-link" type="button">Copy</button>
+      </div>
+      <div class="daily-summary-grid">
+        <div><span>Trips</span><strong>${todayTrips.length}</strong></div>
+        <div><span>Active</span><strong>${todayActive}</strong></div>
+        <div><span>Transit</span><strong>${todayInTransit}</strong></div>
+        <div><span>Completed</span><strong>${completedToday}</strong></div>
+        <div><span>Revenue</span><strong>₹ ${money(todayRevenue)}</strong></div>
+        <div><span>Margin</span><strong class="${todayMargin<0?"negative-value":"positive-value"}">₹ ${money(todayMargin)}</strong></div>
+        <div><span>Low Margin</span><strong>${todayLowMargin}</strong></div>
+        <div><span>Delayed</span><strong>${delayed}</strong></div>
+      </div>
+    </article>
   </section>
 
   <section class="neo-kpis">
@@ -841,20 +860,6 @@ function dashboardHtml(){
       </div>
     </article>
 
-    <article class="neo-panel daily-summary-panel">
-      <div class="panel-title"><span>☀</span><h3>Today's Operations Summary</h3><button id="copyDailySummary" class="text-link" type="button">Copy Summary</button></div>
-      <div class="daily-summary-grid">
-        <div><span>Trips Created</span><strong>${todayTrips.length}</strong></div>
-        <div><span>Active Trips</span><strong>${todayActive}</strong></div>
-        <div><span>In Transit</span><strong>${todayInTransit}</strong></div>
-        <div><span>Completed Today</span><strong>${completedToday}</strong></div>
-        <div><span>Revenue Today</span><strong>₹ ${money(todayRevenue)}</strong></div>
-        <div><span>Margin Today</span><strong class="${todayMargin<0?"negative-value":"positive-value"}">₹ ${money(todayMargin)}</strong></div>
-        <div><span>Low Margin</span><strong>${todayLowMargin}</strong></div>
-        <div><span>Delayed</span><strong>${delayed}</strong></div>
-      </div>
-      <p class="daily-summary-note">Generated live from Firestore · ${new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}</p>
-    </article>
   </section>`;
 }
 
