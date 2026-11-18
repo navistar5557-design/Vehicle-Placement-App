@@ -72,6 +72,7 @@ function isAdmin(){ return !!(state.role?.canManageUsers && state.role?.canManag
 function canManageMasters(){ return !!state.role?.canManageMasters; }
 function canCreateTrips(){ return !!state.role?.canCreateTrips; }
 function canDeleteTrips(){ return !!state.role?.canDeleteTrips; }
+function canViewReports(){ return state.role?.canViewReports!==false; }
 function tokenDocId(token,platform){
   let hash=5381;
   for(let i=0;i<token.length;i++) hash=((hash<<5)+hash)^token.charCodeAt(i);
@@ -372,8 +373,10 @@ async function showApp(){
   const avatar=$("#topAvatar"); if(avatar) avatar.textContent=(state.profile.username||"CU").trim().slice(0,2).toUpperCase();
   const topUserName=$("#topUserName"); if(topUserName) topUserName.textContent=state.profile.username||"User";
   const topUserRole=$("#topUserRole"); if(topUserRole) topUserRole.textContent=state.role.name||state.profile.roleId||"User";
+  const versionEl=$("#profileVersion");if(versionEl)versionEl.textContent="v"+WEB_VERSION;
   const newTripBtn=document.querySelector('[data-page="newtrip"]'); if(newTripBtn) newTripBtn.style.display=canCreateTrips()?"":"none";
   ["vehicles","vendors","locations"].forEach(p=>{const b=document.querySelector(`[data-page="${p}"]`);if(b)b.style.display=canManageMasters()?"":"none";});
+  const reportsBtn=document.querySelector('[data-page="reports"]');if(reportsBtn)reportsBtn.style.display=canViewReports()?"":"none";
 
   try{
     const migrated=await migrateExistingTripsToV3();
@@ -385,7 +388,12 @@ async function showApp(){
 
   startLiveSync(); navigate("dashboard");
 }
-function showLogin(){ $("#appView").classList.add("hidden"); $("#loginView").classList.remove("hidden"); }
+function showLogin(){
+ state.settingsLoaded=false;state.settingsRoles=[];state.settingsUsers=[];
+ $("#profileMenu")?.classList.add("hidden");
+ $("#profileMenuBtn")?.setAttribute("aria-expanded","false");
+ $("#appView").classList.add("hidden"); $("#loginView").classList.remove("hidden");
+}
 async function enableBrowserPush(){
   if(!("Notification" in window) || !("serviceWorker" in navigator)){ toast("Browser push is not supported here"); return; }
   if(!(await messagingSupported())){ toast("Firebase browser messaging is not supported here"); return; }
@@ -474,6 +482,25 @@ onAuthStateChanged(auth,async user=>{
   try{await loadProfile(user);await showApp();}catch(e){await signOut(auth);$("#loginError").textContent=e.message;}
 });
 $("#logoutBtn").addEventListener("click",()=>signOut(auth));
+$("#profileMenuBtn")?.addEventListener("click",e=>{
+  e.stopPropagation();
+  const menu=$("#profileMenu"),btn=$("#profileMenuBtn");
+  const open=menu?.classList.contains("hidden");
+  menu?.classList.toggle("hidden",!open);
+  btn?.setAttribute("aria-expanded",open?"true":"false");
+});
+$("#profileSettingsBtn")?.addEventListener("click",()=>{
+  $("#profileMenu")?.classList.add("hidden");
+  $("#profileMenuBtn")?.setAttribute("aria-expanded","false");
+  state.settingsLoaded=false;
+  navigate("settings");
+});
+document.addEventListener("click",e=>{
+  if(!e.target.closest(".profile-menu-wrap")){
+    $("#profileMenu")?.classList.add("hidden");
+    $("#profileMenuBtn")?.setAttribute("aria-expanded","false");
+  }
+});
 $("#notificationBtn")?.addEventListener("click",openNotificationCenter);
 $("#refreshBtn").addEventListener("click",()=>{setSync("Refreshing...");state.unsubs.forEach(f=>f());startLiveSync();toast("Live data refreshed");});
 $("#globalSearch")?.addEventListener("keydown",e=>{
@@ -776,12 +803,13 @@ function configureTopbarForPage(page){
 }
 
 function navigate(page){
+  if(page==="reports"&&!canViewReports()){toast("Your role does not allow Reports");page="dashboard";}
   state.page=page;
   document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
   $(".sidebar").classList.remove("open"); $("#menuBtn").setAttribute("aria-expanded","false");
   if(page!=="dashboard"){
     restoreStandardTopbar();
-    const titles={trips:["Trips","Live trip placement and status"],newtrip:["Create Trip","Add a new vehicle placement"],vehicles:["Vehicles","Vehicle master"],vendors:["Vendors","Vendor master"],locations:["Locations","Location master"],reports:["Reports","Operational and profitability summary"]};
+    const titles={trips:["Trips","Live trip placement and status"],newtrip:["Create Trip","Add a new vehicle placement"],vehicles:["Vehicles","Vehicle master"],vendors:["Vendors","Vendor master"],locations:["Locations","Location master"],reports:["Reports","Operational and profitability summary"],settings:["Settings","Users, roles and access permissions"]};
     $("#pageTitle").textContent=titles[page]?.[0]||"CUBE";
     $("#pageSubtitle").textContent=titles[page]?.[1]||"";
   }
@@ -802,7 +830,8 @@ function render(){
   if(state.page==="vehicles"){root.innerHTML=masterHtml("vehicles");wireMaster("vehicles");}
   if(state.page==="vendors"){root.innerHTML=masterHtml("vendors");wireMaster("vendors");}
   if(state.page==="locations"){root.innerHTML=masterHtml("locations");wireMaster("locations");}
-  if(state.page==="reports"){root.innerHTML=reportsHtml();wireReports();}
+  if(state.page==="reports"){root.innerHTML=canViewReports()?reportsHtml():'<div class="empty">Your role does not allow Reports.</div>';if(canViewReports())wireReports();}
+  if(state.page==="settings"){root.innerHTML=settingsHtml();wireSettings();}
   root.classList.remove("page-enter");
   requestAnimationFrame(()=>requestAnimationFrame(()=>root.classList.add("page-enter")));
 }
