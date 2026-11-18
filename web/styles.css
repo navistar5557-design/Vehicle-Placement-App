@@ -2844,3 +2844,101 @@ body{
     margin-top:8px;
   }
 }
+
+
+/* dashboard header summary and relocated search */
+.topbar-title-block{min-width:0}
+.dashboard-header-summary{
+  flex:1 1 auto;
+  min-width:0!important;
+  max-width:none;
+}
+.header-ops-summary{
+  width:100%;
+  display:grid;
+  gap:5px;
+}
+.header-ops-title{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  min-width:0;
+}
+.header-ops-title>span{font-size:11px}
+.header-ops-title>strong{
+  color:#15345e;
+  font-size:9px;
+  white-space:nowrap;
+}
+.header-ops-title .text-link{
+  margin-left:auto;
+  padding:0;
+  font-size:7px;
+}
+.header-ops-metrics{
+  display:grid;
+  grid-template-columns:repeat(8,minmax(52px,1fr));
+  gap:4px;
+}
+.header-ops-metrics>div{
+  min-width:0;
+  padding:4px 6px;
+  border:1px solid #e5ebf3;
+  border-radius:7px;
+  background:#fbfcff;
+}
+.header-ops-metrics span{
+  display:block;
+  color:#7c899c;
+  font-size:5.8px;
+  font-weight:850;
+  letter-spacing:.3px;
+  text-transform:uppercase;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.header-ops-metrics b{
+  display:block;
+  margin-top:1px;
+  color:#18375f;
+  font-size:8.5px;
+  line-height:1.05;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.dashboard-search-slot{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  padding:8px 10px;
+  border:1px solid #e0e7f1;
+  border-radius:13px;
+  background:#fff;
+  box-shadow:0 4px 14px rgba(48,60,105,.04);
+}
+.dashboard-search-slot .top-search-wrap,
+.top-search-wrap.dashboard-relocated-search{
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+  height:42px;
+  margin:0!important;
+  box-shadow:none;
+  border-color:#dbe4f0;
+  background:#fff;
+}
+.dashboard-topstrip{
+  grid-template-columns:minmax(200px,230px) minmax(0,1fr)!important;
+}
+@media(max-width:1100px){
+  .header-ops-metrics{grid-template-columns:repeat(4,minmax(58px,1fr))}
+  .topbar{height:auto;min-height:78px}
+}
+@media(max-width:900px){
+  .dashboard-header-summary{display:none}
+  .dashboard-search-slot .top-search-wrap,
+  .top-search-wrap.dashboard-relocated-search{display:flex}
+  .dashboard-topstrip{grid-template-columns:1fr!important}
+}
