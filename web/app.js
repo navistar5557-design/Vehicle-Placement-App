@@ -406,18 +406,40 @@ async function enableBrowserPush(){
   });
   toast("Browser push notifications enabled");
 }
+function notificationMeta(type){
+ const map={
+  trip_created:["🚚","Trip Created"],trip_status:["↻","Status"],margin_warning:["⚠","Margin"],
+  document:["📎","Document"],trip_edit:["✎","Edited"],trip_delete:["🗑","Deleted"],
+  delay:["⏱","Delay"],general:["🔔","General"]
+ };
+ return map[type]||map.general;
+}
 function openNotificationCenter(){
-  localStorage.setItem("cube_notifications_seen_at",String(Date.now()));
-  updateNotificationBadge();
-  const rows=state.notifications.slice(0,20);
-  const body=`
-    <div class="notification-center-note">Live notifications are synced through Firebase while you are signed in.</div>
-    ${rows.length?`<div class="notification-list">${rows.map(n=>`<div class="notification-item">
-      <div class="notification-item-icon">🔔</div>
-      <div><strong>${esc(n.title||"CUBE Logistics")}</strong><p>${esc(n.body||"")}</p><small>${esc(dateTime(n.createdAt))}</small></div>
-    </div>`).join("")}</div>`:'<div class="empty">No notifications yet.</div>'}
-  `;
-  modal("Notifications",body);
+ localStorage.setItem("cube_notifications_seen_at",String(Date.now()));
+ updateNotificationBadge();
+ const types=[...new Set(state.notifications.map(n=>n.type||"general"))];
+ const m=modal("Notifications",`
+   <div class="notification-toolbar">
+     <select id="notificationTypeFilter"><option value="">All Notifications</option>${types.map(t=>`<option value="${esc(t)}">${esc(notificationMeta(t)[1])}</option>`).join("")}</select>
+     <button id="enablePushBtn" class="secondary" type="button">Enable Browser Push</button>
+   </div>
+   <div class="notification-center-note">Operational alerts are stored in Firebase and synchronized live while you are signed in.</div>
+   <div id="notificationListHost"></div>
+ `);
+ const renderList=()=>{
+   const type=m.querySelector("#notificationTypeFilter")?.value||"";
+   const rows=state.notifications.filter(n=>!type||(n.type||"general")===type).slice(0,50);
+   m.querySelector("#notificationListHost").innerHTML=rows.length?`<div class="notification-list">${rows.map(n=>{
+     const meta=notificationMeta(n.type);
+     return `<div class="notification-item">
+       <div class="notification-item-icon">${meta[0]}</div>
+       <div class="grow"><div class="notification-item-title"><strong>${esc(n.title||"CUBE Logistics")}</strong><span>${esc(meta[1])}</span></div><p>${esc(n.body||"")}</p><small>${esc(dateTime(n.createdAt))}</small></div>
+     </div>`;
+   }).join("")}</div>`:'<div class="empty">No notifications for this filter.</div>';
+ };
+ m.querySelector("#notificationTypeFilter")?.addEventListener("change",renderList);
+ m.querySelector("#enablePushBtn")?.addEventListener("click",enableBrowserPush);
+ renderList();
 }
 
 $("#togglePassword").addEventListener("click",()=>{ const p=$("#loginPass"); p.type=p.type==="password"?"text":"password"; $("#togglePassword").setAttribute("aria-label", p.type==="password"?"Show password":"Hide password"); });
@@ -1144,7 +1166,9 @@ function openStatus(id){
 }
 async function deleteTrip(id){
  if(!confirm("Delete this trip permanently?"))return;
+ const t=state.trips.find(x=>x.id===id);
  await removeTripFromDatabase(id);
+ if(t)await createLiveNotification("Trip Deleted",displayTripNumber(t)+" · "+(t.vehicle||"Vehicle")+" deleted by "+state.profile.username,id,"trip_delete");
  toast("Trip deleted");
 }
 
@@ -1352,6 +1376,10 @@ function openEditTrip(id){
    await persistTrip(id,patch,true,"EDIT");
    const updated=calcTrip({...t,...patch});
    state.trips=state.trips.map(x=>x.id===id?updated:x);
+   await createLiveNotification("Trip Updated",displayTripNumber(updated)+" · "+updated.vehicle+" updated by "+state.profile.username,id,"trip_edit");
+   if(updated.margin<0 || updated.marginPercent<Number(state.minMarginPercent||10)){
+     await createLiveNotification("Margin Warning",displayTripNumber(updated)+" margin ₹"+money(updated.margin)+" ("+updated.marginPercent.toFixed(1)+"%)",id,"margin_warning");
+   }
    m.remove();
    render();
    toast("Trip updated");
