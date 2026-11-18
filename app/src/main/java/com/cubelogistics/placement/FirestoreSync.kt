@@ -14,10 +14,17 @@ class FirestoreSync(private val context: Context, private val store: Store) {
     private val db: FirebaseFirestore?
         get() = app?.let { FirebaseFirestore.getInstance(it) }
 
+    private val liveListeners = mutableListOf<com.google.firebase.firestore.ListenerRegistration>()
+
     fun isConfigured(): Boolean = db != null
 
-    private fun attachDeletionSync() {
+    private fun attachMutationSync() {
         val firestore = db ?: return
+
+        // Mutations are persisted per document. Do not upload the whole local
+        // snapshot for every edit because that can overwrite newer remote data.
+        store.onDataChanged = null
+
         store.onVehicleRemoved = { oldNumber ->
             firestore.collection("vehicles").document(idOf(oldNumber)).delete()
         }
@@ -30,13 +37,111 @@ class FirestoreSync(private val context: Context, private val store: Store) {
         store.onTripRemoved = { tripId ->
             firestore.collection("trips").document(tripId).delete()
         }
+
+        store.onVehicleUpsert = { vehicle ->
+            firestore.collection("vehicles").document(idOf(vehicle.number)).set(
+                mapOf(
+                    "number" to vehicle.number,
+                    "mileage" to vehicle.mileage,
+                    "active" to vehicle.active,
+                    "updatedAt" to System.currentTimeMillis()
+                ),
+                SetOptions.merge()
+            )
+        }
+        store.onVendorUpsert = { vendor ->
+            firestore.collection("vendors").document(idOf(vendor.name)).set(
+                mapOf(
+                    "name" to vendor.name,
+                    "active" to vendor.active,
+                    "updatedAt" to System.currentTimeMillis()
+                ),
+                SetOptions.merge()
+            )
+        }
+        store.onLocationUpsert = { location ->
+            firestore.collection("locations").document(idOf(location.name)).set(
+                mapOf(
+                    "name" to location.name,
+                    "active" to location.active,
+                    "updatedAt" to System.currentTimeMillis()
+                ),
+                SetOptions.merge()
+            )
+        }
         store.onTripUpsert = { trip ->
             firestore.collection("trips").document(trip.id)
                 .set(trip.toFirestoreMap(), SetOptions.merge())
         }
+        store.onFuelRateChanged = { value ->
+            firestore.collection("settings").document("fuelRate").set(
+                mapOf(
+                    "value" to value,
+                    "updatedAt" to System.currentTimeMillis()
+                ),
+                SetOptions.merge()
+            )
+        }
     }
 
-    fun startAutomaticSync(onComplete: (Result<Unit>) -> Unit = {}) {
+    private fun startLiveListeners(onRemoteChange: () -> Unit = {}) {
+        val firestore = db ?: return
+        stopLiveSync()
+
+        liveListeners += firestore.collection("vehicles").addSnapshotListener { snap, error ->
+            if (error != null || snap == null) return@addSnapshotListener
+            val rows = snap.documents.mapNotNull { doc ->
+                val number = doc.getString("number") ?: return@mapNotNull null
+                val mileage = (doc.get("mileage") as? Number)?.toDouble() ?: return@mapNotNull null
+                Vehicle(number, mileage, doc.getBoolean("active") ?: true)
+            }
+            store.withoutCloudCallback { store.saveVehicles(rows) }
+            onRemoteChange()
+        }
+
+        liveListeners += firestore.collection("vendors").addSnapshotListener { snap, error ->
+            if (error != null || snap == null) return@addSnapshotListener
+            val rows = snap.documents.mapNotNull { doc ->
+                doc.getString("name")?.let { Vendor(it, doc.getBoolean("active") ?: true) }
+            }
+            store.withoutCloudCallback { store.saveVendors(rows) }
+            onRemoteChange()
+        }
+
+        liveListeners += firestore.collection("locations").addSnapshotListener { snap, error ->
+            if (error != null || snap == null) return@addSnapshotListener
+            val rows = snap.documents.mapNotNull { doc ->
+                doc.getString("name")?.let { Location(it, doc.getBoolean("active") ?: true) }
+            }
+            store.withoutCloudCallback { store.saveLocations(rows) }
+            onRemoteChange()
+        }
+
+        liveListeners += firestore.collection("trips").addSnapshotListener { snap, error ->
+            if (error != null || snap == null) return@addSnapshotListener
+            val rows = snap.documents.mapNotNull { it.toTripOrNull() }
+            store.withoutCloudCallback { store.saveTrips(rows) }
+            onRemoteChange()
+        }
+
+        liveListeners += firestore.collection("settings").document("fuelRate").addSnapshotListener { doc, error ->
+            if (error != null || doc == null || !doc.exists()) return@addSnapshotListener
+            val value = (doc.get("value") as? Number)?.toDouble() ?: return@addSnapshotListener
+            store.withoutCloudCallback { store.fuelRate = value }
+            onRemoteChange()
+        }
+    }
+
+    fun stopLiveSync() {
+        liveListeners.forEach { it.remove() }
+        liveListeners.clear()
+    }
+
+
+    fun startAutomaticSync(
+        onRemoteChange: () -> Unit = {},
+        onComplete: (Result<Unit>) -> Unit = {}
+    ) {
         val firestore = db
         if (firestore == null) {
             onComplete(Result.failure(IllegalStateException("Firebase is not configured yet")))
@@ -52,16 +157,16 @@ class FirestoreSync(private val context: Context, private val store: Store) {
             if (cloudHasData) {
                 downloadCloudSnapshot { result ->
                     if (result.isSuccess) {
-                        store.onDataChanged = { uploadLocalSnapshot() }
-                        attachDeletionSync()
+                        attachMutationSync()
+                        startLiveListeners(onRemoteChange)
                     }
                     onComplete(result)
                 }
             } else {
                 uploadLocalSnapshot { result ->
                     if (result.isSuccess) {
-                        store.onDataChanged = { uploadLocalSnapshot() }
-                        attachDeletionSync()
+                        attachMutationSync()
+                        startLiveListeners(onRemoteChange)
                     }
                     onComplete(result)
                 }
