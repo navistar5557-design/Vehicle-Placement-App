@@ -492,6 +492,234 @@ document.addEventListener("keydown",e=>{
 $("#menuBtn").addEventListener("click",()=>$("#menuBtn").setAttribute("aria-expanded",$(".sidebar").classList.toggle("open")));
 $("#nav").addEventListener("click",e=>{const b=e.target.closest("[data-page]");if(b)navigate(b.dataset.page);});
 
+
+function rolePermissionSummary(role){
+ return [
+   role.canCreateTrips?"Create Trips":"",
+   role.canManageMasters?"Manage Masters":"",
+   role.canDeleteTrips?"Delete Trips":"",
+   role.canViewReports?"View Reports":"",
+   role.canManageUsers?"Manage Users":""
+ ].filter(Boolean).join(" • ")||"View only";
+}
+function roleIdFromName(value){
+ return String(value||"").trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+}
+async function loadSettingsData(){
+ state.settingsLoading=true;
+ if(state.page==="settings") render();
+ try{
+   const [rolesSnap,usersSnap]=await Promise.all([
+     getDocs(collection(db,"roles")),
+     getDocs(collection(db,"users"))
+   ]);
+   const roles=rolesSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.name||a.id).localeCompare(String(b.name||b.id)));
+   const roleMap=new Map(roles.map(r=>[r.id,r]));
+   const users=usersSnap.docs.map(d=>{
+     const x=d.data(),roleId=x.roleId||x.role||"user";
+     return {
+       uid:x.uid||d.id,
+       username:x.username||x.email||"user",
+       loginEmail:x.loginEmail||x.email||"",
+       roleId,
+       active:x.active!==false,
+       role:roleMap.get(roleId)||{id:roleId,name:roleId}
+     };
+   }).sort((a,b)=>a.username.localeCompare(b.username));
+   state.settingsRoles=roles;
+   state.settingsUsers=users;
+   state.settingsLoaded=true;
+ }catch(error){
+   console.error("Settings data load failed",error);
+   toast("Unable to load users and roles");
+ }finally{
+   state.settingsLoading=false;
+   if(state.page==="settings") render();
+ }
+}
+function settingsHtml(){
+ const roles=state.settingsRoles||[];
+ const users=state.settingsUsers||[];
+ const admin=!!state.role?.canManageUsers;
+ if(state.settingsLoading){
+   return '<div class="settings-shell"><div class="settings-hero"><div><h3>Settings</h3><p>Loading users and roles...</p></div></div><div class="settings-loading">Loading settings…</div></div>';
+ }
+ const roleCards=roles.map(r=>`
+   <div class="role-card">
+     <div><strong>${esc(r.name||r.id)}</strong><small>${esc(rolePermissionSummary(r))}</small></div>
+     <span class="role-id">${esc(r.id)}</span>
+   </div>`).join("")||'<div class="empty">No roles available.</div>';
+
+ if(!admin){
+   return `<div class="settings-shell">
+     <div class="settings-hero"><div><h3>Settings</h3><p>View account role and access permissions</p></div><span class="settings-version">Web v${WEB_VERSION}</span></div>
+     <div class="settings-account-card">
+       <div class="settings-account-avatar">${esc((state.profile?.username||"U").slice(0,2).toUpperCase())}</div>
+       <div><span>Username</span><strong>${esc(state.profile?.username||"User")}</strong><span>Assigned Role</span><b>${esc(state.role?.name||state.profile?.roleId||"User")}</b></div>
+     </div>
+     <div class="settings-section-title"><h4>Available Roles</h4></div>
+     <div class="role-card-grid">${roleCards}</div>
+     <div class="settings-readonly-note">🔒 Only Admin can create or edit roles and users.</div>
+   </div>`;
+ }
+
+ const roleOptions=roles.map(r=>`<option value="${esc(r.id)}">${esc(r.name||r.id)}</option>`).join("");
+ return `<div class="settings-shell">
+   <div class="settings-hero">
+     <div><h3>Settings</h3><p>Manage application roles and users</p></div>
+     <span class="settings-version">Web v${WEB_VERSION}</span>
+   </div>
+   <div class="settings-tabs">
+     <button class="settings-tab ${state.settingsTab==="users"?"active":""}" data-settings-tab="users">Users</button>
+     <button class="settings-tab ${state.settingsTab==="roles"?"active":""}" data-settings-tab="roles">Roles</button>
+   </div>
+   ${state.settingsTab==="users"?`
+     <div class="settings-grid">
+       <section class="settings-card create-user-card">
+         <div class="settings-card-head"><div><h4>Create User</h4><p>Create the same account used by Web and Android.</p></div><span>＋</span></div>
+         <form id="createUserForm" class="settings-form">
+           <label><span>Username</span><input id="settingsUsername" autocomplete="off" minlength="3" required placeholder="Example: placement1"></label>
+           <label><span>Password</span><input id="settingsPassword" type="password" minlength="6" required placeholder="Minimum 6 characters"></label>
+           <label><span>Role</span><select id="settingsUserRole" required><option value="" disabled>Select Role</option>${roleOptions}</select></label>
+           <button class="primary" type="submit">Create User</button>
+         </form>
+       </section>
+       <section class="settings-card existing-users-card">
+         <div class="settings-card-head"><div><h4>Existing Users</h4><p>${users.length} account${users.length===1?"":"s"}</p></div></div>
+         <div class="settings-users-list">
+           ${users.map(u=>`<div class="settings-user-row">
+             <div class="settings-user-avatar">${esc((u.username||"U").slice(0,2).toUpperCase())}</div>
+             <div class="grow"><strong>${esc(u.username)}</strong><small>${esc(u.loginEmail||"")} · ${u.active?"Active":"Inactive"}</small></div>
+             <select class="user-role-select" data-user-id="${esc(u.uid)}" aria-label="Role for ${esc(u.username)}">
+               ${roles.map(r=>`<option value="${esc(r.id)}" ${r.id===u.roleId?"selected":""}>${esc(r.name||r.id)}</option>`).join("")}
+             </select>
+           </div>`).join("")||'<div class="empty">No users found.</div>'}
+         </div>
+       </section>
+     </div>
+   `:`
+     <div class="settings-grid">
+       <section class="settings-card create-role-card">
+         <div class="settings-card-head"><div><h4>Create Role</h4><p>Example: Admin, User, Manager, Accounts</p></div><span>＋</span></div>
+         <form id="createRoleForm" class="settings-form">
+           <label><span>Role Name</span><input id="settingsRoleName" minlength="2" required placeholder="Role name"></label>
+           <div class="permission-grid">
+             <label><input id="permCreateTrips" type="checkbox" checked> Create / Save Trips</label>
+             <label><input id="permMasters" type="checkbox"> Manage Masters</label>
+             <label><input id="permDeleteTrips" type="checkbox"> Delete Trips</label>
+             <label><input id="permReports" type="checkbox" checked> View Reports</label>
+             <label><input id="permUsers" type="checkbox"> Manage Roles & Users</label>
+           </div>
+           <button class="primary" type="submit">Create Role</button>
+         </form>
+       </section>
+       <section class="settings-card available-roles-card">
+         <div class="settings-card-head"><div><h4>Available Roles</h4><p>Shared by Android and Web.</p></div></div>
+         <div class="role-card-grid">${roleCards}</div>
+       </section>
+     </div>
+   `}
+ </div>`;
+}
+async function createWebUser(username,password,roleId){
+ const normalized=normalizeUsername(username);
+ if(normalized.length<3) throw new Error("Username must have at least 3 characters");
+ if(password.length<6) throw new Error("Password must have at least 6 characters");
+ if(!roleId) throw new Error("Select a role");
+
+ const usersSnap=await getDocs(collection(db,"users"));
+ const duplicate=usersSnap.docs.some(d=>normalizeUsername(d.data().usernameLower||d.data().username||"")===normalized);
+ if(duplicate) throw new Error("Username already exists");
+
+ const internalEmail=normalized+"@cube.internal";
+ const secondaryApp=initializeApp(firebaseConfig,"userCreator-"+Date.now());
+ const secondaryAuth=getAuth(secondaryApp);
+ try{
+   const credential=await createUserWithEmailAndPassword(secondaryAuth,internalEmail,password);
+   const newUid=credential.user?.uid;
+   if(!newUid) throw new Error("Unable to create user");
+   await setDoc(doc(db,"users",newUid),{
+     uid:newUid,username:username.trim(),usernameLower:normalized,
+     loginEmail:internalEmail,roleId,active:true,
+     createdAt:Date.now(),updatedAt:Date.now()
+   });
+ }finally{
+   try{await signOut(secondaryAuth);}catch{}
+   try{await deleteApp(secondaryApp);}catch{}
+ }
+}
+async function createWebRole(name,permissions){
+ const id=roleIdFromName(name);
+ if(name.trim().length<2||!id) throw new Error("Enter a valid role name");
+ const ref=doc(db,"roles",id);
+ if((await getDoc(ref)).exists()) throw new Error("Role already exists");
+ await setDoc(ref,{
+   id,name:name.trim(),
+   canCreateTrips:!!permissions.canCreateTrips,
+   canManageMasters:!!permissions.canManageMasters,
+   canDeleteTrips:!!permissions.canDeleteTrips,
+   canViewReports:!!permissions.canViewReports,
+   canManageUsers:!!permissions.canManageUsers,
+   updatedAt:Date.now()
+ });
+}
+function wireSettings(){
+ document.querySelectorAll("[data-settings-tab]").forEach(btn=>btn.onclick=()=>{
+   state.settingsTab=btn.dataset.settingsTab;
+   render();
+ });
+ if(!state.settingsLoaded&&!state.settingsLoading){
+   loadSettingsData();
+   return;
+ }
+ $("#createUserForm")?.addEventListener("submit",async e=>{
+   e.preventDefault();
+   const button=e.currentTarget.querySelector('button[type="submit"]');
+   try{
+     button.disabled=true;button.textContent="Creating...";
+     await createWebUser($("#settingsUsername").value,$("#settingsPassword").value,$("#settingsUserRole").value);
+     toast("User created successfully");
+     await loadSettingsData();
+   }catch(error){
+     console.error(error);toast(error.message||"Unable to create user");
+   }finally{if(button){button.disabled=false;button.textContent="Create User";}}
+ });
+ document.querySelectorAll(".user-role-select").forEach(select=>select.onchange=async()=>{
+   const userId=select.dataset.userId,roleId=select.value;
+   try{
+     select.disabled=true;
+     await setDoc(doc(db,"users",userId),{roleId,updatedAt:Date.now()},{merge:true});
+     if(userId===state.profile?.uid){
+       await loadProfile(state.user);
+       const roleEl=$("#topUserRole");if(roleEl)roleEl.textContent=state.role.name||state.profile.roleId||"User";
+     }
+     toast("User role updated");
+     await loadSettingsData();
+   }catch(error){
+     console.error(error);toast("Unable to update role");
+     select.disabled=false;
+   }
+ });
+ $("#createRoleForm")?.addEventListener("submit",async e=>{
+   e.preventDefault();
+   const button=e.currentTarget.querySelector('button[type="submit"]');
+   try{
+     button.disabled=true;button.textContent="Creating...";
+     await createWebRole($("#settingsRoleName").value,{
+       canCreateTrips:$("#permCreateTrips").checked,
+       canManageMasters:$("#permMasters").checked,
+       canDeleteTrips:$("#permDeleteTrips").checked,
+       canViewReports:$("#permReports").checked,
+       canManageUsers:$("#permUsers").checked
+     });
+     toast("Role created successfully");
+     await loadSettingsData();
+   }catch(error){
+     console.error(error);toast(error.message||"Unable to create role");
+   }finally{if(button){button.disabled=false;button.textContent="Create Role";}}
+ });
+}
+
 function restoreStandardTopbar(){
  const titleBlock=$("#topbarTitleBlock");
  const search=$("#topSearchWrap");
