@@ -4,7 +4,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendP
 import { getMessaging, getToken, onMessage, isSupported as messagingSupported } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-messaging.js";
 import {
   getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc,
-  onSnapshot, query, orderBy, writeBatch
+  onSnapshot, query, orderBy, writeBatch, runTransaction
 } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -136,6 +136,31 @@ async function logTripAudit(tripId,action,before={},after={},note=""){
   }catch(error){
     console.warn("Audit history write failed",error);
   }
+}
+
+function tripNumberDateKey(ms=Date.now()){
+ const d=new Date(ms);
+ return String(d.getFullYear()).slice(-2)+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0");
+}
+function displayTripNumber(t){
+ return t.tripNumber||("LEGACY-"+String(t.id||"").slice(0,8).toUpperCase());
+}
+async function nextTripNumber(ms=Date.now()){
+ const key=tripNumberDateKey(ms);
+ const counterRef=doc(db,"counters","trip-"+key);
+ try{
+   const seq=await runTransaction(db,async tx=>{
+     const snap=await tx.get(counterRef);
+     const current=snap.exists()?Number(snap.data().value||0):0;
+     const next=current+1;
+     tx.set(counterRef,{value:next,dateKey:key,updatedAt:Date.now()},{merge:true});
+     return next;
+   });
+   return "CUBE-"+key+"-"+String(seq).padStart(4,"0");
+ }catch(error){
+   console.warn("Trip counter unavailable, using timestamp fallback",error);
+   return "CUBE-"+key+"-"+String(ms).slice(-4);
+ }
 }
 
 async function persistTrip(id,data,merge=true,auditAction="EDIT"){
@@ -952,8 +977,8 @@ function statusBadge(s){
 }
 function tripTable(rows,actions=true){
  if(!rows.length)return '<div class="card empty">No trips available.</div>';
- return `<div class="table-wrap"><table><thead><tr><th>Date</th><th>Vehicle</th><th>Route</th><th>Vendor</th><th>Status</th><th>Freight</th><th>Margin</th><th>Audit</th>${actions?"<th>Actions</th>":""}</tr></thead><tbody>${rows.map(t=>`<tr>
- <td>${esc(dateTime(t.createdAt))}</td><td><strong>${esc(t.vehicle)}</strong></td><td>${esc(t.from)} → ${esc(t.to)}</td><td>${esc(t.vendor)}</td><td>${statusBadge(t.status)}</td>
+ return `<div class="table-wrap"><table><thead><tr><th>Trip ID</th><th>Date</th><th>Vehicle</th><th>Route</th><th>Vendor</th><th>Status</th><th>Freight</th><th>Margin</th><th>Audit</th>${actions?"<th>Actions</th>":""}</tr></thead><tbody>${rows.map(t=>`<tr>
+ <td><strong class="trip-number">${esc(displayTripNumber(t))}</strong></td><td>${esc(dateTime(t.createdAt))}</td><td><strong>${esc(t.vehicle)}</strong></td><td>${esc(t.from)} → ${esc(t.to)}</td><td>${esc(t.vendor)}</td><td>${statusBadge(t.status)}</td>
  <td>₹ ${money(t.freight)}</td><td>₹ ${money(t.margin)} (${Number(t.marginPercent||0).toFixed(1)}%)</td>
  <td><div class="audit">Created: ${esc(t.createdBy||t.createdByEmail||"Legacy")}</div><div class="audit">Status: ${esc(t.statusUpdatedBy||t.statusUpdatedByEmail||"-")} · ${esc(dateTime(t.statusUpdatedAt))}</div></td>
  ${actions?`<td class="actions"><button class="secondary status-btn" data-id="${esc(t.id)}">Status</button> <button class="secondary audit-trip" data-id="${esc(t.id)}">History</button> ${isAdmin()?'<button class="secondary edit-trip" data-id="'+esc(t.id)+'">Edit</button> ':''}${canDeleteTrips()?'<button class="danger delete-trip" data-id="'+esc(t.id)+'">Delete</button>':''}</td>`:""}
@@ -1100,7 +1125,7 @@ function showDuplicateTrip(existing){
       <div class="mini-summary">
         <div><span>Status</span><strong>${esc(existing.status||"Vehicle Placed")}</strong></div>
         <div><span>Created</span><strong>${esc(dateTime(existing.createdAt))}</strong></div>
-        <div><span>Trip</span><strong>${esc(existing.tripNumber||existing.id?.slice(0,8)||"-")}</strong></div>
+        <div><span>Trip</span><strong>${esc(displayTripNumber(existing))}</strong></div>
       </div>
       <p class="note">Complete or cancel the current trip before creating another active trip for this vehicle.</p>
     </div>
@@ -1194,7 +1219,8 @@ function wireNewTrip(){
    const ok=confirm((preview.margin<0?"Negative":"Low")+" margin: ₹ "+money(preview.margin)+" ("+preview.marginPercent.toFixed(1)+"%). Save this trip anyway?");
    if(!ok)return;
  }
- const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:selectedVehicle,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:m("fAdvance"),weightTon:weight,currentToOriginKm:m("fOriginKm"),totalKm:m("fKm"),transitHours:m("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:m("fFixed"),fastag:m("fFastag"),rtoTarpaulin:m("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,expenseCalcVersion:3,numericDataVersion:2,expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Created",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
+ const tripNumber=await nextTripNumber(now);
+ const trip={id,tripNumber,createdAt:now,vendor:$("#fVendor").value,vehicle:selectedVehicle,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:m("fAdvance"),weightTon:weight,currentToOriginKm:m("fOriginKm"),totalKm:m("fKm"),transitHours:m("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:m("fFixed"),fastag:m("fFastag"),rtoTarpaulin:m("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,expenseCalcVersion:3,numericDataVersion:2,expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Created",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
  await persistTrip(id,trip,false,"CREATE");
  await createLiveNotification("New Trip Created",trip.vehicle+" — "+trip.from+" → "+trip.to,id,"trip_created");
  const savedCalc=calcTrip(trip);
