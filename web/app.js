@@ -87,6 +87,28 @@ async function createLiveNotification(title,body,tripId="",type="general"){
   });
 }
 
+async function persistTrip(id,data,merge=true){
+  try{
+    const payload={...data,updatedAt:Date.now()};
+    await setDoc(doc(db,"trips",id),payload,{merge});
+    return payload;
+  }catch(error){
+    console.error("Trip database write failed",error);
+    toast("Database update failed. Please check connection and try again.");
+    throw error;
+  }
+}
+
+async function removeTripFromDatabase(id){
+  try{
+    await deleteDoc(doc(db,"trips",id));
+  }catch(error){
+    console.error("Trip database delete failed",error);
+    toast("Database delete failed. Please check connection and try again.");
+    throw error;
+  }
+}
+
 function handlingExpenses(t,freight,weight){
   const load=parseMoneyValue(t.loadingExpensePerTon);
   const unload=parseMoneyValue(t.unloadingExpensePerTon);
@@ -888,14 +910,18 @@ function openStatus(id){
  m.querySelector("#saveStatus").onclick=async()=>{
    const status=m.querySelector("#statusSelect").value;
    const oldStatus=t.status||"Vehicle Placed";
-   await setDoc(doc(db,"trips",id),{status,statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:Date.now(),updatedAt:Date.now()},{merge:true});
+   await persistTrip(id,{status,statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:Date.now()},true);
    if(status!==oldStatus){
      await createLiveNotification("Trip Status: "+status,(t.vehicle||"Vehicle")+" updated by "+state.profile.username,id,"trip_status");
    }
    m.remove();toast("Trip status updated");
  };
 }
-async function deleteTrip(id){if(!confirm("Delete this trip permanently?"))return;await deleteDoc(doc(db,"trips",id));toast("Trip deleted");}
+async function deleteTrip(id){
+ if(!confirm("Delete this trip permanently?"))return;
+ await removeTripFromDatabase(id);
+ toast("Trip deleted");
+}
 
 function active(arr){return arr.filter(x=>x.active!==false)}
 function picker(opts,selected="",placeholder=""){
@@ -942,7 +968,7 @@ function wireNewTrip(){
  const now=Date.now(),id=uid(),freight=m("fFreight"),pct=n("fPct");
  const weight=m("fWeight"),loadPerTon=m("fLoad"),unloadPerTon=m("fUnload");
  const trip={id,createdAt:now,vendor:$("#fVendor").value,vehicle:$("#fVehicle").value,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:m("fAdvance"),weightTon:weight,currentToOriginKm:m("fOriginKm"),totalKm:m("fKm"),transitHours:m("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:m("fFixed"),fastag:m("fFastag"),rtoTarpaulin:m("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,expenseCalcVersion:3,numericDataVersion:2,expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Vehicle Placed",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
- await setDoc(doc(db,"trips",id),trip);
+ await persistTrip(id,trip,false);
  await createLiveNotification("New Trip Created",trip.vehicle+" — "+trip.from+" → "+trip.to,id,"trip_created");
  toast("Trip created");navigate("trips");});
 }
@@ -1001,7 +1027,7 @@ function openEditTrip(id){
      numericDataVersion:2,
      updatedAt:Date.now()
    };
-   await setDoc(doc(db,"trips",id),patch,{merge:true});
+   await persistTrip(id,patch,true);
    const updated=calcTrip({...t,...patch});
    state.trips=state.trips.map(x=>x.id===id?updated:x);
    m.remove();
