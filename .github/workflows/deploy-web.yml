@@ -32,6 +32,8 @@ jobs:
           rm -rf web/.asset-chunks
       - name: Check web JavaScript syntax
         run: node --check web/app.js
+      - name: Run Phase 1 smoke tests
+        run: node web/phase1-smoke-test.mjs
       - uses: actions/configure-pages@v5
         with:
           enablement: true
