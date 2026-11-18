@@ -3114,3 +3114,62 @@ button.profile-menu-item:hover{background:#f3f7fc}
   .settings-user-row{align-items:flex-start;flex-wrap:wrap}
   .settings-user-row select{width:100%}
 }
+
+
+/* v0.4.19 today's operations KPI readability */
+.header-ops-title>span{font-size:13px}
+.header-ops-title>strong{
+  font-size:11px!important;
+  letter-spacing:.05px;
+}
+.header-ops-title .text-link{
+  font-size:8px!important;
+  font-weight:850;
+}
+.header-ops-metrics{
+  grid-template-columns:repeat(8,84px)!important;
+  gap:6px!important;
+  justify-content:start;
+  align-items:stretch;
+}
+.header-ops-metrics>div{
+  width:84px;
+  min-width:84px!important;
+  min-height:32px;
+  padding:5px 4px!important;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+.header-ops-metrics span{
+  width:100%;
+  font-size:7px!important;
+  line-height:1.05;
+  letter-spacing:.2px!important;
+  text-align:center;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+.header-ops-metrics b{
+  width:100%;
+  margin-top:3px!important;
+  font-size:11px!important;
+  line-height:1!important;
+  text-align:center;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+@media(max-width:1180px){
+  .header-ops-metrics{
+    grid-template-columns:repeat(8,78px)!important;
+    gap:4px!important;
+  }
+  .header-ops-metrics>div{
+    width:78px;
+    min-width:78px!important;
+  }
+  .header-ops-metrics span{font-size:6.5px!important}
+  .header-ops-metrics b{font-size:10px!important}
+}
