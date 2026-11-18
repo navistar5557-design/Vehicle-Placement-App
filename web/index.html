@@ -56,7 +56,7 @@
         </div>
         <div id="loginError" class="error"></div>
       </form>
-      <div class="version">Web v0.3.19</div>
+      <div class="version">Web v0.4.18</div>
     </div>
 
     <div class="cube-statement">
@@ -104,13 +104,30 @@
             <span id="notificationBadge" class="notification-badge hidden">0</span>
           </button>
           <button id="refreshBtn" class="secondary" aria-label="Refresh">↻</button>
-          <div class="top-user">
-            <div id="topAvatar" class="top-avatar">CU</div>
-            <div class="top-user-meta">
-              <strong id="topUserName">User</strong>
-              <span id="topUserRole">Role</span>
+          <div class="profile-menu-wrap">
+            <button id="profileMenuBtn" class="top-user compact-profile-trigger" type="button" aria-expanded="false" aria-haspopup="menu">
+              <div id="topAvatar" class="top-avatar">CU</div>
+              <div class="top-user-meta">
+                <strong id="topUserName">User</strong>
+                <span id="topUserRole">Role</span>
+              </div>
+              <span class="profile-chevron">⌄</span>
+            </button>
+            <div id="profileMenu" class="profile-dropdown hidden" role="menu">
+              <button id="profileSettingsBtn" class="profile-menu-item" type="button" role="menuitem">
+                <span class="profile-menu-icon">⚙</span>
+                <span><strong>Settings</strong><small>Users, roles & access</small></span>
+              </button>
+              <div class="profile-menu-item profile-version" aria-disabled="true">
+                <span class="profile-menu-icon">ⓘ</span>
+                <span><small>Web Version</small><strong id="profileVersion">v0.4.18</strong></span>
+              </div>
+              <div class="profile-menu-divider"></div>
+              <button id="logoutBtn" class="profile-menu-item logout-menu-item" type="button" role="menuitem">
+                <span class="profile-menu-icon">↪</span>
+                <span><strong>Log Out</strong><small>Sign out of CUBE Logistics</small></span>
+              </button>
             </div>
-            <button id="logoutBtn" class="top-logout" type="button">Logout</button>
           </div>
         </div>
       </header>
