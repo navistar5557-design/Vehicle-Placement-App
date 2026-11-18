@@ -17,7 +17,8 @@ const checks=[
   ["11 Documents","openTripDocuments","firebase-storage.js"],
   ["12 Notification centre","notificationMeta","enablePushBtn"],
   ["13 Dashboard drill-down","data-drill","openKpi"],
-  ["14 Daily summary","daily-summary-panel","copyDailySummary"]
+  ["14 Daily summary","daily-summary-panel","copyDailySummary"],
+  ["Profile settings","settingsHtml","createWebUser","createWebRole","profileMenuBtn"]
 ];
 
 let failed=false;
