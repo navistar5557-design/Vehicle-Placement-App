@@ -797,7 +797,7 @@ function dashboardHtml(){
       <div class="trend-chart">${chartHtml}</div>
     </article>
 
-    <article class="neo-panel utilization-panel">
+    <article class="neo-panel utilization-panel dashboard-drill" role="button" tabindex="0" data-drill="utilization">
       <div class="panel-title"><span>◎</span><h3>Fleet Utilization</h3></div>
       <div class="util-body">
         <div class="gauge" data-target="${utilization}" style="--target:${utilization};--gauge-progress:0">
@@ -824,10 +824,10 @@ function dashboardHtml(){
     <article class="neo-panel alerts-panel">
       <div class="panel-title"><span>🔔</span><h3>Alerts & Updates</h3></div>
       <div class="alerts-list">
-        <div class="alert-row green"><b>✓</b><span>${completedToday} Trips Completed Today</span><em>›</em></div>
-        <div class="alert-row orange"><b>🚚</b><span>${placed} Vehicles Placed</span><em>›</em></div>
-        <div class="alert-row cyan"><b>➜</b><span>${transit} Vehicles In Transit</span><em>›</em></div>
-        ${delayed? `<div class="alert-row purple"><b>!</b><span>${delayed} Trip${delayed>1?"s":""} Delayed</span><em>›</em></div>`:""}
+        <div class="alert-row green dashboard-drill" role="button" tabindex="0" data-drill="completed"><b>✓</b><span>${completedToday} Trips Completed Today</span><em>›</em></div>
+        <div class="alert-row orange dashboard-drill" role="button" tabindex="0" data-drill="placed"><b>🚚</b><span>${placed} Vehicles Placed</span><em>›</em></div>
+        <div class="alert-row cyan dashboard-drill" role="button" tabindex="0" data-drill="transit"><b>➜</b><span>${transit} Vehicles In Transit</span><em>›</em></div>
+        ${delayed? `<div class="alert-row purple dashboard-drill" role="button" tabindex="0" data-drill="delayed"><b>!</b><span>${delayed} Trip${delayed>1?"s":""} Delayed</span><em>›</em></div>`:""}
       </div>
     </article>
   </section>`;
@@ -963,7 +963,8 @@ function wireDashboard(){
   });
 
   const openKpi=(type)=>{
-    const trips=state.trips;
+    const range=getDashboardRange();
+    const trips=state.trips.filter(t=>Number(t.createdAt||0)>=range.start&&Number(t.createdAt||0)<=range.end);
     if(type==="vehicles"){
       const rows=state.vehicles.filter(v=>v.active!==false).slice(0,10);
       modal("Active Vehicles", rows.length ? `<div class="mini-list">${rows.map(v=>`<div class="mini-row"><strong>${esc(v.number)}</strong><span>${Number(v.mileage||0).toFixed(1)} km/L</span></div>`).join("")}</div><p class="note">Showing ${rows.length} of ${state.vehicles.filter(v=>v.active!==false).length} active vehicles.</p>` : '<div class="empty">No active vehicles.</div>');
@@ -986,11 +987,31 @@ function wireDashboard(){
       const pct=freight?total/freight*100:0;
       const rows=[...trips].sort((a,b)=>Number(b.margin||0)-Number(a.margin||0)).slice(0,8);
       modal("Margin Details", `<div class="mini-summary"><span>Total Vehicle Margin</span><strong>₹ ${money(total)} <small>(${pct.toFixed(1)}%)</small></strong></div><div class="mini-list">${rows.map(t=>`<div class="mini-row margin-breakdown-row"><div class="grow"><strong>${esc(t.vehicle||"-")}</strong><small>${esc(t.from||"-")} → ${esc(t.to||"-")}</small><small>Freight ₹ ${money(t.freight)} · Fuel ₹ ${money(t.fuelExpense)} · Loading ₹ ${money(t.loadingExpense)} · Unloading ₹ ${money(t.unloadingExpense)} · FASTag ₹ ${money(t.fastag)} · RTO/Tarpaulin ₹ ${money(t.rtoTarpaulin)} · Fixed ₹ ${money(t.fixedExpenses)} · Other ₹ ${money(t.percentageExpense)}${Number(t.legacyLoadingUnloadingExpense||0)?` · Legacy L/U ₹ ${money(t.legacyLoadingUnloadingExpense)}`:""}${t.legacyHandlingCorrected?" · Legacy total corrected":""}${t.legacyDecimalCorrected?" · Decimal ×100 corrected":""}</small><small>Total Expenses ₹ ${money(t.totalExpenses)}</small></div><span>₹ ${money(t.margin)}</span></div>`).join("")}</div>`);
+      return;
+    }
+    if(type==="utilization"){
+      const rows=state.vehicles.filter(v=>v.active!==false).map(v=>({v,av:vehicleAvailability(v)}));
+      modal("Fleet Utilization",`<div class="mini-list">${rows.map(x=>`<div class="mini-row"><div><strong>${esc(x.v.number)}</strong><small>${Number(x.v.mileage||0).toFixed(1)} km/L</small></div><span class="availability-badge ${esc(x.av.key)}">${esc(x.av.label)}</span></div>`).join("")}</div>`);
+      return;
+    }
+    const statusRows=type==="completed"
+      ? trips.filter(t=>t.status==="Completed"&&Number(t.statusUpdatedAt||0)>=new Date().setHours(0,0,0,0))
+      : type==="placed"?trips.filter(t=>t.status==="Vehicle Placed")
+      : type==="transit"?trips.filter(t=>t.status==="In Transit")
+      : type==="delayed"?trips.filter(t=>!["Completed","Cancelled"].includes(t.status)&&Number(t.transitHours||0)>0&&Number(t.createdAt||0)+Number(t.transitHours||0)*3600000<Date.now())
+      : [];
+    if(statusRows.length||["completed","placed","transit","delayed"].includes(type)){
+      const title=type==="completed"?"Completed Today":type==="placed"?"Vehicles Placed":type==="transit"?"In Transit":"Delayed Trips";
+      modal(title,statusRows.length?`<div class="mini-list">${statusRows.map(t=>`<div class="mini-row"><div><strong>${esc(displayTripNumber(t))} · ${esc(t.vehicle||"-")}</strong><small>${esc(t.from||"-")} → ${esc(t.to||"-")}</small></div><span>${statusBadge(t.status)}</span></div>`).join("")}</div>`:'<div class="empty">No matching trips.</div>');
     }
   };
   document.querySelectorAll(".neo-kpi[data-kpi]").forEach(card=>{
     card.addEventListener("click",()=>openKpi(card.dataset.kpi));
     card.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openKpi(card.dataset.kpi);}});
+  });
+  document.querySelectorAll("[data-drill]").forEach(el=>{
+    el.addEventListener("click",()=>openKpi(el.dataset.drill));
+    el.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openKpi(el.dataset.drill);}});
   });
 }
 
