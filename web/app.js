@@ -2,6 +2,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 import { getMessaging, getToken, onMessage, isSupported as messagingSupported } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-messaging.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-storage.js";
 import {
   getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc,
   onSnapshot, query, orderBy, writeBatch, runTransaction
@@ -17,6 +18,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));
@@ -102,10 +104,10 @@ const AUDIT_FIELDS={
   freight:"Freight",advance:"Advance",weightTon:"Weight",totalKm:"Trip KM",currentToOriginKm:"Origin KM",
   transitHours:"Transit Hours",mileage:"Mileage",loadingExpensePerTon:"Loading Expense",
   unloadingExpensePerTon:"Unloading Expense",fastag:"FASTag",rtoTarpaulin:"RTO / Tarpaulin",
-  fixedExpenses:"Fixed Expenses",status:"Status"
+  fixedExpenses:"Fixed Expenses",status:"Status",attachments:"Documents"
 };
 function auditValue(v){
-  if(Array.isArray(v)) return JSON.stringify(v);
+  if(Array.isArray(v)) return String(v.length)+" document(s)";
   if(v&&typeof v==="object") return JSON.stringify(v);
   return String(v??"");
 }
@@ -981,7 +983,7 @@ function tripTable(rows,actions=true){
  <td><strong class="trip-number">${esc(displayTripNumber(t))}</strong></td><td>${esc(dateTime(t.createdAt))}</td><td><strong>${esc(t.vehicle)}</strong></td><td>${esc(t.from)} → ${esc(t.to)}</td><td>${esc(t.vendor)}</td><td>${statusBadge(t.status)}</td>
  <td>₹ ${money(t.freight)}</td><td>₹ ${money(t.margin)} (${Number(t.marginPercent||0).toFixed(1)}%)</td>
  <td><div class="audit">Created: ${esc(t.createdBy||t.createdByEmail||"Legacy")}</div><div class="audit">Status: ${esc(t.statusUpdatedBy||t.statusUpdatedByEmail||"-")} · ${esc(dateTime(t.statusUpdatedAt))}</div></td>
- ${actions?`<td class="actions"><button class="secondary status-btn" data-id="${esc(t.id)}">Status</button> <button class="secondary audit-trip" data-id="${esc(t.id)}">History</button> ${isAdmin()?'<button class="secondary edit-trip" data-id="'+esc(t.id)+'">Edit</button> ':''}${canDeleteTrips()?'<button class="danger delete-trip" data-id="'+esc(t.id)+'">Delete</button>':''}</td>`:""}
+ ${actions?`<td class="actions"><button class="secondary status-btn" data-id="${esc(t.id)}">Status</button> <button class="secondary docs-trip" data-id="${esc(t.id)}">Documents${(t.attachments||[]).length?` (${(t.attachments||[]).length})`:""}</button> <button class="secondary audit-trip" data-id="${esc(t.id)}">History</button> ${isAdmin()?'<button class="secondary edit-trip" data-id="'+esc(t.id)+'">Edit</button> ':''}${canDeleteTrips()?'<button class="danger delete-trip" data-id="'+esc(t.id)+'">Delete</button>':''}</td>`:""}
  </tr>`).join("")}</tbody></table></div>`;
 }
 
@@ -1043,6 +1045,66 @@ function wireTripButtons(){
  document.querySelectorAll(".delete-trip").forEach(b=>b.onclick=()=>deleteTrip(b.dataset.id));
  document.querySelectorAll(".edit-trip").forEach(b=>b.onclick=()=>openEditTrip(b.dataset.id));
  document.querySelectorAll(".audit-trip").forEach(b=>b.onclick=()=>openTripAudit(b.dataset.id));
+ document.querySelectorAll(".docs-trip").forEach(b=>b.onclick=()=>openTripDocuments(b.dataset.id));
+}
+
+async function openTripDocuments(tripId){
+ const t=state.trips.find(x=>x.id===tripId);if(!t)return;
+ const renderDocs=()=>{
+   const current=state.trips.find(x=>x.id===tripId)||t;
+   const files=current.attachments||[];
+   return `
+     <div class="document-panel">
+       <div class="document-trip-head"><strong>${esc(displayTripNumber(current))}</strong><span>${esc(current.vehicle||"")} · ${esc(current.from||"")} → ${esc(current.to||"")}</span></div>
+       <div class="document-list">${files.length?files.map(a=>`<div class="document-row">
+         <div class="document-icon">📎</div>
+         <div class="grow"><a href="${esc(a.url||"#")}" target="_blank" rel="noopener"><strong>${esc(a.name||"Document")}</strong></a><small>${esc(a.category||"Proof")} · ${a.size?Math.round(a.size/1024)+" KB":""} · ${esc(dateTime(a.uploadedAt))}</small></div>
+         ${isAdmin()?`<button class="danger delete-document" data-doc-id="${esc(a.id)}">Delete</button>`:""}
+       </div>`).join(""):'<div class="empty">No documents attached yet.</div>'}</div>
+       ${canCreateTrips()?`<div class="document-upload">
+         <label><span>Document Type</span><select id="docCategory"><option>LR Copy</option><option>POD</option><option>Invoice</option><option>FASTag Receipt</option><option>RTO Receipt</option><option>Loading Proof</option><option>Unloading Proof</option><option>Other</option></select></label>
+         <label><span>Select File</span><input id="docFile" type="file" accept=".pdf,image/*"></label>
+         <button id="uploadTripDocument" class="primary" type="button">Upload Document</button>
+         <p class="note">PDF or image, maximum 10 MB.</p>
+       </div>`:""}
+     </div>`;
+ };
+ const m=modal("Trip Documents",renderDocs());
+ const wire=()=>{
+   const upload=m.querySelector("#uploadTripDocument");
+   if(upload)upload.onclick=async()=>{
+     const file=m.querySelector("#docFile")?.files?.[0];
+     const category=m.querySelector("#docCategory")?.value||"Other";
+     if(!file){toast("Select a document first");return;}
+     if(file.size>10*1024*1024){toast("File must be 10 MB or smaller");return;}
+     const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+     const path="tripDocuments/"+tripId+"/"+Date.now()+"-"+safeName;
+     try{
+       setSync("Uploading...",true,"saving");
+       const objectRef=storageRef(storage,path);
+       await uploadBytes(objectRef,file,{contentType:file.type||"application/octet-stream"});
+       const url=await getDownloadURL(objectRef);
+       const current=state.trips.find(x=>x.id===tripId)||t;
+       const attachment={id:uid(),name:file.name,category,type:file.type||"",size:file.size,path,url,uploadedAt:Date.now(),uploadedBy:state.profile.username};
+       await persistTrip(tripId,{attachments:[...(current.attachments||[]),attachment]},true,"DOCUMENT");
+       await createLiveNotification("Document Added",displayTripNumber(current)+" · "+category,tripId,"document");
+       m.querySelector(".modal-body").innerHTML=renderDocs();
+       wire();toast("Document uploaded");
+     }catch(error){console.error(error);setSync("Sync error",false,"error");toast("Document upload failed");}
+   };
+   m.querySelectorAll(".delete-document").forEach(btn=>btn.onclick=async()=>{
+     if(!confirm("Delete this document?"))return;
+     const current=state.trips.find(x=>x.id===tripId)||t;
+     const attachment=(current.attachments||[]).find(a=>a.id===btn.dataset.docId);
+     if(!attachment)return;
+     try{
+       if(attachment.path)await deleteObject(storageRef(storage,attachment.path)).catch(()=>{});
+       await persistTrip(tripId,{attachments:(current.attachments||[]).filter(a=>a.id!==attachment.id)},true,"DOCUMENT");
+       m.querySelector(".modal-body").innerHTML=renderDocs();wire();toast("Document deleted");
+     }catch(error){console.error(error);toast("Unable to delete document");}
+   });
+ };
+ wire();
 }
 
 async function openTripAudit(tripId){
