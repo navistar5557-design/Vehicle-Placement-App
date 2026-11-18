@@ -148,6 +148,10 @@ class FirestoreSync(private val context: Context, private val store: Store) {
             return
         }
 
+        // Attach per-record writes immediately. Firestore will queue them when
+        // temporarily offline and send them as soon as connectivity returns.
+        attachMutationSync()
+
         val collections = listOf("vehicles", "vendors", "locations", "trips")
         val results = mutableMapOf<String, Boolean>()
 
@@ -157,7 +161,6 @@ class FirestoreSync(private val context: Context, private val store: Store) {
             if (cloudHasData) {
                 downloadCloudSnapshot { result ->
                     if (result.isSuccess) {
-                        attachMutationSync()
                         startLiveListeners(onRemoteChange)
                     }
                     onComplete(result)
@@ -165,7 +168,6 @@ class FirestoreSync(private val context: Context, private val store: Store) {
             } else {
                 uploadLocalSnapshot { result ->
                     if (result.isSuccess) {
-                        attachMutationSync()
                         startLiveListeners(onRemoteChange)
                     }
                     onComplete(result)
