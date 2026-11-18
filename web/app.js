@@ -606,6 +606,16 @@ function dashboardHtml(){
     return hrs>0 && Number(t.createdAt||0)+hrs*3600000 < Date.now();
   }).length;
 
+  const todayStart=new Date();todayStart.setHours(0,0,0,0);
+  const todayEnd=new Date();todayEnd.setHours(23,59,59,999);
+  const todayTrips=state.trips.filter(t=>Number(t.createdAt||0)>=todayStart.getTime()&&Number(t.createdAt||0)<=todayEnd.getTime());
+  const todayRevenue=todayTrips.reduce((sum,t)=>sum+Number(t.freight||0),0);
+  const todayMargin=todayTrips.reduce((sum,t)=>sum+Number(t.margin||0),0);
+  const todayLowMargin=todayTrips.filter(t=>Number(t.margin||0)<0||Number(t.marginPercent||0)<Number(state.minMarginPercent||10)).length;
+  const todayInTransit=state.trips.filter(t=>t.status==="In Transit").length;
+  const todayActive=state.trips.filter(t=>isTripOpenStatus(t.status)).length;
+
+
   const compact=n=>{
     n=Number(n||0);
     if(Math.abs(n)>=10000000)return "₹ "+(n/10000000).toFixed(2)+" Cr";
@@ -830,6 +840,21 @@ function dashboardHtml(){
         ${delayed? `<div class="alert-row purple dashboard-drill" role="button" tabindex="0" data-drill="delayed"><b>!</b><span>${delayed} Trip${delayed>1?"s":""} Delayed</span><em>›</em></div>`:""}
       </div>
     </article>
+
+    <article class="neo-panel daily-summary-panel">
+      <div class="panel-title"><span>☀</span><h3>Today's Operations Summary</h3><button id="copyDailySummary" class="text-link" type="button">Copy Summary</button></div>
+      <div class="daily-summary-grid">
+        <div><span>Trips Created</span><strong>${todayTrips.length}</strong></div>
+        <div><span>Active Trips</span><strong>${todayActive}</strong></div>
+        <div><span>In Transit</span><strong>${todayInTransit}</strong></div>
+        <div><span>Completed Today</span><strong>${completedToday}</strong></div>
+        <div><span>Revenue Today</span><strong>₹ ${money(todayRevenue)}</strong></div>
+        <div><span>Margin Today</span><strong class="${todayMargin<0?"negative-value":"positive-value"}">₹ ${money(todayMargin)}</strong></div>
+        <div><span>Low Margin</span><strong>${todayLowMargin}</strong></div>
+        <div><span>Delayed</span><strong>${delayed}</strong></div>
+      </div>
+      <p class="daily-summary-note">Generated live from Firestore · ${new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}</p>
+    </article>
   </section>`;
 }
 
@@ -1012,6 +1037,32 @@ function wireDashboard(){
   document.querySelectorAll("[data-drill]").forEach(el=>{
     el.addEventListener("click",()=>openKpi(el.dataset.drill));
     el.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openKpi(el.dataset.drill);}});
+  });
+  $("#copyDailySummary")?.addEventListener("click",async()=>{
+    const start=new Date();start.setHours(0,0,0,0);
+    const today=state.trips.filter(t=>Number(t.createdAt||0)>=start.getTime());
+    const revenue=today.reduce((s,t)=>s+Number(t.freight||0),0);
+    const margin=today.reduce((s,t)=>s+Number(t.margin||0),0);
+    const active=state.trips.filter(t=>isTripOpenStatus(t.status)).length;
+    const transit=state.trips.filter(t=>t.status==="In Transit").length;
+    const completed=state.trips.filter(t=>t.status==="Completed"&&Number(t.statusUpdatedAt||0)>=start.getTime()).length;
+    const low=today.filter(t=>Number(t.margin||0)<0||Number(t.marginPercent||0)<Number(state.minMarginPercent||10)).length;
+    const delayed=state.trips.filter(t=>isTripOpenStatus(t.status)&&Number(t.transitHours||0)>0&&Number(t.createdAt||0)+Number(t.transitHours||0)*3600000<Date.now()).length;
+    const text=[
+      "CUBE Logistics — Daily Operations Summary",
+      new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}),
+      "",
+      "Trips Created: "+today.length,
+      "Active Trips: "+active,
+      "In Transit: "+transit,
+      "Completed Today: "+completed,
+      "Revenue: ₹"+money(revenue),
+      "Margin: ₹"+money(margin),
+      "Low Margin Trips: "+low,
+      "Delayed Trips: "+delayed
+    ].join("\n");
+    try{await navigator.clipboard.writeText(text);toast("Daily summary copied");}
+    catch{toast("Unable to copy summary");}
   });
 }
 
