@@ -6,7 +6,8 @@
   <meta name="theme-color" content="#073B7A" />
   <title>CUBE Logistics | Vehicle Placement</title>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="./styles.css?v=0421" />
+  <script>try{if(localStorage.getItem("cube_theme")==="dark")document.documentElement.dataset.theme="dark"}catch(e){}</script>
+  <link rel="stylesheet" href="./styles.css?v=0422" />
   <link rel="stylesheet" href="./login-bg-inline.css?v=0345" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -56,7 +57,7 @@
         </div>
         <div id="loginError" class="error"></div>
       </form>
-      <div class="version">Web v0.4.21</div>
+      <div class="version">Web v0.4.22</div>
     </div>
 
     <div class="cube-statement">
@@ -118,9 +119,14 @@
                 <span class="profile-menu-icon">⚙</span>
                 <span><strong>Settings</strong><small>Users, roles & access</small></span>
               </button>
+              <button id="darkModeToggle" class="profile-menu-item theme-menu-item" type="button" role="menuitemcheckbox" aria-checked="false">
+                <span class="profile-menu-icon theme-menu-icon">☾</span>
+                <span class="theme-menu-copy"><strong>Dark Mode</strong><small id="darkModeStatus">Off</small></span>
+                <span class="theme-switch" aria-hidden="true"><i></i></span>
+              </button>
               <div class="profile-menu-item profile-version" aria-disabled="true">
                 <span class="profile-menu-icon">ⓘ</span>
-                <span><small>Web Version</small><strong id="profileVersion">v0.4.21</strong></span>
+                <span><small>Web Version</small><strong id="profileVersion">v0.4.22</strong></span>
               </div>
               <div class="profile-menu-divider"></div>
               <button id="logoutBtn" class="profile-menu-item logout-menu-item" type="button" role="menuitem">
@@ -148,6 +154,6 @@
     </div>
   </template>
 
-  <script type="module" src="./app.js?v=0421"></script>
+  <script type="module" src="./app.js?v=0422"></script>
 </body>
 </html>
