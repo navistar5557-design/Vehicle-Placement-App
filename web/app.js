@@ -19,7 +19,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const WEB_VERSION = "0.4.21";
+const WEB_VERSION = "0.4.22";
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));
@@ -494,6 +494,27 @@ $("#profileSettingsBtn")?.addEventListener("click",()=>{
   $("#profileMenuBtn")?.setAttribute("aria-expanded","false");
   state.settingsLoaded=false;
   navigate("settings");
+});
+
+function applyWebTheme(theme){
+  const dark=theme==="dark";
+  document.documentElement.dataset.theme=dark?"dark":"light";
+  const toggle=$("#darkModeToggle");
+  const status=$("#darkModeStatus");
+  toggle?.setAttribute("aria-checked",dark?"true":"false");
+  if(status) status.textContent=dark?"On":"Off";
+  try{localStorage.setItem("cube_theme",dark?"dark":"light");}catch(e){}
+}
+function syncWebThemeControl(){
+  const saved=(()=>{try{return localStorage.getItem("cube_theme")}catch(e){return null}})();
+  const current=saved==="dark"?"dark":"light";
+  applyWebTheme(current);
+}
+syncWebThemeControl();
+$("#darkModeToggle")?.addEventListener("click",e=>{
+  e.stopPropagation();
+  const next=document.documentElement.dataset.theme==="dark"?"light":"dark";
+  applyWebTheme(next);
 });
 document.addEventListener("click",e=>{
   if(!e.target.closest(".profile-menu-wrap")){
