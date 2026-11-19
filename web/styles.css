@@ -3668,3 +3668,116 @@ html[data-theme="dark"] .profile-menu-icon{
   color:#8ac1ff!important;
 }
 html[data-theme="dark"] button.profile-menu-item:hover{background:#18263a!important}
+
+
+/* v0.4.24 true-black app background + light login isolation */
+/* Dark mode applies ONLY to the signed-in application. */
+html[data-theme="dark"] body{
+  background:#000000!important;
+  background-image:none!important;
+}
+html[data-theme="dark"] #appView,
+html[data-theme="dark"] #appView.app,
+html[data-theme="dark"] #appView .main,
+html[data-theme="dark"] #appView .content{
+  background:#000000!important;
+  background-image:none!important;
+}
+
+/* Remove any light/white shell surfaces from the signed-in dark workspace. */
+html[data-theme="dark"] #appView .topbar{
+  background:#07101f!important;
+}
+html[data-theme="dark"] #appView .dashboard-search-slot,
+html[data-theme="dark"] #appView .dashboard-filterbar,
+html[data-theme="dark"] #appView .neo-panel,
+html[data-theme="dark"] #appView .neo-kpi,
+html[data-theme="dark"] #appView .trend-panel,
+html[data-theme="dark"] #appView .utilization-panel,
+html[data-theme="dark"] #appView .recent-panel,
+html[data-theme="dark"] #appView .alerts-panel,
+html[data-theme="dark"] #appView .card,
+html[data-theme="dark"] #appView .kpi,
+html[data-theme="dark"] #appView .table-wrap,
+html[data-theme="dark"] #appView .settings-card,
+html[data-theme="dark"] #appView .settings-hero,
+html[data-theme="dark"] #appView .settings-account-card,
+html[data-theme="dark"] #appView .modal{
+  background:#0b1424!important;
+  border-color:#243751!important;
+}
+html[data-theme="dark"] #appView .trend-plot{
+  background:#07111f!important;
+}
+html[data-theme="dark"] #appView .trend-insight{
+  background:#0c1728!important;
+}
+html[data-theme="dark"] #appView .header-ops-summary{
+  background:#07101f!important;
+}
+html[data-theme="dark"] #appView .header-ops-metrics>div{
+  background:#0b1729!important;
+  border-color:#253b57!important;
+}
+html[data-theme="dark"] #appView .profile-dropdown{
+  background:#0a1423!important;
+}
+html[data-theme="dark"] #appView input,
+html[data-theme="dark"] #appView select,
+html[data-theme="dark"] #appView textarea{
+  background:#081321!important;
+  color:#eff6ff!important;
+  border-color:#304762!important;
+}
+html[data-theme="dark"] #appView .dashboard-search-slot .top-search-wrap,
+html[data-theme="dark"] #appView .top-search-wrap.dashboard-relocated-search{
+  background:#081321!important;
+  border-color:#304762!important;
+}
+
+/* Keep the LOGIN PAGE fully light even when the saved app theme is dark. */
+html[data-theme="dark"] #loginView{
+  color-scheme:light!important;
+}
+html[data-theme="dark"] #loginView.login-page{
+  background:
+    linear-gradient(180deg,rgba(242,247,255,.02),rgba(255,255,255,.08)),
+    url("./login-background-clean-v0342.webp?v=0343") center center / 100% 100% no-repeat!important;
+  background-color:#f7faff!important;
+  color:#102A56!important;
+}
+html[data-theme="dark"] #loginView .login-card{
+  background:#ffffff!important;
+  color:#102A56!important;
+}
+html[data-theme="dark"] #loginView .login-card h1,
+html[data-theme="dark"] #loginView .login-card label,
+html[data-theme="dark"] #loginView .login-subtitle{
+  color:#102A56!important;
+}
+html[data-theme="dark"] #loginView .login-input-wrap,
+html[data-theme="dark"] #loginView .password-wrap{
+  background:#ffffff!important;
+  border-color:#d7e1ed!important;
+}
+html[data-theme="dark"] #loginView input,
+html[data-theme="dark"] #loginView select,
+html[data-theme="dark"] #loginView textarea,
+html[data-theme="dark"] #loginView #loginPass,
+html[data-theme="dark"] #loginView #loginUser{
+  background:#ffffff!important;
+  color:#102A56!important;
+  border-color:#b9c8da!important;
+  -webkit-text-fill-color:#102A56!important;
+}
+html[data-theme="dark"] #loginView input::placeholder{
+  color:#718096!important;
+  opacity:1!important;
+}
+html[data-theme="dark"] #loginView .icon-btn{
+  color:#365474!important;
+}
+html[data-theme="dark"] #loginView .remember,
+html[data-theme="dark"] #loginView .forgot-password-web{
+  color:#38526e!important;
+}
