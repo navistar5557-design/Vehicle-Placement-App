@@ -883,19 +883,28 @@ function getTrendRange(){
 }
 
 function dashboardTrendBuckets(trips,startMs,endMs){
-  const start=new Date(startMs),end=new Date(endMs);
-  const days=Math.max(1,Math.ceil((end-start)/86400000)+1);
-  const bucketCount=Math.min(7,days);
-  const span=(endMs-startMs+1)/bucketCount;
-  return Array.from({length:bucketCount},(_,i)=>{
-    const bs=startMs+i*span;
-    const be=i===bucketCount-1?endMs:startMs+(i+1)*span-1;
+  const first=new Date(startMs);
+  first.setHours(0,0,0,0);
+  const last=new Date(endMs);
+  last.setHours(0,0,0,0);
+
+  const buckets=[];
+  for(let cursor=new Date(first);cursor<=last;cursor.setDate(cursor.getDate()+1)){
+    const dayStart=new Date(cursor);dayStart.setHours(0,0,0,0);
+    const dayEnd=new Date(cursor);dayEnd.setHours(23,59,59,999);
+    const bs=Math.max(startMs,dayStart.getTime());
+    const be=Math.min(endMs,dayEnd.getTime());
     const rows=trips.filter(t=>Number(t.createdAt||0)>=bs&&Number(t.createdAt||0)<=be);
-    const d=new Date(bs);
-    const e=new Date(be);
-    const label=days<=7?d.toLocaleDateString("en-IN",{day:"2-digit",month:"short"}):(`${d.toLocaleDateString("en-IN",{day:"2-digit",month:"short"})}-${e.toLocaleDateString("en-IN",{day:"2-digit",month:"short"})}`);
-    return {label,count:rows.length,margin:rows.reduce((s,t)=>s+Number(t.margin||0),0)};
-  });
+    buckets.push({
+      label:dayStart.toLocaleDateString("en-IN",{day:"2-digit",month:"short"}),
+      axisLabel:dayStart.toLocaleDateString("en-IN",{day:"2-digit"}),
+      start:bs,
+      end:be,
+      count:rows.length,
+      margin:rows.reduce((s,t)=>s+Number(t.margin||0),0)
+    });
+  }
+  return buckets;
 }
 
 function dashboardHtml(){
@@ -1004,20 +1013,23 @@ function dashboardHtml(){
 
   const chartBars=days.map((d,i)=>{
     const x=xAt(i);
-    const barW=days.length<=3?30:days.length<=5?24:20;
+    const slot=days.length>1?step:(plot.right-plot.left);
+    const barW=Math.max(8,Math.min(20,slot*.58));
+    const hitW=Math.max(16,Math.min(44,slot*.92));
     const y=yCount(d.count);
     const h=Math.max(3,plot.bottom-y);
     const dotY=yMargin(d.margin);
     const avg=d.count?d.margin/d.count:0;
-    const groupStart=Math.floor(trendRange.start+i*((trendRange.end-trendRange.start+1)/days.length));
-    const groupEnd=Math.floor(i===days.length-1?trendRange.end:trendRange.start+(i+1)*((trendRange.end-trendRange.start+1)/days.length)-1);
+    const groupStart=Number(d.start??trendRange.start);
+    const groupEnd=Number(d.end??trendRange.end);
+    const xLabel=days.length>12?(d.axisLabel||d.label):d.label;
     return `<g class="trend-svg-day" tabindex="0" role="button"
       data-start="${groupStart}" data-end="${groupEnd}"
       data-label="${esc(d.label)}" data-count="${d.count}"
       data-margin="${Number(d.margin||0)}" data-avg="${Number(avg||0)}"
       aria-label="${esc(d.label)}: ${d.count} trips, margin ₹${money(d.margin)}">
-      <rect class="trend-svg-hit" x="${Math.max(0,x-32)}" y="${plot.top-6}" width="64" height="${plot.bottom-plot.top+36}" rx="10"></rect>
-      <rect class="trend-svg-bar" x="${x-barW/2}" y="${plot.bottom-h}" width="${barW}" height="${h}" rx="7">
+      <rect class="trend-svg-hit" x="${Math.max(0,x-hitW/2)}" y="${plot.top-6}" width="${hitW}" height="${plot.bottom-plot.top+36}" rx="8"></rect>
+      <rect class="trend-svg-bar" x="${x-barW/2}" y="${plot.bottom-h}" width="${barW}" height="${h}" rx="${Math.min(5,barW/2)}">
         <title>${esc(d.label)} — ${d.count} trips</title>
       </rect>
       <circle class="trend-svg-dot-ring" cx="${x}" cy="${dotY}" r="7"></circle>
@@ -1025,7 +1037,7 @@ function dashboardHtml(){
         <title>${esc(d.label)} — Margin ₹${money(d.margin)}</title>
       </circle>
       <text class="trend-bar-value" x="${x}" y="${Math.max(plot.top+9,plot.bottom-h-8)}" text-anchor="middle">${d.count||""}</text>
-      <text class="trend-svg-label" x="${x}" y="216" text-anchor="middle">${esc(d.label)}</text>
+      <text class="trend-svg-label" x="${x}" y="216" text-anchor="middle">${esc(xLabel)}</text>
     </g>`;
   }).join("");
 
