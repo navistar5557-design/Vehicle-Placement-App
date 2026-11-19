@@ -19,7 +19,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const WEB_VERSION = "0.4.26";
+const WEB_VERSION = "0.4.27";
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));
@@ -368,8 +368,24 @@ function startLiveSync(){
   },err=>console.warn("Notifications listener unavailable",err)));
 }
 
+function syncLoginCinematicVideo(shouldPlay){
+  const video=$("#loginBackgroundVideo");
+  if(!video)return;
+  const reduceMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  if(shouldPlay && !document.hidden && !reduceMotion) {
+    const playback=video.play();
+    if(playback && typeof playback.catch==="function") playback.catch(()=>{});
+  } else {
+    video.pause();
+  }
+}
+document.addEventListener("visibilitychange",()=>{
+  syncLoginCinematicVideo(!$("#loginView")?.classList.contains("hidden"));
+});
+
 async function showApp(){
   $("#loginView").classList.add("hidden"); $("#appView").classList.remove("hidden");
+  syncLoginCinematicVideo(false);
   const avatar=$("#topAvatar"); if(avatar) avatar.textContent=(state.profile.username||"CU").trim().slice(0,2).toUpperCase();
   const topUserName=$("#topUserName"); if(topUserName) topUserName.textContent=state.profile.username||"User";
   const topUserRole=$("#topUserRole"); if(topUserRole) topUserRole.textContent=state.role.name||state.profile.roleId||"User";
@@ -393,6 +409,7 @@ function showLogin(){
  $("#profileMenu")?.classList.add("hidden");
  $("#profileMenuBtn")?.setAttribute("aria-expanded","false");
  $("#appView").classList.add("hidden"); $("#loginView").classList.remove("hidden");
+ syncLoginCinematicVideo(true);
 }
 async function enableBrowserPush(){
   if(!("Notification" in window) || !("serviceWorker" in navigator)){ toast("Browser push is not supported here"); return; }

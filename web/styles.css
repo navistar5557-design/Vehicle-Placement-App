@@ -3878,3 +3878,254 @@ html[data-theme="dark"] #appView .table-wrap td{
   background:#0b1424!important;
   color:#d4dfed!important;
 }
+
+
+/* v0.4.27 cinematic live-video login — selected Design 2 */
+/* Scope the cinematic login to #loginView; app themes, screens and authentication remain unchanged. */
+#loginView.login-page{
+  position:relative!important;
+  isolation:isolate;
+  min-height:100vh!important;
+  overflow:hidden!important;
+  background:#0c1a32 url("./login-background-clean-v0342.webp") center center/cover no-repeat!important;
+  color:#102e5a!important;
+}
+#loginView .login-cinematic-video{
+  display:block!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:0!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  object-position:center center!important;
+  pointer-events:none!important;
+  filter:brightness(.94) saturate(1.04);
+}
+#loginView.login-page::after{
+  display:block!important;
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:1!important;
+  background:linear-gradient(180deg,rgba(3,17,39,.08),rgba(3,17,39,.04) 45%,rgba(3,17,39,.24))!important;
+  pointer-events:none!important;
+  mix-blend-mode:normal!important;
+}
+#loginView .login-scene,
+#loginView .login-brand-area,
+#loginView .cube-statement,
+#loginView .login-wave{
+  display:none!important;
+}
+#loginView .login-card{
+  display:block!important;
+  position:absolute!important;
+  z-index:10!important;
+  left:50%!important;
+  top:50%!important;
+  transform:translate(-50%,-50%)!important;
+  width:min(420px,calc(100vw - 34px))!important;
+  min-width:0!important;
+  max-width:420px!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  box-sizing:border-box!important;
+  padding:27px 31px 37px!important;
+  margin:0!important;
+  overflow:hidden!important;
+  border-radius:25px!important;
+  border:1px solid rgba(255,255,255,.85)!important;
+  background:rgba(255,255,255,.96)!important;
+  color:#102e5a!important;
+  box-shadow:0 35px 80px rgba(0,11,34,.43),0 0 0 1px rgba(82,146,232,.12)!important;
+  backdrop-filter:blur(13px);
+  -webkit-backdrop-filter:blur(13px);
+}
+#loginView .cinematic-login-brand{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:9px!important;
+  margin-bottom:6px!important;
+  line-height:1!important;
+}
+#loginView .cinematic-login-wordmark{
+  display:grid!important;
+  gap:3px!important;
+  text-align:left!important;
+}
+#loginView .cinematic-login-wordmark strong{
+  color:#154083!important;
+  font-size:34px!important;
+  font-weight:1000!important;
+  font-style:italic!important;
+  letter-spacing:-1px!important;
+}
+#loginView .cinematic-login-wordmark span{
+  color:#f26b07!important;
+  font-size:14px!important;
+  font-weight:900!important;
+  letter-spacing:.7px!important;
+}
+#loginView .cinematic-login-brand img{
+  width:38px!important;
+  height:38px!important;
+  object-fit:contain!important;
+}
+#loginView .cinematic-login-caption{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:11px!important;
+  margin:11px 0 22px!important;
+  font-size:12px!important;
+  font-weight:750!important;
+  color:#415a7f!important;
+}
+#loginView .cinematic-login-caption::before,
+#loginView .cinematic-login-caption::after{
+  content:"";
+  width:30px;
+  height:1px;
+  background:#cbd9ea;
+}
+#loginView .login-card h1,
+#loginView .login-card .login-subtitle{
+  display:none!important;
+}
+#loginView #loginForm{
+  display:block!important;
+  margin:0!important;
+}
+#loginView #loginForm>label{
+  display:block!important;
+  margin:0 0 11px!important;
+  width:100%!important;
+  height:52px!important;
+  min-height:52px!important;
+}
+#loginView .login-input-wrap{
+  display:flex!important;
+  align-items:center!important;
+  width:100%!important;
+  height:52px!important;
+  min-height:52px!important;
+  padding:0 10px!important;
+  border:1px solid #d8e3ef!important;
+  background:#fff!important;
+  border-radius:13px!important;
+  box-shadow:0 4px 13px rgba(12,55,110,.05)!important;
+}
+#loginView .login-input-wrap:focus-within{
+  border-color:#348bec!important;
+  box-shadow:0 0 0 3px rgba(35,135,245,.13)!important;
+}
+#loginView .login-input-wrap input{
+  width:100%!important;
+  min-width:0!important;
+  height:100%!important;
+  border:0!important;
+  outline:0!important;
+  background:transparent!important;
+  color:#203957!important;
+  -webkit-text-fill-color:#203957!important;
+  font-size:13px!important;
+  box-shadow:none!important;
+  padding:0 8px!important;
+}
+#loginView .login-input-wrap input::placeholder{
+  color:#71839a!important;
+  opacity:1!important;
+  -webkit-text-fill-color:#71839a!important;
+}
+#loginView .login-field-icon{
+  flex:0 0 32px!important;
+  width:32px!important;
+  min-width:32px!important;
+  height:32px!important;
+  background:transparent!important;
+  color:#4d6280!important;
+}
+#loginView .login-field-icon svg{
+  width:19px!important;
+  height:19px!important;
+}
+#loginView .login-submit{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:10px!important;
+  width:100%!important;
+  height:53px!important;
+  min-height:53px!important;
+  margin:7px 0 0!important;
+  border:0!important;
+  border-radius:14px!important;
+  font-size:15px!important;
+  font-weight:900!important;
+  color:#fff!important;
+  background:linear-gradient(90deg,#1299ec,#0d49bd)!important;
+  box-shadow:0 10px 22px rgba(5,102,218,.23)!important;
+}
+#loginView .login-submit:hover{
+  filter:brightness(1.08);
+}
+#loginView .login-options{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:8px!important;
+  height:auto!important;
+  min-height:0!important;
+  padding:0!important;
+  margin:15px 0 0!important;
+  color:#647995!important;
+}
+#loginView .login-options .remember,
+#loginView .login-options .forgot-password-web{
+  font-size:11px!important;
+  color:#536b89!important;
+}
+#loginView .login-card .version{
+  color:#70839b!important;
+  font-size:9px!important;
+  margin:12px 0 0!important;
+}
+#loginView .cinematic-card-wave{
+  position:absolute!important;
+  left:0!important;
+  right:0!important;
+  bottom:0!important;
+  height:19px!important;
+  background:linear-gradient(100deg,#ff690d 0 48%,#104282 65%,#083874 100%)!important;
+  clip-path:polygon(0 30%,40% 80%,70% 36%,100% 0,100% 100%,0 100%);
+  pointer-events:none!important;
+}
+@media(max-width:620px){
+  #loginView.login-page{min-height:100svh!important}
+  #loginView .login-card{
+    top:50%!important;
+    width:min(380px,calc(100vw - 28px))!important;
+    max-width:380px!important;
+    padding:24px 22px 33px!important;
+  }
+  #loginView .cinematic-login-wordmark strong{font-size:30px!important}
+  #loginView .cinematic-login-wordmark span{font-size:12px!important}
+  #loginView .login-cinematic-video{object-position:58% center!important}
+}
+@media(max-height:600px) and (min-width:621px){
+  #loginView .login-card{
+    top:51%!important;
+    max-height:94vh!important;
+    overflow-y:auto!important;
+    padding-top:15px!important;
+    padding-bottom:28px!important;
+  }
+  #loginView .cinematic-login-caption{margin:5px 0 12px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  #loginView .login-cinematic-video{display:none!important}
+  #loginView .login-submit{transition:none!important}
+}
