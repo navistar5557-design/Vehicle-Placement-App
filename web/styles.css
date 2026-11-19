@@ -3226,3 +3226,102 @@ button.profile-menu-item:hover{background:#f3f7fc}
   .header-ops-metrics span{font-size:8px!important}
   .header-ops-metrics b{font-size:13px!important}
 }
+
+
+/* v0.4.21 operations KPI motion and hover lift */
+@keyframes opsKpiReveal{
+  0%{opacity:0;transform:translateY(8px) scale(.94)}
+  65%{opacity:1;transform:translateY(-2px) scale(1.015)}
+  100%{opacity:1;transform:translateY(0) scale(1)}
+}
+@keyframes opsKpiValuePop{
+  0%{transform:scale(.82);opacity:.55}
+  70%{transform:scale(1.08);opacity:1}
+  100%{transform:scale(1);opacity:1}
+}
+.header-ops-metrics>div{
+  position:relative;
+  z-index:1;
+  overflow:hidden;
+  cursor:default;
+  transform-origin:center center;
+  will-change:transform,box-shadow;
+  transition:
+    transform .22s cubic-bezier(.2,.8,.2,1),
+    box-shadow .22s ease,
+    border-color .22s ease,
+    background-color .22s ease,
+    filter .22s ease;
+  animation:opsKpiReveal .46s cubic-bezier(.2,.8,.2,1) both;
+}
+.header-ops-metrics>div:nth-child(1){animation-delay:.02s}
+.header-ops-metrics>div:nth-child(2){animation-delay:.06s}
+.header-ops-metrics>div:nth-child(3){animation-delay:.10s}
+.header-ops-metrics>div:nth-child(4){animation-delay:.14s}
+.header-ops-metrics>div:nth-child(5){animation-delay:.18s}
+.header-ops-metrics>div:nth-child(6){animation-delay:.22s}
+.header-ops-metrics>div:nth-child(7){animation-delay:.26s}
+.header-ops-metrics>div:nth-child(8){animation-delay:.30s}
+
+.header-ops-metrics>div::after{
+  content:"";
+  position:absolute;
+  inset:-45%;
+  pointer-events:none;
+  opacity:0;
+  background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.82) 50%,transparent 65%);
+  transform:translateX(-70%) rotate(4deg);
+  transition:opacity .18s ease,transform .5s cubic-bezier(.2,.75,.2,1);
+}
+.header-ops-metrics b{
+  position:relative;
+  z-index:2;
+  transition:transform .2s cubic-bezier(.2,.8,.2,1),filter .2s ease;
+  animation:opsKpiValuePop .5s cubic-bezier(.2,.8,.2,1) both;
+}
+.header-ops-metrics span{
+  position:relative;
+  z-index:2;
+  transition:color .2s ease,transform .2s ease;
+}
+
+@media (hover:hover) and (pointer:fine){
+  .header-ops-metrics>div:hover{
+    z-index:8;
+    transform:translateY(-6px) scale(1.07);
+    border-color:#9fc5f5!important;
+    background:#ffffff!important;
+    box-shadow:
+      0 12px 24px rgba(16,74,138,.18),
+      0 3px 8px rgba(16,74,138,.12),
+      inset 0 0 0 1px rgba(45,140,255,.08);
+    filter:saturate(1.06);
+  }
+  .header-ops-metrics>div:hover::after{
+    opacity:1;
+    transform:translateX(70%) rotate(4deg);
+  }
+  .header-ops-metrics>div:hover b{
+    transform:scale(1.12);
+    filter:brightness(.92) saturate(1.12);
+  }
+  .header-ops-metrics>div:hover span{
+    color:#325b8e;
+    transform:translateY(-1px);
+  }
+}
+.header-ops-metrics>div:active{
+  transform:translateY(-2px) scale(1.025);
+}
+@media (prefers-reduced-motion:reduce){
+  .header-ops-metrics>div,
+  .header-ops-metrics b{
+    animation:none!important;
+  }
+  .header-ops-metrics>div,
+  .header-ops-metrics>div::after,
+  .header-ops-metrics b,
+  .header-ops-metrics span{
+    transition:none!important;
+  }
+}
