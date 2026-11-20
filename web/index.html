@@ -9,8 +9,7 @@
   <link rel="shortcut icon" href="./cube-pin.svg?v=0426" />
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <script>try{if(localStorage.getItem("cube_theme")==="dark")document.documentElement.dataset.theme="dark"}catch(e){}</script>
-  <link rel="stylesheet" href="./styles.css?v=0427" />
-  <link rel="stylesheet" href="./login-bg-inline.css?v=0345" />
+  <link rel="stylesheet" href="./styles.css?v=0428" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -22,21 +21,12 @@
   <div id="toast" class="toast" aria-live="polite"></div>
 
   <section id="loginView" class="login-page">
-    <video id="loginBackgroundVideo" class="login-cinematic-video" autoplay muted loop playsinline preload="metadata"
-      poster="./login-background-clean-v0342.webp" aria-hidden="true" tabindex="-1">
-      <source src="./cube-login-cinematic-v0427.mp4" type="video/mp4" />
-    </video>
     <div class="login-brand-area">
       <div class="brand-mark login-brand" aria-label="CUBE Logistics">
         <div class="wordmark"><strong>CUBE</strong><span>LOGISTICS</span></div>
         <img src="./cube-pin.svg" alt="" />
       </div>
       <div class="login-portal-title">LOGISTICS OPERATIONS PORTAL</div>
-    </div>
-
-    <div class="login-scene" aria-hidden="true">
-      <img class="login-truck-art" src="./hero-truck.svg" alt="" />
-      <div class="login-warehouse"></div>
     </div>
 
     <div class="login-card">
@@ -68,7 +58,7 @@
         </div>
         <div id="loginError" class="error"></div>
       </form>
-      <div class="version">Web v0.4.27</div>
+      <div class="version">Web v0.4.28</div>
       <div class="cinematic-card-wave" aria-hidden="true"></div>
     </div>
 
@@ -138,7 +128,7 @@
               </button>
               <div class="profile-menu-item profile-version" aria-disabled="true">
                 <span class="profile-menu-icon">ⓘ</span>
-                <span><small>Web Version</small><strong id="profileVersion">v0.4.27</strong></span>
+                <span><small>Web Version</small><strong id="profileVersion">v0.4.28</strong></span>
               </div>
               <div class="profile-menu-divider"></div>
               <button id="logoutBtn" class="profile-menu-item logout-menu-item" type="button" role="menuitem">
@@ -166,6 +156,6 @@
     </div>
   </template>
 
-  <script type="module" src="./app.js?v=0427"></script>
+  <script type="module" src="./app.js?v=0428"></script>
 </body>
 </html>

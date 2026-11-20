@@ -4129,3 +4129,40 @@ html[data-theme="dark"] #appView .table-wrap td{
   #loginView .login-cinematic-video{display:none!important}
   #loginView .login-submit{transition:none!important}
 }
+
+
+/* v0.4.28 static unblurred login background */
+/* Preserve the existing static artwork. Remove all animated/video layers and
+   background blur, haze, tint and overlays; leave the signed-in app untouched. */
+#loginView.login-page,
+html[data-theme="dark"] #loginView.login-page{
+  background-image:url("./login-background-clean-v0342.webp?v=0428")!important;
+  background-color:#f7faff!important;
+  background-repeat:no-repeat!important;
+  background-position:center center!important;
+  background-size:cover!important;
+  filter:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+#loginView.login-page::before,
+#loginView.login-page::after{
+  display:none!important;
+  content:none!important;
+  background:none!important;
+  filter:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+#loginView .login-cinematic-video,
+#loginView #loginBackgroundVideo,
+#loginView .login-scene,
+#loginView .login-truck-art,
+#loginView .login-warehouse{
+  display:none!important;
+}
+#loginView .login-card{
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+/* The static picture, not the login inputs, remains unfiltered. */
