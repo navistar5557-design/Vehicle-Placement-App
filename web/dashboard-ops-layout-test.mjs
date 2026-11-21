@@ -22,3 +22,10 @@ assert.ok(css.includes('transform .28s cubic-bezier(.4,0,.2,1)'),
 assert.ok(css.includes('@media(max-width:900px)'),"Mobile protection rule missing");
 
 console.log("Dashboard operations header layout checks passed.");
+
+assert.ok(css.includes('.dashboard-header-summary{'),"dashboard summary centering rule missing");
+assert.ok(css.includes('position:absolute'),"Today's Operations parent should be positioned independently in header");
+assert.ok(css.includes('top:4px'),"Today's Operations should stay at the top of the header");
+assert.ok(css.includes('left:50%'),"Today's Operations parent must be horizontally centered");
+assert.ok(css.includes('width:max-content'),"Today's Operations block should size to its content");
+assert.ok(css.includes('.app.sidebar-collapsed .dashboard-header-summary .header-ops-metrics'),"collapsed-state metric reset missing");
