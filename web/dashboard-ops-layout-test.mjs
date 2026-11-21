@@ -34,3 +34,6 @@ assert.ok(css.includes('.topbar>.top-actions{'),"top header actions anchoring ru
 assert.ok(css.includes('right:24px'),"header actions must remain at the top-right edge");
 assert.ok(css.includes('top:50%'),"header actions should stay vertically centered");
 assert.ok(css.includes('margin-left:0!important'),"desktop header actions must not be pulled left by flex margins");
+
+assert.ok(css.includes('transform:translateX(calc(-50% - 26px))'),
+  "Today's Operations should be nudged slightly left from true center");
