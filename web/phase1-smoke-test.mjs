@@ -9,6 +9,7 @@ const checks=[
   ["3 Duplicate protection","activeTripForVehicle","showDuplicateTrip"],
   ["4 Vehicle availability","vehicleAvailability","vehiclePickerOptions"],
   ["5 Trip lifecycle","TRIP_STATUSES","Unloading"],
+  ["5b Close trip & vehicle release","closeTrip","tripClosed","Close Trip"],
   ["6 Profitability warning","profitabilityPreview","minMarginPercent"],
   ["7 Vendor performance","vendorPerformanceHtml","vendorPerformanceRows"],
   ["8 Vehicle performance","vehiclePerformanceHtml","vehicleUtilization30Days"],
