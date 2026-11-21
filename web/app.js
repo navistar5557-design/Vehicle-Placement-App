@@ -19,7 +19,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const WEB_VERSION = "0.4.30";
+const WEB_VERSION = "0.4.31";
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));
@@ -233,9 +233,12 @@ function handlingExpenses(t,freight,weight){
 
 function calcTrip(t){
   const freight=parseMoneyValue(t.freight), weight=Number(t.weightTon||0), km=Number(t.totalKm||0), mileage=Number(t.mileage||0), fuelRate=parseMoneyValue(t.fuelRate);
-  const pct=(t.expenseRules||[]).reduce((s,r)=>s+freight*Number(r.percent||0)/100,0);
+  const legacyOtherExpense=(Array.isArray(t.expenseRules)?t.expenseRules:[]).reduce((s,r)=>{
+    const raw=r?.amount ?? r?.percent ?? 0;
+    return s+parseMoneyValue(raw);
+  },0);
   const otherExpense=parseMoneyValue(t.otherExpense);
-  const totalOtherExpense=otherExpense+pct;
+  const totalOtherExpense=otherExpense+legacyOtherExpense;
   const fuel=mileage>0?(km/mileage)*fuelRate:0;
   const handling=handlingExpenses(t,freight,weight);
   const legacyLU=parseMoneyValue(t.loadingUnloading);
@@ -248,7 +251,8 @@ function calcTrip(t){
     marginPercent:freight?margin/freight*100:0,
     fuelExpense:fuel,
     otherExpenseAmount:otherExpense,
-    percentageExpense:pct,
+    legacyOtherExpenseAmount:legacyOtherExpense,
+    percentageExpense:0,
     totalOtherExpense,
     loadingExpense:handling.loading,
     unloadingExpense:handling.unloading,
@@ -380,6 +384,55 @@ async function migrateExistingTripsToV3(){
   return migrated;
 }
 
+async function migrateLegacyOtherExpenseToAmount(){
+  if(!isAdmin()) return 0;
+
+  const snap=await getDocs(collection(db,"trips"));
+  let batch=writeBatch(db), pending=0, migrated=0;
+  const now=Date.now();
+
+  for(const d of snap.docs){
+    const t=d.data();
+    const rules=Array.isArray(t.expenseRules)?t.expenseRules:[];
+    if(!rules.length) continue;
+
+    const legacyRawAmount=rules.reduce((sum,rule)=>{
+      const raw=rule?.amount ?? rule?.percent ?? 0;
+      return sum+parseMoneyValue(raw);
+    },0);
+
+    const currentOther=parseMoneyValue(t.otherExpense);
+    const patch={
+      otherExpense:currentOther+legacyRawAmount,
+      expenseRules:[],
+      otherExpenseAmountMigratedAt:now,
+      otherExpenseAmountMigratedBy:state.profile?.username||"Admin",
+      updatedAt:now
+    };
+
+    batch.set(d.ref,patch,{merge:true});
+    pending++; migrated++;
+
+    if(pending===400){
+      await batch.commit();
+      batch=writeBatch(db);
+      pending=0;
+    }
+  }
+
+  if(pending>0) await batch.commit();
+
+  if(migrated>0){
+    await setDoc(doc(db,"settings","otherExpenseAmountMigrationV1"),{
+      completedAt:now,
+      migratedTrips:migrated,
+      completedBy:state.profile?.username||"Admin",
+      rule:"Legacy Other Expense values converted to direct rupee amounts"
+    },{merge:true});
+  }
+  return migrated;
+}
+
 
 function startLiveSync(){
   state.unsubs.forEach(f=>f()); state.unsubs=[];
@@ -411,7 +464,9 @@ async function showApp(){
 
   try{
     const migrated=await migrateExistingTripsToV3();
-    if(migrated>0) toast(migrated+" existing trip"+(migrated===1?"":"s")+" corrected");
+    const otherExpenseMigrated=await migrateLegacyOtherExpenseToAmount();
+    const totalMigrated=Math.max(migrated,otherExpenseMigrated);
+    if(totalMigrated>0) toast(totalMigrated+" existing trip"+(totalMigrated===1?"":"s")+" corrected");
   }catch(err){
     console.error("Existing trip migration failed",err);
     toast("Existing trip correction could not complete");
@@ -1939,7 +1994,8 @@ function wireNewTrip(){
 
 function openEditTrip(id){
  const t=state.trips.find(x=>x.id===id);if(!t||!isAdmin())return;
- const otherExpenseValue=Number(t.totalOtherExpense||0);
+ const legacyOtherExpenseValue=(Array.isArray(t.expenseRules)?t.expenseRules:[]).reduce((sum,rule)=>sum+parseMoneyValue(rule?.amount ?? rule?.percent ?? 0),0);
+ const otherExpenseValue=parseMoneyValue(t.otherExpense)+legacyOtherExpenseValue;
  const m=modal("Edit Trip",`<div class="form-grid">
  <label><span>Vendor</span><select id="eVendor">${picker(state.vendors.map(x=>x.name),t.vendor)}</select></label>
  <label><span>Vehicle</span><select id="eVehicle">${vehiclePickerOptions(t.vehicle,t.id)}</select></label>
