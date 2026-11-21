@@ -29,3 +29,8 @@ assert.ok(css.includes('top:4px'),"Today's Operations should stay at the top of 
 assert.ok(css.includes('left:50%'),"Today's Operations parent must be horizontally centered");
 assert.ok(css.includes('width:max-content'),"Today's Operations block should size to its content");
 assert.ok(css.includes('.app.sidebar-collapsed .dashboard-header-summary .header-ops-metrics'),"collapsed-state metric reset missing");
+
+assert.ok(css.includes('.topbar>.top-actions{'),"top header actions anchoring rule missing");
+assert.ok(css.includes('right:24px'),"header actions must remain at the top-right edge");
+assert.ok(css.includes('top:50%'),"header actions should stay vertically centered");
+assert.ok(css.includes('margin-left:0!important'),"desktop header actions must not be pulled left by flex margins");
