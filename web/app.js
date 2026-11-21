@@ -19,7 +19,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const WEB_VERSION = "0.4.40";
+const WEB_VERSION = "0.4.41";
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));
@@ -970,17 +970,185 @@ function dashboardHeaderSummaryHtml(){
  return `<div class="header-ops-summary">
    <div class="header-ops-title"><span>▦</span><strong>Monthly Operations</strong><button id="copyDailySummary" class="text-link" type="button">Copy</button></div>
    <div class="header-ops-metrics">
-     <div><span>Trips</span><b>${summary.trips.length}</b></div>
-     <div><span>Active</span><b>${summary.active}</b></div>
-     <div><span>Transit</span><b>${summary.transit}</b></div>
-     <div><span>Completed</span><b>${summary.completed}</b></div>
-     <div class="ops-revenue"><span>Revenue</span><b>₹ ${money(summary.revenue)}</b></div>
-     <div class="ops-margin"><span>Margin</span><b class="${summary.margin<0?"negative-value":"positive-value"}">₹ ${money(summary.margin)}</b></div>
-     <div><span>Low Margin</span><b>${summary.low}</b></div>
-     <div><span>Delayed</span><b>${summary.delayed}</b></div>
+     <div data-monthly-kpi="trips" title="Double-click for trip details"><span>Trips</span><b>${summary.trips.length}</b></div>
+     <div data-monthly-kpi="active" title="Double-click for active trip details"><span>Active</span><b>${summary.active}</b></div>
+     <div data-monthly-kpi="transit" title="Double-click for in-transit trip details"><span>Transit</span><b>${summary.transit}</b></div>
+     <div data-monthly-kpi="completed" title="Double-click for completed trip details"><span>Completed</span><b>${summary.completed}</b></div>
+     <div class="ops-revenue" data-monthly-kpi="revenue" title="Double-click for revenue details"><span>Revenue</span><b>₹ ${money(summary.revenue)}</b></div>
+     <div class="ops-margin" data-monthly-kpi="margin" title="Double-click for margin details"><span>Margin</span><b class="${summary.margin<0?"negative-value":"positive-value"}">₹ ${money(summary.margin)}</b></div>
+     <div data-monthly-kpi="lowMargin" title="Double-click for low-margin trip details"><span>Low Margin</span><b>${summary.low}</b></div>
+     <div data-monthly-kpi="delayed" title="Double-click for delayed trip details"><span>Delayed</span><b>${summary.delayed}</b></div>
    </div>
  </div>`;
 }
+
+const MONTHLY_KPI_CONFIG={
+  trips:{title:"Trips",summary:"All trips created during the current month."},
+  active:{title:"Active Trips",summary:"Trips created this month that are currently active."},
+  transit:{title:"In Transit",summary:"Trips created this month that are currently in transit."},
+  completed:{title:"Completed Trips",summary:"Trips created this month that are currently completed."},
+  revenue:{title:"Revenue",summary:"Trip-wise freight revenue for trips created this month."},
+  margin:{title:"Margin",summary:"Trip-wise profit or loss for trips created this month."},
+  lowMargin:{title:"Low Margin",summary:"Trips below the configured margin threshold."},
+  delayed:{title:"Delayed Trips",summary:"Active trips created this month whose planned transit time has been exceeded."}
+};
+function monthDateInput(ms){
+  if(!ms)return "";
+  const d=new Date(ms),pad=n=>String(n).padStart(2,"0");
+  return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+}
+function monthKpiRows(type){
+  const summary=currentMonthOperationsSummary();
+  const rows=summary.trips;
+  if(type==="active")return rows.filter(t=>isTripOpenStatus(t.status));
+  if(type==="transit")return rows.filter(t=>t.status==="In Transit");
+  if(type==="completed")return rows.filter(t=>t.status==="Completed");
+  if(type==="lowMargin")return rows.filter(t=>Number(t.margin||0)<0||Number(t.marginPercent||0)<Number(state.minMarginPercent||10));
+  if(type==="delayed")return rows.filter(t=>isTripOpenStatus(t.status)&&Number(t.transitHours||0)>0&&Number(t.createdAt||0)+Number(t.transitHours||0)*3600000<Date.now());
+  return rows;
+}
+function delayInfo(t){
+  const transitMs=Number(t.transitHours||0)*3600000;
+  if(!transitMs||!Number(t.createdAt||0))return {planned:0,delayMs:0,label:"-"};
+  const planned=Number(t.createdAt||0)+transitMs;
+  const actual=Number(t.closedAt||t.statusUpdatedAt||0);
+  const ref=isTripOpenStatus(t.status)?Date.now():(actual||Date.now());
+  const delayMs=Math.max(0,ref-planned);
+  const mins=Math.floor(delayMs/60000);
+  const days=Math.floor(mins/1440),hours=Math.floor((mins%1440)/60),minutes=mins%60;
+  const label=days?days+"d "+hours+"h":hours?hours+"h "+minutes+"m":minutes+"m";
+  return {planned,actual,delayMs,label};
+}
+function monthlyKpiFilterRows(type,search="",from="",to=""){
+  const q=String(search||"").trim().toLowerCase();
+  const fromMs=from?new Date(from+"T00:00:00").getTime():0;
+  const toMs=to?new Date(to+"T23:59:59.999").getTime():Number.MAX_SAFE_INTEGER;
+  return monthKpiRows(type)
+    .filter(t=>Number(t.createdAt||0)>=fromMs&&Number(t.createdAt||0)<=toMs)
+    .filter(t=>!q||[displayTripNumber(t),t.vehicle,t.vendor,t.from,t.to,t.status].some(v=>String(v||"").toLowerCase().includes(q)))
+    .sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
+}
+function monthlyKpiSummaryHtml(type,rows,fullCount){
+  const freight=rows.reduce((s,t)=>s+Number(t.freight||0),0);
+  const margin=rows.reduce((s,t)=>s+Number(t.margin||0),0);
+  const marginClass=margin<0?"negative-value":"positive-value";
+  const label=type==="lowMargin"
+    ?"Trips below the configured margin threshold of "+Number(state.minMarginPercent||10).toFixed(1)+"%."
+    :(MONTHLY_KPI_CONFIG[type]?.summary||"Monthly trip summary.");
+  return `<div class="monthly-kpi-summary">
+    <p>${esc(label)}</p>
+    <div class="monthly-kpi-summary-grid">
+      <div><span>Matching Trips</span><strong>${rows.length}${rows.length!==fullCount?" / "+fullCount:""}</strong></div>
+      <div><span>Total Freight</span><strong>₹ ${money(freight)}</strong></div>
+      <div><span>Total Margin</span><strong class="${marginClass}">₹ ${money(margin)}</strong></div>
+    </div>
+  </div>`;
+}
+function monthlyKpiTableHtml(type,rows){
+  if(!rows.length)return '<div class="empty monthly-kpi-empty">No trips found for the selected filters.</div>';
+  return `<div class="monthly-kpi-table-wrap"><table class="monthly-kpi-table">
+    <thead><tr><th>Date / Time</th><th>Trip / Vehicle</th><th>Route / Vendor</th><th>Status</th><th>Financials</th><th>${type==="completed"?"Completion":type==="delayed"?"Delay":type==="revenue"?"Revenue":type==="margin"||type==="lowMargin"?"Margin":"Details"}</th></tr></thead>
+    <tbody>${rows.map(t=>{
+      const marginClass=Number(t.margin||0)<0?"negative-value":"positive-value";
+      const completedAt=Number(t.closedAt||t.statusUpdatedAt||0);
+      const delay=delayInfo(t);
+      let detail="—";
+      if(type==="completed")detail=completedAt?esc(dateTime(completedAt)):"—";
+      else if(type==="delayed")detail=`<small>Planned ${esc(dateTime(delay.planned))}</small><small>Last Status ${esc(dateTime(t.statusUpdatedAt||t.createdAt))}</small><strong class="negative-value">${esc(delay.label)} late</strong>`;
+      else if(type==="revenue")detail=`<strong>₹ ${money(t.freight)}</strong>`;
+      else if(type==="margin"||type==="lowMargin")detail=`<strong class="${marginClass}">₹ ${money(t.margin)} (${Number(t.marginPercent||0).toFixed(1)}%)</strong>`;
+      else detail=`<small>Created ${esc(dateTime(t.createdAt))}</small>`;
+      return `<tr class="monthly-kpi-trip-row" data-trip-id="${esc(t.id)}" tabindex="0" title="Open full trip details">
+        <td>${esc(dateTime(t.createdAt))}</td>
+        <td><strong>${esc(displayTripNumber(t))}</strong><small>${esc(t.vehicle||"-")}</small></td>
+        <td><strong>${esc(t.from||"-")} → ${esc(t.to||"-")}</strong><small>${esc(t.vendor||"-")}</small></td>
+        <td>${statusBadge(t.status)}</td>
+        <td><span>Freight ₹ ${money(t.freight)}</span><small class="${marginClass}">Margin ₹ ${money(t.margin)}</small></td>
+        <td>${detail}</td>
+      </tr>`;
+    }).join("")}</tbody>
+  </table></div>`;
+}
+function exportMonthlyKpiCsv(type,rows){
+  const headers=["Trip Date","Trip ID","Vehicle","From","To","Vendor","Status","Freight","Total Expenses","Margin","Margin %","Completion Date","Planned Arrival","Delay"];
+  const data=rows.map(t=>{
+    const delay=delayInfo(t);
+    return [
+      dateTime(t.createdAt),displayTripNumber(t),t.vehicle,t.from,t.to,t.vendor,t.status,
+      Number(t.freight||0),Number(t.totalExpenses||0),Number(t.margin||0),Number(t.marginPercent||0).toFixed(1),
+      t.status==="Completed"?dateTime(t.closedAt||t.statusUpdatedAt):"",
+      type==="delayed"?dateTime(delay.planned):"",
+      type==="delayed"?delay.label:""
+    ];
+  });
+  const csv="\uFEFF"+[headers,...data].map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\n");
+  const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  const a=document.createElement("a");
+  const period=new Date().toLocaleDateString("en-IN",{month:"short",year:"numeric"}).replace(/\s+/g,"-");
+  a.href=url;a.download="cube-"+type+"-"+period+".csv";a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),0);
+}
+function openMonthlyTripDetails(tripId){
+  const t=state.trips.find(x=>x.id===tripId);if(!t)return;
+  const marginClass=Number(t.margin||0)<0?"negative-value":"positive-value";
+  const delay=delayInfo(t);
+  const completedAt=Number(t.closedAt||t.statusUpdatedAt||0);
+  modal("Trip "+displayTripNumber(t),`
+    <div class="monthly-trip-detail-grid">
+      <div><span>Created</span><strong>${esc(dateTime(t.createdAt))}</strong></div>
+      <div><span>Vehicle</span><strong>${esc(t.vehicle||"-")}</strong></div>
+      <div><span>Route</span><strong>${esc(t.from||"-")} → ${esc(t.to||"-")}</strong></div>
+      <div><span>Vendor</span><strong>${esc(t.vendor||"-")}</strong></div>
+      <div><span>Status</span><strong>${statusBadge(t.status)}</strong></div>
+      <div><span>Status Updated</span><strong>${esc(dateTime(t.statusUpdatedAt))}</strong></div>
+      <div><span>Freight</span><strong>₹ ${money(t.freight)}</strong></div>
+      <div><span>Total Expenses</span><strong>₹ ${money(t.totalExpenses)}</strong></div>
+      <div><span>Margin</span><strong class="${marginClass}">₹ ${money(t.margin)} (${Number(t.marginPercent||0).toFixed(1)}%)</strong></div>
+      <div><span>Weight</span><strong>${Number(t.weightTon||0).toFixed(1)} Ton</strong></div>
+      <div><span>Trip KM</span><strong>${Number(t.totalKm||0).toFixed(0)} KM</strong></div>
+      <div><span>Transit Hours</span><strong>${Number(t.transitHours||0).toFixed(1)} Hrs</strong></div>
+      ${t.status==="Completed"?`<div><span>Completed</span><strong>${esc(dateTime(completedAt))}</strong></div>`:""}
+      ${delay.delayMs>0?`<div><span>Planned Arrival</span><strong>${esc(dateTime(delay.planned))}</strong></div><div><span>Delay</span><strong class="negative-value">${esc(delay.label)}</strong></div>`:""}
+    </div>`);
+}
+function openMonthlyKpiDetails(type){
+  const config=MONTHLY_KPI_CONFIG[type];if(!config)return;
+  const summary=currentMonthOperationsSummary();
+  const monthStart=monthDateInput(summary.start);
+  const monthEnd=monthDateInput(summary.end-1);
+  const period=new Date().toLocaleDateString("en-IN",{month:"long",year:"numeric"});
+  const baseRows=monthKpiRows(type);
+  const m=modal(config.title+" · "+period,`
+    <div class="monthly-kpi-modal-content">
+      <div id="monthlyKpiSummary"></div>
+      <div class="monthly-kpi-toolbar">
+        <label class="monthly-kpi-search"><span>Search</span><input id="monthlyKpiSearch" placeholder="Vehicle number or Trip ID"></label>
+        <label><span>From</span><input id="monthlyKpiFrom" type="date" min="${monthStart}" max="${monthEnd}" value="${monthStart}"></label>
+        <label><span>To</span><input id="monthlyKpiTo" type="date" min="${monthStart}" max="${monthEnd}" value="${monthEnd}"></label>
+        <button id="monthlyKpiExport" class="secondary" type="button">Export CSV (Excel)</button>
+      </div>
+      <div id="monthlyKpiRows"></div>
+    </div>`);
+  m.classList.add("monthly-kpi-backdrop");
+  m.querySelector(".modal")?.classList.add("monthly-kpi-modal");
+
+  const renderRows=()=>{
+    const rows=monthlyKpiFilterRows(type,m.querySelector("#monthlyKpiSearch")?.value,m.querySelector("#monthlyKpiFrom")?.value,m.querySelector("#monthlyKpiTo")?.value);
+    m.querySelector("#monthlyKpiSummary").innerHTML=monthlyKpiSummaryHtml(type,rows,baseRows.length);
+    m.querySelector("#monthlyKpiRows").innerHTML=monthlyKpiTableHtml(type,rows);
+    m.querySelectorAll(".monthly-kpi-trip-row").forEach(row=>{
+      row.addEventListener("click",()=>openMonthlyTripDetails(row.dataset.tripId));
+      row.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openMonthlyTripDetails(row.dataset.tripId);}});
+    });
+    m.querySelector("#monthlyKpiExport").onclick=()=>exportMonthlyKpiCsv(type,rows);
+  };
+  ["#monthlyKpiSearch","#monthlyKpiFrom","#monthlyKpiTo"].forEach(sel=>{
+    const el=m.querySelector(sel);if(!el)return;
+    el.addEventListener(sel==="#monthlyKpiSearch"?"input":"change",renderRows);
+  });
+  renderRows();
+}
+
 function configureTopbarForPage(page){
  if(page!=="dashboard"){
    restoreStandardTopbar();
@@ -1562,6 +1730,12 @@ function wireDashboard(){
     el.addEventListener("click",()=>openKpi(el.dataset.drill));
     el.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openKpi(el.dataset.drill);}});
   });
+  document.querySelectorAll(".header-ops-metrics [data-monthly-kpi]").forEach(tile=>{
+    tile.addEventListener("dblclick",e=>{
+      e.preventDefault();
+      openMonthlyKpiDetails(tile.dataset.monthlyKpi);
+    });
+  });
   $("#copyDailySummary")?.addEventListener("click",async()=>{
     const summary=currentMonthOperationsSummary();
     const period=new Date().toLocaleDateString("en-IN",{month:"long",year:"numeric"});
@@ -1886,6 +2060,14 @@ async function openTripAudit(tripId){
 
 function modal(title,html){
  const frag=$("#modalTemplate").content.cloneNode(true),back=frag.querySelector(".modal-backdrop");back.querySelector("h3").textContent=title;back.querySelector(".modal-body").innerHTML=html;back.querySelector(".modal-close").onclick=()=>back.remove();back.addEventListener("click",e=>{if(e.target===back)back.remove();});document.body.appendChild(back);return back;
+}
+if(!document.documentElement.dataset.modalEscapeHandler){
+ document.documentElement.dataset.modalEscapeHandler="1";
+ document.addEventListener("keydown",e=>{
+   if(e.key!=="Escape")return;
+   const modals=[...document.querySelectorAll(".modal-backdrop")];
+   modals.at(-1)?.remove();
+ });
 }
 function openStatus(id){
  const t=state.trips.find(x=>x.id===id);if(!t)return;
