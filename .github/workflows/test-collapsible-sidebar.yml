@@ -12,6 +12,7 @@ on:
       - fix/operations-slight-left
       - fix/operations-further-left
       - fix/monthly-operations-summary
+      - feature/monthly-kpi-doubleclick
     paths:
       - 'web/**'
       - '.github/workflows/test-collapsible-sidebar.yml'
@@ -38,3 +39,5 @@ jobs:
         run: node web/dashboard-ops-layout-test.mjs
       - name: Run monthly operations summary tests
         run: node web/monthly-operations-test.mjs
+      - name: Run Monthly KPI drilldown tests
+        run: node web/monthly-kpi-drilldown-test.mjs
