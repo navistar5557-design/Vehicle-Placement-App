@@ -19,7 +19,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const WEB_VERSION = "0.4.33";
+const WEB_VERSION = "0.4.34";
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));
@@ -627,9 +627,8 @@ window.addEventListener("online",()=>{setSync("Reconnecting...",true,"connecting
 document.addEventListener("keydown",e=>{
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();$("#globalSearch")?.focus();}
 });
-const SIDEBAR_PREF_KEY="cube_sidebar_collapsed";
 const SIDEBAR_BREAKPOINT=980;
-let desktopSidebarCollapsed=localStorage.getItem(SIDEBAR_PREF_KEY)==="1";
+let desktopSidebarCollapsed=false;
 
 function sidebarIsMobile(){
   return window.matchMedia("(max-width: "+SIDEBAR_BREAKPOINT+"px)").matches;
@@ -646,7 +645,7 @@ function updateSidebarToggleButton(){
     btn.title=open?"Hide Menu":"Show Menu";
     btn.classList.toggle("is-collapsed",!open);
     const icon=btn.querySelector(".menu-icon");
-    if(icon)icon.textContent=open?"×":"☰";
+    if(icon)icon.textContent="☰";
   }else{
     const visible=!desktopSidebarCollapsed;
     btn.setAttribute("aria-expanded",String(visible));
@@ -654,7 +653,7 @@ function updateSidebarToggleButton(){
     btn.title=visible?"Hide Menu":"Show Menu";
     btn.classList.toggle("is-collapsed",!visible);
     const icon=btn.querySelector(".menu-icon");
-    if(icon)icon.textContent=visible?"☰":"»";
+    if(icon)icon.textContent="☰";
   }
 }
 function syncSidebarLayout(){
@@ -697,7 +696,6 @@ function toggleSidebar(){
     sidebar.classList.toggle("open");
   }else{
     desktopSidebarCollapsed=!desktopSidebarCollapsed;
-    localStorage.setItem(SIDEBAR_PREF_KEY,desktopSidebarCollapsed?"1":"0");
   }
   syncSidebarLayout();
 }
@@ -996,7 +994,7 @@ function navigate(page){
   if(page==="reports"&&!canViewReports()){toast("Your role does not allow Reports");page="dashboard";}
   state.page=page;
   document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
-  if(sidebarIsMobile()) closeMobileSidebar(); else syncSidebarLayout();
+  syncSidebarLayout();
   if(page!=="dashboard"){
     restoreStandardTopbar();
     const titles={trips:["Trips","Live trip placement and status"],newtrip:["Create Trip","Add a new vehicle placement"],vehicles:["Vehicles","Vehicle master"],vendors:["Vendors","Vendor master"],locations:["Locations","Location master"],reports:["Reports","Operational and profitability summary"],settings:["Settings","Users, roles and access permissions"]};

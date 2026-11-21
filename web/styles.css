@@ -4494,3 +4494,68 @@ html[data-theme="dark"] #loginView.login-page{
     transition-duration:.01ms!important;
   }
 }
+
+
+/* v0.4.34 sidebar edge toggle refinement */
+.sidebar,
+.main{
+  transition-timing-function:cubic-bezier(.4,0,.2,1)!important;
+  transition-duration:.28s!important;
+}
+.sidebar-edge-toggle{
+  position:fixed;
+  top:20px;
+  left:245px;
+  z-index:45;
+  width:38px;
+  height:38px;
+  min-width:38px;
+  transform:translateX(-50%);
+  display:grid;
+  place-items:center;
+  padding:0;
+  border:1px solid rgba(31,105,196,.18);
+  border-radius:10px;
+  background:#fff;
+  color:#174b91;
+  box-shadow:0 7px 20px rgba(28,83,158,.14);
+  transition:
+    left .28s cubic-bezier(.4,0,.2,1),
+    transform .28s cubic-bezier(.4,0,.2,1),
+    background-color .18s ease,
+    box-shadow .18s ease,
+    border-color .18s ease;
+}
+.sidebar-edge-toggle:hover{
+  background:#eef5ff;
+  border-color:rgba(31,105,196,.32);
+  box-shadow:0 9px 22px rgba(28,83,158,.18);
+}
+.sidebar-edge-toggle .menu-icon{
+  font-size:18px;
+  line-height:1;
+}
+.app.sidebar-collapsed .sidebar-edge-toggle{
+  left:12px;
+  transform:translateX(0);
+}
+.topbar>.sidebar-edge-toggle{
+  display:none!important;
+}
+@media(min-width:981px){
+  .sidebar-edge-toggle{
+    display:grid!important;
+  }
+}
+@media(max-width:980px){
+  .sidebar-edge-toggle{
+    top:20px;
+    left:12px;
+    transform:none;
+    z-index:45;
+  }
+  .sidebar.open~.sidebar-edge-toggle{
+    left:227px;
+    transform:translateX(-50%);
+  }
+}
