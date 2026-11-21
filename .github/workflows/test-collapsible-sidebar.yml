@@ -8,6 +8,7 @@ on:
       - fix/sidebar-edge-toggle
       - fix/center-operations-collapsed
       - fix/top-center-operations
+      - fix/top-actions-right
     paths:
       - 'web/**'
       - '.github/workflows/test-collapsible-sidebar.yml'
