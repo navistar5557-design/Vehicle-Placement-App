@@ -10,6 +10,7 @@ const checks=[
   ["4 Vehicle availability","vehicleAvailability","vehiclePickerOptions"],
   ["5 Trip lifecycle","TRIP_STATUSES","Unloading"],
   ["5b Close trip & vehicle release","closeTrip","tripClosed","Close Trip"],
+  ["5c Interactive margin breakdown","margin-breakdown-trigger","tripExpenseBreakdown","openMarginBreakdown","margin-breakdown-popover"],
   ["6 Profitability warning","profitabilityPreview","minMarginPercent"],
   ["7 Vendor performance","vendorPerformanceHtml","vendorPerformanceRows"],
   ["8 Vehicle performance","vehiclePerformanceHtml","vehicleUtilization30Days"],
