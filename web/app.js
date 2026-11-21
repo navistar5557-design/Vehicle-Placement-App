@@ -19,7 +19,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const WEB_VERSION = "0.4.34";
+const WEB_VERSION = "0.4.35";
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));
@@ -965,8 +965,8 @@ function dashboardHeaderSummaryHtml(){
      <div><span>Active</span><b>${active}</b></div>
      <div><span>Transit</span><b>${transit}</b></div>
      <div><span>Completed</span><b>${completed}</b></div>
-     <div><span>Revenue</span><b>₹ ${money(revenue)}</b></div>
-     <div><span>Margin</span><b class="${margin<0?"negative-value":"positive-value"}">₹ ${money(margin)}</b></div>
+     <div class="ops-revenue"><span>Revenue</span><b>₹ ${money(revenue)}</b></div>
+     <div class="ops-margin"><span>Margin</span><b class="${margin<0?"negative-value":"positive-value"}">₹ ${money(margin)}</b></div>
      <div><span>Low Margin</span><b>${low}</b></div>
      <div><span>Delayed</span><b>${delayed}</b></div>
    </div>
