@@ -4614,3 +4614,34 @@ html[data-theme="dark"] #loginView.login-page{
     transform:none!important;
   }
 }
+
+
+/* v0.4.36 true top-center Today's Operations */
+@media(min-width:901px){
+  .topbar{
+    position:sticky;
+  }
+  .dashboard-header-summary{
+    position:absolute;
+    top:4px;
+    left:50%;
+    width:max-content;
+    max-width:calc(100% - 260px);
+    transform:translateX(-50%);
+    transition:
+      left .28s cubic-bezier(.4,0,.2,1),
+      transform .28s cubic-bezier(.4,0,.2,1);
+  }
+  .dashboard-header-summary .header-ops-summary{
+    width:max-content;
+    max-width:100%;
+  }
+  .dashboard-header-summary .header-ops-metrics,
+  .app.sidebar-collapsed .dashboard-header-summary .header-ops-metrics{
+    left:0!important;
+    transform:none!important;
+  }
+  .dashboard-header-summary .header-ops-title{
+    width:100%;
+  }
+}
