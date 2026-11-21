@@ -1,0 +1,26 @@
+name: Test Other Expense Amount
+
+on:
+  push:
+    branches:
+      - fix/other-expense-amount
+    paths:
+      - 'web/**'
+      - '.github/workflows/test-other-expense.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check web JavaScript syntax
+        run: node --check web/app.js
+      - name: Run Phase 1 smoke tests
+        run: node web/phase1-smoke-test.mjs
+      - name: Run margin breakdown tests
+        run: node web/margin-breakdown-test.mjs
+      - name: Run Other Expense amount tests
+        run: node web/other-expense-test.mjs

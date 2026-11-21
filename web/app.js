@@ -19,7 +19,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const WEB_VERSION = "0.4.29";
+const WEB_VERSION = "0.4.30";
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));
@@ -106,7 +106,7 @@ const AUDIT_FIELDS={
   vendor:"Vendor",vehicle:"Vehicle",currentLocation:"Current Location",from:"From",to:"To",
   freight:"Freight",advance:"Advance",weightTon:"Weight",totalKm:"Trip KM",currentToOriginKm:"Origin KM",
   transitHours:"Transit Hours",mileage:"Mileage",loadingExpensePerTon:"Loading Expense",
-  unloadingExpensePerTon:"Unloading Expense",fastag:"FASTag",rtoTarpaulin:"RTO / Tarpaulin",
+  unloadingExpensePerTon:"Unloading Expense",otherExpense:"Other Expense",fastag:"FASTag",rtoTarpaulin:"RTO / Tarpaulin",
   fixedExpenses:"Fixed Expenses",status:"Status",attachments:"Documents"
 };
 function auditValue(v){
@@ -122,7 +122,7 @@ function tripAuditChanges(before={},after={}){
   }
   const oldPct=Number(before?.expenseRules?.[0]?.percent||0);
   const newPct=Number(after?.expenseRules?.[0]?.percent||0);
-  if(oldPct!==newPct) changes.push({field:"otherExpensePercent",label:"Other Expense %",before:String(oldPct),after:String(newPct)});
+  if(oldPct!==newPct) changes.push({field:"legacyOtherExpensePercent",label:"Legacy Other Expense %",before:String(oldPct),after:String(newPct)});
   return changes;
 }
 async function logTripAudit(tripId,action,before={},after={},note=""){
@@ -234,10 +234,12 @@ function handlingExpenses(t,freight,weight){
 function calcTrip(t){
   const freight=parseMoneyValue(t.freight), weight=Number(t.weightTon||0), km=Number(t.totalKm||0), mileage=Number(t.mileage||0), fuelRate=parseMoneyValue(t.fuelRate);
   const pct=(t.expenseRules||[]).reduce((s,r)=>s+freight*Number(r.percent||0)/100,0);
+  const otherExpense=parseMoneyValue(t.otherExpense);
+  const totalOtherExpense=otherExpense+pct;
   const fuel=mileage>0?(km/mileage)*fuelRate:0;
   const handling=handlingExpenses(t,freight,weight);
   const legacyLU=parseMoneyValue(t.loadingUnloading);
-  const exp=pct+fuel+parseMoneyValue(t.fixedExpenses)+parseMoneyValue(t.fastag)+parseMoneyValue(t.rtoTarpaulin)+legacyLU+handling.loading+handling.unloading;
+  const exp=totalOtherExpense+fuel+parseMoneyValue(t.fixedExpenses)+parseMoneyValue(t.fastag)+parseMoneyValue(t.rtoTarpaulin)+legacyLU+handling.loading+handling.unloading;
   const margin=freight-exp;
   return {
     ...t,
@@ -245,7 +247,9 @@ function calcTrip(t){
     margin,
     marginPercent:freight?margin/freight*100:0,
     fuelExpense:fuel,
+    otherExpenseAmount:otherExpense,
     percentageExpense:pct,
+    totalOtherExpense,
     loadingExpense:handling.loading,
     unloadingExpense:handling.unloading,
     legacyLoadingUnloadingExpense:legacyLU,
@@ -257,26 +261,13 @@ function calcTrip(t){
 function tripExpenseBreakdown(t){
   const trip=calcTrip(t||{});
   const freight=parseMoneyValue(trip.freight);
-  const rules=Array.isArray(trip.expenseRules)?trip.expenseRules:[];
-  const percentageRows=rules.map((rule,index)=>{
-    const percent=Number(rule?.percent||0);
-    return {
-      key:"rule-"+index,
-      label:String(rule?.name||"Other Expenses"),
-      detail:percent?percent.toFixed(1)+"% of freight":"",
-      value:freight*percent/100
-    };
-  });
-  if(!percentageRows.length){
-    percentageRows.push({key:"other",label:"Other Expenses",detail:"",value:0});
-  }
   const expenses=[
     {key:"fuel",label:"Fuel Expenses",detail:"",value:Number(trip.fuelExpense||0)},
     {key:"toll",label:"Toll Expenses (FASTag)",detail:"",value:parseMoneyValue(trip.fastag)},
     {key:"loading",label:"Loading Expenses",detail:"",value:Number(trip.loadingExpense||0)},
     {key:"unloading",label:"Unloading Expenses",detail:"",value:Number(trip.unloadingExpense||0)},
     {key:"rto",label:"RTO / Tarpaulin",detail:"",value:parseMoneyValue(trip.rtoTarpaulin)},
-    ...percentageRows,
+    {key:"other",label:"Other Expenses",detail:"",value:Number(trip.totalOtherExpense||0)},
     {key:"fixed",label:"Fixed / Additional Expenses",detail:"",value:parseMoneyValue(trip.fixedExpenses)}
   ];
   const legacy=parseMoneyValue(trip.legacyLoadingUnloadingExpense);
@@ -1399,7 +1390,7 @@ function wireDashboard(){
       const freight=trips.reduce((s,t)=>s+Number(t.freight||0),0);
       const pct=freight?total/freight*100:0;
       const rows=[...trips].sort((a,b)=>Number(b.margin||0)-Number(a.margin||0)).slice(0,8);
-      modal("Margin Details", `<div class="mini-summary"><span>Total Vehicle Margin</span><strong>₹ ${money(total)} <small>(${pct.toFixed(1)}%)</small></strong></div><div class="mini-list">${rows.map(t=>`<div class="mini-row margin-breakdown-row"><div class="grow"><strong>${esc(t.vehicle||"-")}</strong><small>${esc(t.from||"-")} → ${esc(t.to||"-")}</small><small>Freight ₹ ${money(t.freight)} · Fuel ₹ ${money(t.fuelExpense)} · Loading ₹ ${money(t.loadingExpense)} · Unloading ₹ ${money(t.unloadingExpense)} · FASTag ₹ ${money(t.fastag)} · RTO/Tarpaulin ₹ ${money(t.rtoTarpaulin)} · Fixed ₹ ${money(t.fixedExpenses)} · Other ₹ ${money(t.percentageExpense)}${Number(t.legacyLoadingUnloadingExpense||0)?` · Legacy L/U ₹ ${money(t.legacyLoadingUnloadingExpense)}`:""}${t.legacyHandlingCorrected?" · Legacy total corrected":""}${t.legacyDecimalCorrected?" · Decimal ×100 corrected":""}</small><small>Total Expenses ₹ ${money(t.totalExpenses)}</small></div><span>₹ ${money(t.margin)}</span></div>`).join("")}</div>`);
+      modal("Margin Details", `<div class="mini-summary"><span>Total Vehicle Margin</span><strong>₹ ${money(total)} <small>(${pct.toFixed(1)}%)</small></strong></div><div class="mini-list">${rows.map(t=>`<div class="mini-row margin-breakdown-row"><div class="grow"><strong>${esc(t.vehicle||"-")}</strong><small>${esc(t.from||"-")} → ${esc(t.to||"-")}</small><small>Freight ₹ ${money(t.freight)} · Fuel ₹ ${money(t.fuelExpense)} · Loading ₹ ${money(t.loadingExpense)} · Unloading ₹ ${money(t.unloadingExpense)} · FASTag ₹ ${money(t.fastag)} · RTO/Tarpaulin ₹ ${money(t.rtoTarpaulin)} · Fixed ₹ ${money(t.fixedExpenses)} · Other ₹ ${money(t.totalOtherExpense)}${Number(t.legacyLoadingUnloadingExpense||0)?` · Legacy L/U ₹ ${money(t.legacyLoadingUnloadingExpense)}`:""}${t.legacyHandlingCorrected?" · Legacy total corrected":""}${t.legacyDecimalCorrected?" · Decimal ×100 corrected":""}</small><small>Total Expenses ₹ ${money(t.totalExpenses)}</small></div><span>₹ ${money(t.margin)}</span></div>`).join("")}</div>`);
       return;
     }
     if(type==="utilization"){
@@ -1871,7 +1862,7 @@ function newTripHtml(){
   <label><span>Vehicle Mileage (km/L)</span><select id="fMileage" required><option value="" selected disabled>Select Mileage</option>${(Array.from({length:36},(_,i)=>(2.5+i/10).toFixed(1))).map(x=>`<option>${x}</option>`).join("")}</select></label>
   <label><span>Loading Expense</span><input id="fLoad" type="number" min="0" step="0.01"></label>
   <label><span>Unloading Expense</span><input id="fUnload" type="number" min="0" step="0.01"></label>
-  <label><span>Other Expense %</span><input id="fPct" type="number" min="0" step="0.01"></label>
+  <label><span>Other Expense (₹)</span><input id="fOther" type="number" min="0" step="0.01"></label>
   <label><span>FASTag</span><input id="fFastag" type="number" min="0" step="0.01"></label>
   <label><span>RTO / Tarpaulin</span><input id="fRto" type="number" min="0" step="0.01"></label>
   <label><span>Fixed Expenses</span><input id="fFixed" type="number" min="0" step="0.01"></label>
@@ -1888,7 +1879,7 @@ function wireNewTrip(){
  const form=$("#tripForm");
  if(form){
    form.reset();
-   ["fFreight","fAdvance","fWeight","fKm","fHours","fOriginKm","fLoad","fUnload","fPct","fFastag","fRto","fFixed"].forEach(id=>{const el=$("#"+id);if(el)el.value="";});
+   ["fFreight","fAdvance","fWeight","fKm","fHours","fOriginKm","fLoad","fUnload","fOther","fFastag","fRto","fFixed"].forEach(id=>{const el=$("#"+id);if(el)el.value="";});
  }
  const v=$("#fVehicle");const setMileage=()=>{const rec=state.vehicles.find(x=>x.number===v.value);$("#fMileage").value=rec?Number(rec.mileage).toFixed(1):"";previewProfitability();};
  const formNumber=id=>parseMoneyValue($("#"+id)?.value);
@@ -1906,7 +1897,7 @@ function wireNewTrip(){
      fixedExpenses:formNumber("fFixed"),fastag:formNumber("fFastag"),rtoTarpaulin:formNumber("fRto"),
      loadingUnloading:0,loadingExpensePerTon:formNumber("fLoad"),unloadingExpensePerTon:formNumber("fUnload"),
      expenseCalcVersion:3,weightTon:formNumber("fWeight"),
-     expenseRules:formNumber("fPct")>0?[{name:"Other Expense",percent:formNumber("fPct")}]:[]
+     otherExpense:formNumber("fOther"),expenseRules:[]
    });
    const threshold=Number(state.minMarginPercent||10);
    const health=temp.margin<0?"danger":temp.marginPercent<threshold?"warning":"healthy";
@@ -1915,7 +1906,7 @@ function wireNewTrip(){
    preview.innerHTML='<div><span>'+label+'</span><strong>₹ '+money(temp.margin)+' · '+temp.marginPercent.toFixed(1)+'%</strong></div><small>Total expense ₹ '+money(temp.totalExpenses)+' · Minimum target '+threshold.toFixed(1)+'%</small>';
    return temp;
  };
- ["fFreight","fWeight","fKm","fLoad","fUnload","fPct","fFastag","fRto","fFixed","fMileage"].forEach(id=>{
+ ["fFreight","fWeight","fKm","fLoad","fUnload","fOther","fFastag","fRto","fFixed","fMileage"].forEach(id=>{
    $("#"+id)?.addEventListener("input",previewProfitability);
    $("#"+id)?.addEventListener("change",previewProfitability);
  });
@@ -1924,8 +1915,8 @@ function wireNewTrip(){
  $("#tripForm").addEventListener("submit",async e=>{e.preventDefault();
  const n=id=>Number($("#"+id).value||0);
  const m=id=>parseMoneyValue($("#"+id).value);
- const now=Date.now(),id=uid(),freight=m("fFreight"),pct=n("fPct");
- const weight=m("fWeight"),loadPerTon=m("fLoad"),unloadPerTon=m("fUnload");
+ const now=Date.now(),id=uid(),freight=m("fFreight");
+ const weight=m("fWeight"),loadPerTon=m("fLoad"),unloadPerTon=m("fUnload"),otherExpense=m("fOther");
  const selectedVehicle=$("#fVehicle").value;
  const existing=activeTripForVehicle(selectedVehicle);
  if(existing){showDuplicateTrip(existing);return;}
@@ -1936,7 +1927,7 @@ function wireNewTrip(){
    if(!ok)return;
  }
  const tripNumber=await nextTripNumber(now);
- const trip={id,tripNumber,createdAt:now,vendor:$("#fVendor").value,vehicle:selectedVehicle,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:m("fAdvance"),weightTon:weight,currentToOriginKm:m("fOriginKm"),totalKm:m("fKm"),transitHours:m("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:m("fFixed"),fastag:m("fFastag"),rtoTarpaulin:m("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,expenseCalcVersion:3,numericDataVersion:2,expenseRules:pct>0?[{name:"Other Expense",percent:pct}]:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Created",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
+ const trip={id,tripNumber,createdAt:now,vendor:$("#fVendor").value,vehicle:selectedVehicle,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:m("fAdvance"),weightTon:weight,currentToOriginKm:m("fOriginKm"),totalKm:m("fKm"),transitHours:m("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:m("fFixed"),fastag:m("fFastag"),rtoTarpaulin:m("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,otherExpense,expenseCalcVersion:3,numericDataVersion:2,expenseRules:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Created",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
  await persistTrip(id,trip,false,"CREATE");
  await createLiveNotification("New Trip Created",trip.vehicle+" — "+trip.from+" → "+trip.to,id,"trip_created");
  const savedCalc=calcTrip(trip);
@@ -1948,7 +1939,7 @@ function wireNewTrip(){
 
 function openEditTrip(id){
  const t=state.trips.find(x=>x.id===id);if(!t||!isAdmin())return;
- const pct=Number(t.expenseRules?.[0]?.percent||0);
+ const otherExpenseValue=Number(t.totalOtherExpense||0);
  const m=modal("Edit Trip",`<div class="form-grid">
  <label><span>Vendor</span><select id="eVendor">${picker(state.vendors.map(x=>x.name),t.vendor)}</select></label>
  <label><span>Vehicle</span><select id="eVehicle">${vehiclePickerOptions(t.vehicle,t.id)}</select></label>
@@ -1964,7 +1955,7 @@ function openEditTrip(id){
  <label><span>Mileage</span><input id="eMileage" type="number" step="0.1" min="2.5" max="6.0" value="${Number(t.mileage||0).toFixed(1)}"></label>
  <label><span>Loading Expense</span><input id="eLoad" type="number" step="0.01" value="${moneyInputValue(t.loadingExpense||t.loadingExpensePerTon||0)}"></label>
  <label><span>Unloading Expense</span><input id="eUnload" type="number" step="0.01" value="${moneyInputValue(t.unloadingExpense||t.unloadingExpensePerTon||0)}"></label>
- <label><span>Other Expense %</span><input id="ePct" type="number" step="0.01" value="${moneyInputValue(pct)}"></label>
+ <label><span>Other Expense (₹)</span><input id="eOther" type="number" min="0" step="0.01" value="${moneyInputValue(otherExpenseValue)}"></label>
  <label><span>FASTag</span><input id="eFastag" type="number" step="0.01" value="${moneyInputValue(t.fastag||0)}"></label>
  <label><span>RTO / Tarpaulin</span><input id="eRto" type="number" step="0.01" value="${moneyInputValue(t.rtoTarpaulin||0)}"></label>
  <label><span>Fixed Expenses</span><input id="eFixed" type="number" step="0.01" value="${moneyInputValue(t.fixedExpenses||0)}"></label>
@@ -1972,7 +1963,7 @@ function openEditTrip(id){
  const n=id=>Number(m.querySelector(id)?.value||0);
  const moneyN=id=>parseMoneyValue(m.querySelector(id)?.value);
  m.querySelector("#saveEditTrip").onclick=async()=>{
-   const freight=moneyN("#eFreight"), mileage=n("#eMileage"), pctValue=moneyN("#ePct");
+   const freight=moneyN("#eFreight"), mileage=n("#eMileage"), otherExpenseValue=moneyN("#eOther");
    const selectedVehicle=m.querySelector("#eVehicle").value;
    const conflicting=activeTripForVehicle(selectedVehicle,id);
    if(conflicting){showDuplicateTrip(conflicting);return;}
@@ -1995,7 +1986,8 @@ function openEditTrip(id){
      loadingExpensePerTon:moneyN("#eLoad"),
      unloadingExpensePerTon:moneyN("#eUnload"),
      loadingUnloading:0,
-     expenseRules:pctValue>0?[{name:"Other Expense",percent:pctValue}]:[],
+     otherExpense:otherExpenseValue,
+     expenseRules:[],
      fastag:moneyN("#eFastag"),
      rtoTarpaulin:moneyN("#eRto"),
      fixedExpenses:moneyN("#eFixed"),
