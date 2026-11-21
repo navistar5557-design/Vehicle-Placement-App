@@ -989,7 +989,7 @@ const MONTHLY_KPI_CONFIG={
   completed:{title:"Completed Trips",summary:"Trips created this month that are currently completed."},
   revenue:{title:"Revenue",summary:"Trip-wise freight revenue for trips created this month."},
   margin:{title:"Margin",summary:"Trip-wise profit or loss for trips created this month."},
-  lowMargin:{title:"Low Margin",summary:"Trips below the configured margin threshold of "+Number(state.minMarginPercent||10).toFixed(1)+"%."},
+  lowMargin:{title:"Low Margin",summary:"Trips below the configured margin threshold."},
   delayed:{title:"Delayed Trips",summary:"Active trips created this month whose planned transit time has been exceeded."}
 };
 function monthDateInput(ms){
@@ -1032,7 +1032,9 @@ function monthlyKpiSummaryHtml(type,rows,fullCount){
   const freight=rows.reduce((s,t)=>s+Number(t.freight||0),0);
   const margin=rows.reduce((s,t)=>s+Number(t.margin||0),0);
   const marginClass=margin<0?"negative-value":"positive-value";
-  const label=MONTHLY_KPI_CONFIG[type]?.summary||"Monthly trip summary.";
+  const label=type==="lowMargin"
+    ?"Trips below the configured margin threshold of "+Number(state.minMarginPercent||10).toFixed(1)+"%."
+    :(MONTHLY_KPI_CONFIG[type]?.summary||"Monthly trip summary.");
   return `<div class="monthly-kpi-summary">
     <p>${esc(label)}</p>
     <div class="monthly-kpi-summary-grid">
@@ -1052,7 +1054,7 @@ function monthlyKpiTableHtml(type,rows){
       const delay=delayInfo(t);
       let detail="—";
       if(type==="completed")detail=completedAt?esc(dateTime(completedAt)):"—";
-      else if(type==="delayed")detail=`<small>Planned ${esc(dateTime(delay.planned))}</small><strong class="negative-value">${esc(delay.label)} late</strong>`;
+      else if(type==="delayed")detail=`<small>Planned ${esc(dateTime(delay.planned))}</small><small>Last Status ${esc(dateTime(t.statusUpdatedAt||t.createdAt))}</small><strong class="negative-value">${esc(delay.label)} late</strong>`;
       else if(type==="revenue")detail=`<strong>₹ ${money(t.freight)}</strong>`;
       else if(type==="margin"||type==="lowMargin")detail=`<strong class="${marginClass}">₹ ${money(t.margin)} (${Number(t.marginPercent||0).toFixed(1)}%)</strong>`;
       else detail=`<small>Created ${esc(dateTime(t.createdAt))}</small>`;
