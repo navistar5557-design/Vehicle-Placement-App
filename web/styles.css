@@ -4559,3 +4559,58 @@ html[data-theme="dark"] #loginView.login-page{
     transform:translateX(-50%);
   }
 }
+
+
+/* v0.4.35 centered collapsed operations + larger revenue/margin */
+.header-ops-metrics{
+  position:relative;
+  left:0;
+  transform:translateX(0);
+  grid-template-columns:68px 68px 68px 68px 96px 96px 68px 68px!important;
+  transition:
+    left .28s cubic-bezier(.4,0,.2,1),
+    transform .28s cubic-bezier(.4,0,.2,1);
+}
+.header-ops-metrics>div{
+  width:68px!important;
+  min-width:68px!important;
+}
+.header-ops-metrics>.ops-revenue,
+.header-ops-metrics>.ops-margin{
+  width:96px!important;
+  min-width:96px!important;
+}
+.header-ops-metrics>.ops-revenue b,
+.header-ops-metrics>.ops-margin b{
+  font-size:15px!important;
+  font-weight:900;
+}
+.app.sidebar-collapsed .dashboard-header-summary .header-ops-metrics{
+  left:50%;
+  transform:translateX(-50%);
+}
+@media(max-width:1180px) and (min-width:901px){
+  .header-ops-metrics{
+    grid-template-columns:60px 60px 60px 60px 86px 86px 60px 60px!important;
+    gap:3px!important;
+  }
+  .header-ops-metrics>div{
+    width:60px!important;
+    min-width:60px!important;
+  }
+  .header-ops-metrics>.ops-revenue,
+  .header-ops-metrics>.ops-margin{
+    width:86px!important;
+    min-width:86px!important;
+  }
+  .header-ops-metrics>.ops-revenue b,
+  .header-ops-metrics>.ops-margin b{
+    font-size:14px!important;
+  }
+}
+@media(max-width:900px){
+  .header-ops-metrics{
+    left:0!important;
+    transform:none!important;
+  }
+}
