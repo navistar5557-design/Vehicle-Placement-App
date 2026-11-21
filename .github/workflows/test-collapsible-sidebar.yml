@@ -11,6 +11,7 @@ on:
       - fix/top-actions-right
       - fix/operations-slight-left
       - fix/operations-further-left
+      - fix/monthly-operations-summary
     paths:
       - 'web/**'
       - '.github/workflows/test-collapsible-sidebar.yml'
@@ -35,3 +36,5 @@ jobs:
         run: node web/sidebar-toggle-test.mjs
       - name: Run dashboard operations header layout tests
         run: node web/dashboard-ops-layout-test.mjs
+      - name: Run monthly operations summary tests
+        run: node web/monthly-operations-test.mjs
