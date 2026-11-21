@@ -4645,3 +4645,23 @@ html[data-theme="dark"] #loginView.login-page{
     width:100%;
   }
 }
+
+
+/* v0.4.37 restore header actions to top-right */
+@media(min-width:901px){
+  .topbar>.top-actions{
+    position:absolute;
+    top:50%;
+    right:24px;
+    z-index:4;
+    margin-left:0!important;
+    transform:translateY(-50%);
+  }
+}
+@media(max-width:900px){
+  .topbar>.top-actions{
+    position:static;
+    margin-left:auto!important;
+    transform:none;
+  }
+}
