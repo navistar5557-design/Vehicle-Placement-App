@@ -1421,7 +1421,7 @@ function tripTable(rows,actions=true){
  <td><strong class="trip-number">${esc(displayTripNumber(t))}</strong></td><td>${esc(dateTime(t.createdAt))}</td><td><strong>${esc(t.vehicle)}</strong></td><td>${esc(t.from)} → ${esc(t.to)}</td><td>${esc(t.vendor)}</td><td>${statusBadge(t.status)}</td>
  <td>₹ ${money(t.freight)}</td><td>₹ ${money(t.margin)} (${Number(t.marginPercent||0).toFixed(1)}%)</td>
  <td><div class="audit">Created: ${esc(t.createdBy||t.createdByEmail||"Legacy")}</div><div class="audit">Status: ${esc(t.statusUpdatedBy||t.statusUpdatedByEmail||"-")} · ${esc(dateTime(t.statusUpdatedAt))}</div></td>
- ${actions?`<td class="actions compact-actions"><div class="trip-action-menu"><button class="secondary trip-actions-toggle" type="button" data-id="${esc(t.id)}" aria-expanded="false">Actions <span>▾</span></button><div class="trip-actions-panel hidden" data-menu-for="${esc(t.id)}"><button class="trip-action-item status-btn" data-id="${esc(t.id)}">Status</button><button class="trip-action-item docs-trip" data-id="${esc(t.id)}">Documents${(t.attachments||[]).length?` (${(t.attachments||[]).length})`:""}</button><button class="trip-action-item audit-trip" data-id="${esc(t.id)}">History</button>${isAdmin()?'<button class="trip-action-item edit-trip" data-id="'+esc(t.id)+'">Edit</button>':''}${canDeleteTrips()?'<button class="trip-action-item danger-item delete-trip" data-id="'+esc(t.id)+'">Delete</button>':''}</div></div></td>`:""}
+ ${actions?`<td class="actions compact-actions"><div class="trip-action-menu"><button class="secondary trip-actions-toggle" type="button" data-id="${esc(t.id)}" aria-expanded="false">Actions <span>▾</span></button><div class="trip-actions-panel hidden" data-menu-for="${esc(t.id)}"><button class="trip-action-item status-btn" data-id="${esc(t.id)}">Status</button>${isTripOpenStatus(t.status)&&canCreateTrips()?'<button class="trip-action-item close-trip" data-id="'+esc(t.id)+'">Close Trip</button>':''}<button class="trip-action-item docs-trip" data-id="${esc(t.id)}">Documents${(t.attachments||[]).length?` (${(t.attachments||[]).length})`:""}</button><button class="trip-action-item audit-trip" data-id="${esc(t.id)}">History</button>${isAdmin()?'<button class="trip-action-item edit-trip" data-id="'+esc(t.id)+'">Edit</button>':''}${canDeleteTrips()?'<button class="trip-action-item danger-item delete-trip" data-id="'+esc(t.id)+'">Delete</button>':''}</div></div></td>`:""}
  </tr>`).join("")}</tbody></table></div>`;
 }
 
@@ -1504,6 +1504,7 @@ function wireTripButtons(){
    btn.setAttribute("aria-expanded",opening?"true":"false");
  });
  document.querySelectorAll(".status-btn").forEach(b=>b.onclick=()=>{closeTripActionMenus();openStatus(b.dataset.id);});
+ document.querySelectorAll(".close-trip").forEach(b=>b.onclick=()=>{closeTripActionMenus();closeTrip(b.dataset.id);});
  document.querySelectorAll(".delete-trip").forEach(b=>b.onclick=()=>{closeTripActionMenus();deleteTrip(b.dataset.id);});
  document.querySelectorAll(".edit-trip").forEach(b=>b.onclick=()=>{closeTripActionMenus();openEditTrip(b.dataset.id);});
  document.querySelectorAll(".audit-trip").forEach(b=>b.onclick=()=>{closeTripActionMenus();openTripAudit(b.dataset.id);});
@@ -1604,6 +1605,28 @@ function openStatus(id){
    m.remove();toast("Trip status updated");
  };
 }
+async function closeTrip(id){
+ const t=state.trips.find(x=>x.id===id);if(!t)return;
+ if(!isTripOpenStatus(t.status)){toast("Trip is already closed");return;}
+ if(!confirm("Close "+displayTripNumber(t)+"? The vehicle "+(t.vehicle||"")+" will become available for a new trip."))return;
+ const now=Date.now();
+ const patch={
+   status:"Completed",
+   tripClosed:true,
+   closedAt:now,
+   closedBy:state.profile.username,
+   closedByEmail:state.profile.loginEmail,
+   statusUpdatedBy:state.profile.username,
+   statusUpdatedByEmail:state.profile.loginEmail,
+   statusUpdatedAt:now
+ };
+ await persistTrip(id,patch,true,"CLOSE");
+ state.trips=state.trips.map(x=>x.id===id?calcTrip({...x,...patch,updatedAt:now}):x);
+ await createLiveNotification("Trip Closed",displayTripNumber(t)+" · "+(t.vehicle||"Vehicle")+" is now available for a new trip",id,"trip_status");
+ render();
+ toast("Trip closed. "+(t.vehicle||"Vehicle")+" is available for a new trip.");
+}
+
 async function deleteTrip(id){
  if(!confirm("Delete this trip permanently?"))return;
  const t=state.trips.find(x=>x.id===id);
