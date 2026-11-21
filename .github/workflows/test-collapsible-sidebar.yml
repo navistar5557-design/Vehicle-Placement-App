@@ -6,6 +6,7 @@ on:
       - feature/collapsible-sidebar
       - fix/smoother-sidebar-animation
       - fix/sidebar-edge-toggle
+      - fix/center-operations-collapsed
     paths:
       - 'web/**'
       - '.github/workflows/test-collapsible-sidebar.yml'
@@ -28,3 +29,5 @@ jobs:
         run: node web/other-expense-test.mjs
       - name: Run sidebar toggle tests
         run: node web/sidebar-toggle-test.mjs
+      - name: Run dashboard operations header layout tests
+        run: node web/dashboard-ops-layout-test.mjs
