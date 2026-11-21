@@ -69,6 +69,6 @@ assert.equal(context.monthKpiRows("lowMargin").length,2);
 assert.ok(context.monthKpiRows("delayed").some(t=>t.id==="A"),"Delayed KPI should include the overdue active trip");
 
 const searchRows=context.monthlyKpiFilterRows("trips","KA03","","");
-assert.deepEqual(searchRows.map(x=>x.id),["C"],"Vehicle search should filter Monthly KPI rows");
+assert.equal(searchRows.map(x=>x.id).join(","),"C","Vehicle search should filter Monthly KPI rows");
 
 console.log("Monthly KPI double-click drilldown tests passed.");
