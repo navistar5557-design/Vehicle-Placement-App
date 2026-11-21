@@ -20,11 +20,17 @@ assert.ok(js.includes('if(sidebarIsMobile()) closeMobileSidebar(); else syncSide
 assert.ok(js.includes('e.key==="Escape"&&sidebarIsMobile()'),"Escape close behavior missing");
 
 assert.ok(css.includes('.app.sidebar-collapsed{'),"desktop collapsed layout missing");
-assert.ok(css.includes('grid-template-columns:0 minmax(0,1fr)'),"collapsed layout must release sidebar width");
+assert.ok(css.includes('.app.sidebar-collapsed .main'),"collapsed layout must expand the main area");
+assert.ok(css.includes('margin-left:0'),"collapsed main area must release sidebar space");
 assert.ok(css.includes('.app.sidebar-collapsed .sidebar'),"collapsed sidebar state missing");
 assert.ok(css.includes('.sidebar-backdrop.open'),"mobile backdrop open state missing");
 assert.ok(css.includes('.sidebar.open'),"mobile drawer open state missing");
-assert.ok(css.includes('transition:grid-template-columns .28s'),"main layout animation should be 280ms");
+assert.equal(css.includes('transition:grid-template-columns .28s'),false,"grid-column animation should not be used because it causes expensive table reflow");
+assert.ok(css.includes('transform:translate3d(-102%,0,0)'),"desktop sidebar should use GPU-accelerated translate3d");
+assert.ok(css.includes('transition:margin-left .28s'),"main content resize should use a single 280ms margin transition");
+assert.ok(css.includes('will-change:transform'),"sidebar should be promoted for smoother transform animation");
+assert.ok(js.includes('function beginSidebarMotion()'),"sidebar motion optimization helper missing");
+assert.ok(js.includes('app.classList.add("sidebar-motion")'),"sidebar motion optimization class must be applied");
 assert.ok(css.includes('body.sidebar-drawer-open{overflow:hidden}'),"mobile background scroll lock missing");
 
 console.log("Collapsible sidebar checks passed.");
