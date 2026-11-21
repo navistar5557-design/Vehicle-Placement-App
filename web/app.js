@@ -19,7 +19,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const WEB_VERSION = "0.4.39";
+const WEB_VERSION = "0.4.40";
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));
@@ -948,27 +948,36 @@ function restoreStandardTopbar(){
  }
  search?.classList.remove("dashboard-relocated-search");
 }
+function currentMonthOperationsSummary(){
+ const now=new Date();
+ const start=new Date(now.getFullYear(),now.getMonth(),1).getTime();
+ const end=new Date(now.getFullYear(),now.getMonth()+1,1).getTime();
+ const trips=state.trips.filter(t=>{
+   const created=Number(t.createdAt||0);
+   return created>=start&&created<end;
+ });
+ const active=trips.filter(t=>isTripOpenStatus(t.status)).length;
+ const transit=trips.filter(t=>t.status==="In Transit").length;
+ const completed=trips.filter(t=>t.status==="Completed").length;
+ const revenue=trips.reduce((sum,t)=>sum+Number(t.freight||0),0);
+ const margin=trips.reduce((sum,t)=>sum+Number(t.margin||0),0);
+ const low=trips.filter(t=>Number(t.margin||0)<0||Number(t.marginPercent||0)<Number(state.minMarginPercent||10)).length;
+ const delayed=trips.filter(t=>isTripOpenStatus(t.status)&&Number(t.transitHours||0)>0&&Number(t.createdAt||0)+Number(t.transitHours||0)*3600000<Date.now()).length;
+ return {trips,active,transit,completed,revenue,margin,low,delayed,start,end};
+}
 function dashboardHeaderSummaryHtml(){
- const start=new Date();start.setHours(0,0,0,0);
- const today=state.trips.filter(t=>Number(t.createdAt||0)>=start.getTime());
- const active=state.trips.filter(t=>isTripOpenStatus(t.status)).length;
- const transit=state.trips.filter(t=>t.status==="In Transit").length;
- const completed=state.trips.filter(t=>t.status==="Completed"&&Number(t.statusUpdatedAt||0)>=start.getTime()).length;
- const revenue=today.reduce((sum,t)=>sum+Number(t.freight||0),0);
- const margin=today.reduce((sum,t)=>sum+Number(t.margin||0),0);
- const low=today.filter(t=>Number(t.margin||0)<0||Number(t.marginPercent||0)<Number(state.minMarginPercent||10)).length;
- const delayed=state.trips.filter(t=>isTripOpenStatus(t.status)&&Number(t.transitHours||0)>0&&Number(t.createdAt||0)+Number(t.transitHours||0)*3600000<Date.now()).length;
+ const summary=currentMonthOperationsSummary();
  return `<div class="header-ops-summary">
-   <div class="header-ops-title"><span>☀</span><strong>Today's Operations</strong><button id="copyDailySummary" class="text-link" type="button">Copy</button></div>
+   <div class="header-ops-title"><span>▦</span><strong>Monthly Operations</strong><button id="copyDailySummary" class="text-link" type="button">Copy</button></div>
    <div class="header-ops-metrics">
-     <div><span>Trips</span><b>${today.length}</b></div>
-     <div><span>Active</span><b>${active}</b></div>
-     <div><span>Transit</span><b>${transit}</b></div>
-     <div><span>Completed</span><b>${completed}</b></div>
-     <div class="ops-revenue"><span>Revenue</span><b>₹ ${money(revenue)}</b></div>
-     <div class="ops-margin"><span>Margin</span><b class="${margin<0?"negative-value":"positive-value"}">₹ ${money(margin)}</b></div>
-     <div><span>Low Margin</span><b>${low}</b></div>
-     <div><span>Delayed</span><b>${delayed}</b></div>
+     <div><span>Trips</span><b>${summary.trips.length}</b></div>
+     <div><span>Active</span><b>${summary.active}</b></div>
+     <div><span>Transit</span><b>${summary.transit}</b></div>
+     <div><span>Completed</span><b>${summary.completed}</b></div>
+     <div class="ops-revenue"><span>Revenue</span><b>₹ ${money(summary.revenue)}</b></div>
+     <div class="ops-margin"><span>Margin</span><b class="${summary.margin<0?"negative-value":"positive-value"}">₹ ${money(summary.margin)}</b></div>
+     <div><span>Low Margin</span><b>${summary.low}</b></div>
+     <div><span>Delayed</span><b>${summary.delayed}</b></div>
    </div>
  </div>`;
 }
@@ -1554,29 +1563,22 @@ function wireDashboard(){
     el.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openKpi(el.dataset.drill);}});
   });
   $("#copyDailySummary")?.addEventListener("click",async()=>{
-    const start=new Date();start.setHours(0,0,0,0);
-    const today=state.trips.filter(t=>Number(t.createdAt||0)>=start.getTime());
-    const revenue=today.reduce((s,t)=>s+Number(t.freight||0),0);
-    const margin=today.reduce((s,t)=>s+Number(t.margin||0),0);
-    const active=state.trips.filter(t=>isTripOpenStatus(t.status)).length;
-    const transit=state.trips.filter(t=>t.status==="In Transit").length;
-    const completed=state.trips.filter(t=>t.status==="Completed"&&Number(t.statusUpdatedAt||0)>=start.getTime()).length;
-    const low=today.filter(t=>Number(t.margin||0)<0||Number(t.marginPercent||0)<Number(state.minMarginPercent||10)).length;
-    const delayed=state.trips.filter(t=>isTripOpenStatus(t.status)&&Number(t.transitHours||0)>0&&Number(t.createdAt||0)+Number(t.transitHours||0)*3600000<Date.now()).length;
+    const summary=currentMonthOperationsSummary();
+    const period=new Date().toLocaleDateString("en-IN",{month:"long",year:"numeric"});
     const text=[
-      "CUBE Logistics — Daily Operations Summary",
-      new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}),
+      "CUBE Logistics — Monthly Operations Summary",
+      period,
       "",
-      "Trips Created: "+today.length,
-      "Active Trips: "+active,
-      "In Transit: "+transit,
-      "Completed Today: "+completed,
-      "Revenue: ₹"+money(revenue),
-      "Margin: ₹"+money(margin),
-      "Low Margin Trips: "+low,
-      "Delayed Trips: "+delayed
+      "Trips Created: "+summary.trips.length,
+      "Active Trips: "+summary.active,
+      "In Transit: "+summary.transit,
+      "Completed: "+summary.completed,
+      "Revenue: ₹"+money(summary.revenue),
+      "Margin: ₹"+money(summary.margin),
+      "Low Margin Trips: "+summary.low,
+      "Delayed Trips: "+summary.delayed
     ].join("\n");
-    try{await navigator.clipboard.writeText(text);toast("Daily summary copied");}
+    try{await navigator.clipboard.writeText(text);toast("Monthly summary copied");}
     catch{toast("Unable to copy summary");}
   });
 }
