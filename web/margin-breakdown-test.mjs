@@ -32,7 +32,7 @@ function verify(name,trip,expectedSign){
 
   assert.ok(Number.isFinite(breakdown.margin),name+": margin must be finite");
   assert.ok(Number.isFinite(breakdown.marginPercent),name+": margin % must be finite");
-  assert.equal(breakdown.totalRevenue,calculated.freight,name+": revenue must equal freight");
+  assert.ok(Math.abs(breakdown.totalRevenue-(calculated.margin+calculated.totalExpenses))<0.0001,name+": revenue must equal the freight basis used by calcTrip");
   assert.ok(Math.abs(breakdown.totalExpenses-calculated.totalExpenses)<0.0001,name+": total expenses must match calcTrip");
   assert.ok(Math.abs(rowTotal-calculated.totalExpenses)<0.0001,name+": displayed expense rows must sum to calcTrip total");
   assert.ok(Math.abs(breakdown.margin-calculated.margin)<0.0001,name+": net margin must match calcTrip");
