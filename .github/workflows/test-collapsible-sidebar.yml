@@ -5,6 +5,7 @@ on:
     branches:
       - feature/collapsible-sidebar
       - fix/smoother-sidebar-animation
+      - fix/sidebar-edge-toggle
     paths:
       - 'web/**'
       - '.github/workflows/test-collapsible-sidebar.yml'
