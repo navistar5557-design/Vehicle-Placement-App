@@ -4670,6 +4670,6 @@ html[data-theme="dark"] #loginView.login-page{
 /* v0.4.38 nudge Today's Operations slightly left */
 @media(min-width:901px){
   .dashboard-header-summary{
-    transform:translateX(calc(-50% - 26px));
+    transform:translateX(calc(-50% - 44px));
   }
 }

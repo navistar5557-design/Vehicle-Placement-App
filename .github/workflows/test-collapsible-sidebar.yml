@@ -10,6 +10,7 @@ on:
       - fix/top-center-operations
       - fix/top-actions-right
       - fix/operations-slight-left
+      - fix/operations-further-left
     paths:
       - 'web/**'
       - '.github/workflows/test-collapsible-sidebar.yml'
