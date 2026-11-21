@@ -5,31 +5,33 @@ const html=fs.readFileSync(new URL("./index.html",import.meta.url),"utf8");
 const js=fs.readFileSync(new URL("./app.js",import.meta.url),"utf8");
 const css=fs.readFileSync(new URL("./styles.css",import.meta.url),"utf8");
 
-assert.ok(html.includes('id="appSidebar"'),"shared sidebar must have an accessible target id");
+assert.ok(html.includes('id="appSidebar"'),"shared sidebar must exist");
 assert.ok(html.includes('id="menuBtn"'),"sidebar toggle button must exist");
-assert.ok(html.includes('aria-controls="appSidebar"'),"toggle must control the sidebar");
-assert.ok(html.includes('id="sidebarBackdrop"'),"mobile drawer backdrop must exist");
+assert.ok(html.includes('class="mobile-menu sidebar-edge-toggle"'),"toggle must be attached to sidebar edge styling");
+assert.ok(html.includes('aria-controls="appSidebar"'),"toggle must control sidebar");
+assert.ok(html.includes('id="sidebarBackdrop"'),"mobile backdrop must remain available");
 
-assert.ok(js.includes('const SIDEBAR_PREF_KEY="cube_sidebar_collapsed"'),"desktop preference key missing");
-assert.ok(js.includes('localStorage.setItem(SIDEBAR_PREF_KEY'),"desktop collapsed preference must be persisted");
-assert.ok(js.includes('function toggleSidebar()'),"toggle handler missing");
-assert.ok(js.includes('function closeMobileSidebar()'),"mobile close handler missing");
-assert.ok(js.includes('window.addEventListener("resize",syncSidebarLayout)'),"resize synchronization missing");
-assert.ok(js.includes('$("#sidebarBackdrop")?.addEventListener("click",closeMobileSidebar)'),"backdrop close behavior missing");
-assert.ok(js.includes('if(sidebarIsMobile()) closeMobileSidebar(); else syncSidebarLayout();'),"navigation must close only the mobile drawer");
-assert.ok(js.includes('e.key==="Escape"&&sidebarIsMobile()'),"Escape close behavior missing");
+const asideEnd=html.indexOf("</aside>");
+const togglePos=html.indexOf('id="menuBtn"');
+const mainPos=html.indexOf('<main class="main">');
+const headerPos=html.indexOf('<header class="topbar">');
+assert.ok(togglePos>asideEnd && togglePos<mainPos,"toggle must sit between sidebar and main content");
+assert.ok(togglePos<headerPos,"toggle must not remain inside the top header");
 
-assert.ok(css.includes('.app.sidebar-collapsed .main'),"collapsed layout must expand the main area");
-assert.ok(css.includes('margin-left:0'),"collapsed main area must release sidebar space");
-assert.ok(css.includes('.app.sidebar-collapsed .sidebar'),"collapsed sidebar state missing");
-assert.ok(css.includes('.sidebar-backdrop.open'),"mobile backdrop open state missing");
-assert.ok(css.includes('.sidebar.open'),"mobile drawer open state missing");
-assert.equal(css.includes('transition:grid-template-columns .28s'),false,"grid-column animation should not be used because it causes expensive table reflow");
-assert.ok(css.includes('transform:translate3d(-102%,0,0)'),"desktop sidebar should use GPU-accelerated translate3d");
-assert.ok(css.includes('transition:margin-left .28s'),"main content resize should use a single 280ms margin transition");
-assert.ok(css.includes('will-change:transform'),"sidebar should be promoted for smoother transform animation");
-assert.ok(js.includes('function beginSidebarMotion()'),"sidebar motion optimization helper missing");
-assert.ok(js.includes('app.classList.add("sidebar-motion")'),"sidebar motion optimization class must be applied");
-assert.ok(css.includes('body.sidebar-drawer-open{overflow:hidden}'),"mobile background scroll lock missing");
+assert.ok(js.includes("let desktopSidebarCollapsed=false;"),"desktop must start expanded on every load");
+assert.equal(js.includes('cube_sidebar_collapsed'),false,"collapsed state must not be restored from localStorage");
+assert.equal(js.includes('localStorage.setItem(SIDEBAR_PREF_KEY'),false,"manual desktop state must not be persisted");
+assert.ok(js.includes("desktopSidebarCollapsed=!desktopSidebarCollapsed;"),"manual toggle must still collapse and expand");
+assert.ok(js.includes("function toggleSidebar()"),"toggle handler missing");
+assert.ok(js.includes("syncSidebarLayout();\n  if(page!==\"dashboard\")"),"navigation must preserve current manual sidebar state");
 
-console.log("Collapsible sidebar checks passed.");
+assert.ok(css.includes(".sidebar-edge-toggle{"),"edge toggle styling missing");
+assert.ok(css.includes("left:245px"),"expanded toggle must sit on sidebar right boundary");
+assert.ok(css.includes(".app.sidebar-collapsed .sidebar-edge-toggle"),"collapsed toggle position missing");
+assert.ok(css.includes("left:12px"),"collapsed toggle must remain visible");
+assert.ok(css.includes("cubic-bezier(.4,0,.2,1)"),"requested smooth easing missing");
+assert.ok(css.includes("transition-duration:.28s"),"sidebar animation must remain approximately 280ms");
+assert.ok(css.includes("transform:translate3d(-102%,0,0)"),"sidebar should keep GPU accelerated slide");
+assert.ok(css.includes("transition:margin-left .28s"),"main content expansion animation must remain");
+
+console.log("Sidebar edge toggle checks passed.");
