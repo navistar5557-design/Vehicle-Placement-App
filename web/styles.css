@@ -4469,3 +4469,5 @@ html[data-theme="dark"] #loginView.login-page{
     transition-duration:.01ms!important;
   }
 }
+
+@media(max-width:980px){body.sidebar-drawer-open{overflow:hidden}}
