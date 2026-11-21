@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/collapsible-sidebar
+      - fix/smoother-sidebar-animation
     paths:
       - 'web/**'
       - '.github/workflows/test-collapsible-sidebar.yml'

@@ -19,7 +19,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const WEB_VERSION = "0.4.32";
+const WEB_VERSION = "0.4.33";
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));
@@ -681,9 +681,18 @@ function closeMobileSidebar(){
   if(sidebarIsMobile())sidebar?.classList.remove("open");
   syncSidebarLayout();
 }
+let sidebarMotionTimer=0;
+function beginSidebarMotion(){
+  const app=$("#appView");
+  if(!app)return;
+  app.classList.add("sidebar-motion");
+  clearTimeout(sidebarMotionTimer);
+  sidebarMotionTimer=setTimeout(()=>app.classList.remove("sidebar-motion"),320);
+}
 function toggleSidebar(){
   const sidebar=$("#appSidebar");
   if(!sidebar)return;
+  beginSidebarMotion();
   if(sidebarIsMobile()){
     sidebar.classList.toggle("open");
   }else{
