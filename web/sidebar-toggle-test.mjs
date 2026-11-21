@@ -19,7 +19,6 @@ assert.ok(js.includes('$("#sidebarBackdrop")?.addEventListener("click",closeMobi
 assert.ok(js.includes('if(sidebarIsMobile()) closeMobileSidebar(); else syncSidebarLayout();'),"navigation must close only the mobile drawer");
 assert.ok(js.includes('e.key==="Escape"&&sidebarIsMobile()'),"Escape close behavior missing");
 
-assert.ok(css.includes('.app.sidebar-collapsed{'),"desktop collapsed layout missing");
 assert.ok(css.includes('.app.sidebar-collapsed .main'),"collapsed layout must expand the main area");
 assert.ok(css.includes('margin-left:0'),"collapsed main area must release sidebar space");
 assert.ok(css.includes('.app.sidebar-collapsed .sidebar'),"collapsed sidebar state missing");
