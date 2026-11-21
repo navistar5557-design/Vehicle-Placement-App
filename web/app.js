@@ -19,7 +19,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const WEB_VERSION = "0.4.31";
+const WEB_VERSION = "0.4.32";
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));
@@ -454,6 +454,7 @@ function startLiveSync(){
 
 async function showApp(){
   $("#loginView").classList.add("hidden"); $("#appView").classList.remove("hidden");
+  syncSidebarLayout();
   const avatar=$("#topAvatar"); if(avatar) avatar.textContent=(state.profile.username||"CU").trim().slice(0,2).toUpperCase();
   const topUserName=$("#topUserName"); if(topUserName) topUserName.textContent=state.profile.username||"User";
   const topUserRole=$("#topUserRole"); if(topUserRole) topUserRole.textContent=state.role.name||state.profile.roleId||"User";
@@ -476,6 +477,9 @@ async function showApp(){
 }
 function showLogin(){
  state.settingsLoaded=false;state.settingsRoles=[];state.settingsUsers=[];
+ $("#appSidebar")?.classList.remove("open");
+ $("#sidebarBackdrop")?.classList.remove("open");
+ document.body.classList.remove("sidebar-drawer-open");
  $("#profileMenu")?.classList.add("hidden");
  $("#profileMenuBtn")?.setAttribute("aria-expanded","false");
  $("#appView").classList.add("hidden"); $("#loginView").classList.remove("hidden");
@@ -623,8 +627,78 @@ window.addEventListener("online",()=>{setSync("Reconnecting...",true,"connecting
 document.addEventListener("keydown",e=>{
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();$("#globalSearch")?.focus();}
 });
-$("#menuBtn").addEventListener("click",()=>$("#menuBtn").setAttribute("aria-expanded",$(".sidebar").classList.toggle("open")));
+const SIDEBAR_PREF_KEY="cube_sidebar_collapsed";
+const SIDEBAR_BREAKPOINT=980;
+let desktopSidebarCollapsed=localStorage.getItem(SIDEBAR_PREF_KEY)==="1";
+
+function sidebarIsMobile(){
+  return window.matchMedia("(max-width: "+SIDEBAR_BREAKPOINT+"px)").matches;
+}
+function updateSidebarToggleButton(){
+  const btn=$("#menuBtn");
+  const sidebar=$("#appSidebar");
+  if(!btn||!sidebar)return;
+
+  if(sidebarIsMobile()){
+    const open=sidebar.classList.contains("open");
+    btn.setAttribute("aria-expanded",String(open));
+    btn.setAttribute("aria-label",open?"Hide Menu":"Show Menu");
+    btn.title=open?"Hide Menu":"Show Menu";
+    btn.classList.toggle("is-collapsed",!open);
+    const icon=btn.querySelector(".menu-icon");
+    if(icon)icon.textContent=open?"×":"☰";
+  }else{
+    const visible=!desktopSidebarCollapsed;
+    btn.setAttribute("aria-expanded",String(visible));
+    btn.setAttribute("aria-label",visible?"Hide Menu":"Show Menu");
+    btn.title=visible?"Hide Menu":"Show Menu";
+    btn.classList.toggle("is-collapsed",!visible);
+    const icon=btn.querySelector(".menu-icon");
+    if(icon)icon.textContent=visible?"☰":"»";
+  }
+}
+function syncSidebarLayout(){
+  const app=$("#appView");
+  const sidebar=$("#appSidebar");
+  const backdrop=$("#sidebarBackdrop");
+  if(!app||!sidebar)return;
+
+  if(sidebarIsMobile()){
+    app.classList.remove("sidebar-collapsed");
+    const open=sidebar.classList.contains("open");
+    backdrop?.classList.toggle("open",open);
+    document.body.classList.toggle("sidebar-drawer-open",open);
+  }else{
+    sidebar.classList.remove("open");
+    backdrop?.classList.remove("open");
+    document.body.classList.remove("sidebar-drawer-open");
+    app.classList.toggle("sidebar-collapsed",desktopSidebarCollapsed);
+  }
+  updateSidebarToggleButton();
+}
+function closeMobileSidebar(){
+  const sidebar=$("#appSidebar");
+  if(sidebarIsMobile())sidebar?.classList.remove("open");
+  syncSidebarLayout();
+}
+function toggleSidebar(){
+  const sidebar=$("#appSidebar");
+  if(!sidebar)return;
+  if(sidebarIsMobile()){
+    sidebar.classList.toggle("open");
+  }else{
+    desktopSidebarCollapsed=!desktopSidebarCollapsed;
+    localStorage.setItem(SIDEBAR_PREF_KEY,desktopSidebarCollapsed?"1":"0");
+  }
+  syncSidebarLayout();
+}
+
+$("#menuBtn").addEventListener("click",toggleSidebar);
+$("#sidebarBackdrop")?.addEventListener("click",closeMobileSidebar);
+window.addEventListener("resize",syncSidebarLayout);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&sidebarIsMobile()&&$("#appSidebar")?.classList.contains("open"))closeMobileSidebar();});
 $("#nav").addEventListener("click",e=>{const b=e.target.closest("[data-page]");if(b)navigate(b.dataset.page);});
+syncSidebarLayout();
 
 
 function rolePermissionSummary(role){
@@ -913,7 +987,7 @@ function navigate(page){
   if(page==="reports"&&!canViewReports()){toast("Your role does not allow Reports");page="dashboard";}
   state.page=page;
   document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
-  $(".sidebar").classList.remove("open"); $("#menuBtn").setAttribute("aria-expanded","false");
+  if(sidebarIsMobile()) closeMobileSidebar(); else syncSidebarLayout();
   if(page!=="dashboard"){
     restoreStandardTopbar();
     const titles={trips:["Trips","Live trip placement and status"],newtrip:["Create Trip","Add a new vehicle placement"],vehicles:["Vehicles","Vehicle master"],vendors:["Vendors","Vendor master"],locations:["Locations","Location master"],reports:["Reports","Operational and profitability summary"],settings:["Settings","Users, roles and access permissions"]};

@@ -1,0 +1,28 @@
+name: Test Collapsible Sidebar
+
+on:
+  push:
+    branches:
+      - feature/collapsible-sidebar
+    paths:
+      - 'web/**'
+      - '.github/workflows/test-collapsible-sidebar.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check web JavaScript syntax
+        run: node --check web/app.js
+      - name: Run Phase 1 smoke tests
+        run: node web/phase1-smoke-test.mjs
+      - name: Run margin breakdown tests
+        run: node web/margin-breakdown-test.mjs
+      - name: Run Other Expense tests
+        run: node web/other-expense-test.mjs
+      - name: Run sidebar toggle tests
+        run: node web/sidebar-toggle-test.mjs

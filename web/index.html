@@ -59,7 +59,7 @@
         </div>
         <div id="loginError" class="error"></div>
       </form>
-      <div class="version">Web v0.4.29</div>
+      <div class="version">Web v0.4.32</div>
       <div class="cinematic-card-wave" aria-hidden="true"></div>
     </div>
 
@@ -73,7 +73,7 @@
   </section>
 
   <div id="appView" class="app hidden">
-    <aside class="sidebar">
+    <aside id="appSidebar" class="sidebar" aria-label="Primary navigation">
       <div class="sidebar-brand">
         <div class="brand-mark" aria-label="CUBE Logistics"><div class="wordmark"><strong>CUBE</strong><span>LOGISTICS</span></div><img src="./cube-pin.svg" alt="" /></div>
         <span>Vehicle Placement</span>
@@ -91,10 +91,11 @@
         <div id="syncState" class="sync-state">● Live Sync</div>
       </div>
     </aside>
+    <button id="sidebarBackdrop" class="sidebar-backdrop" type="button" aria-label="Close navigation menu" tabindex="-1"></button>
 
     <main class="main">
       <header class="topbar">
-        <button id="menuBtn" class="mobile-menu" aria-label="Toggle navigation" aria-controls="nav" aria-expanded="false">☰</button>
+        <button id="menuBtn" class="mobile-menu" type="button" aria-label="Hide Menu" aria-controls="appSidebar" aria-expanded="true" title="Hide Menu"><span class="menu-icon" aria-hidden="true">☰</span></button>
         <div id="topbarTitleBlock" class="topbar-title-block">
           <h2 id="pageTitle">Dashboard</h2>
           <p id="pageSubtitle">Transport operations overview</p>
@@ -129,7 +130,7 @@
               </button>
               <div class="profile-menu-item profile-version" aria-disabled="true">
                 <span class="profile-menu-icon">ⓘ</span>
-                <span><small>Web Version</small><strong id="profileVersion">v0.4.29</strong></span>
+                <span><small>Web Version</small><strong id="profileVersion">v0.4.32</strong></span>
               </div>
               <div class="profile-menu-divider"></div>
               <button id="logoutBtn" class="profile-menu-item logout-menu-item" type="button" role="menuitem">
