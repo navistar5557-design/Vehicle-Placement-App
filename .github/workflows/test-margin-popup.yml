@@ -1,0 +1,25 @@
+name: Test Margin Breakdown Popup
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/margin-breakdown-popup
+    paths:
+      - 'web/**'
+      - '.github/workflows/test-margin-popup.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check web JavaScript syntax
+        run: node --check web/app.js
+      - name: Run existing Phase 1 smoke tests
+        run: node web/phase1-smoke-test.mjs
+      - name: Run margin breakdown calculation scenarios
+        run: node web/margin-breakdown-test.mjs

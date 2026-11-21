@@ -254,6 +254,46 @@ function calcTrip(t){
   };
 }
 
+function tripExpenseBreakdown(t){
+  const trip=calcTrip(t||{});
+  const freight=parseMoneyValue(trip.freight);
+  const rules=Array.isArray(trip.expenseRules)?trip.expenseRules:[];
+  const percentageRows=rules.map((rule,index)=>{
+    const percent=Number(rule?.percent||0);
+    return {
+      key:"rule-"+index,
+      label:String(rule?.name||"Other Expenses"),
+      detail:percent?percent.toFixed(1)+"% of freight":"",
+      value:freight*percent/100
+    };
+  });
+  if(!percentageRows.length){
+    percentageRows.push({key:"other",label:"Other Expenses",detail:"",value:0});
+  }
+  const expenses=[
+    {key:"fuel",label:"Fuel Expenses",detail:"",value:Number(trip.fuelExpense||0)},
+    {key:"toll",label:"Toll Expenses (FASTag)",detail:"",value:parseMoneyValue(trip.fastag)},
+    {key:"loading",label:"Loading Expenses",detail:"",value:Number(trip.loadingExpense||0)},
+    {key:"unloading",label:"Unloading Expenses",detail:"",value:Number(trip.unloadingExpense||0)},
+    {key:"rto",label:"RTO / Tarpaulin",detail:"",value:parseMoneyValue(trip.rtoTarpaulin)},
+    ...percentageRows,
+    {key:"fixed",label:"Fixed / Additional Expenses",detail:"",value:parseMoneyValue(trip.fixedExpenses)}
+  ];
+  const legacy=parseMoneyValue(trip.legacyLoadingUnloadingExpense);
+  if(legacy!==0){
+    expenses.push({key:"legacy-handling",label:"Legacy Loading / Unloading",detail:"",value:legacy});
+  }
+  return {
+    trip,
+    freight,
+    expenses,
+    totalRevenue:freight,
+    totalExpenses:Number(trip.totalExpenses||0),
+    margin:Number(trip.margin||0),
+    marginPercent:Number(trip.marginPercent||0)
+  };
+}
+
 async function loadProfile(user){
   const userDoc=await getDoc(doc(db,"users",user.uid));
   if(!userDoc.exists()) throw new Error("This account is not authorized.");
@@ -855,6 +895,10 @@ function render(){
   if(state.page==="settings"){root.innerHTML=settingsHtml();wireSettings();}
   root.classList.remove("page-enter");
   requestAnimationFrame(()=>requestAnimationFrame(()=>root.classList.add("page-enter")));
+  if(activeMarginPopover){
+    if(state.page==="trips") refreshActiveMarginBreakdown();
+    else closeMarginBreakdown();
+  }
 }
 
 function getPeriodRange(filter,customFrom="",customTo=""){
@@ -1419,7 +1463,7 @@ function tripTable(rows,actions=true){
  if(!rows.length)return '<div class="card empty">No trips available.</div>';
  return `<div class="table-wrap"><table><thead><tr><th>Trip ID</th><th>Date</th><th>Vehicle</th><th>Route</th><th>Vendor</th><th>Status</th><th>Freight</th><th>Margin</th><th>Audit</th>${actions?"<th>Actions</th>":""}</tr></thead><tbody>${rows.map(t=>`<tr>
  <td><strong class="trip-number">${esc(displayTripNumber(t))}</strong></td><td>${esc(dateTime(t.createdAt))}</td><td><strong>${esc(t.vehicle)}</strong></td><td>${esc(t.from)} → ${esc(t.to)}</td><td>${esc(t.vendor)}</td><td>${statusBadge(t.status)}</td>
- <td>₹ ${money(t.freight)}</td><td>₹ ${money(t.margin)} (${Number(t.marginPercent||0).toFixed(1)}%)</td>
+ <td>₹ ${money(t.freight)}</td><td><button type="button" class="margin-breakdown-trigger" data-id="${esc(t.id)}" aria-haspopup="dialog" aria-expanded="false" aria-label="View margin breakdown for ${esc(displayTripNumber(t))}">₹ ${money(t.margin)} <span>(${Number(t.marginPercent||0).toFixed(1)}%)</span></button></td>
  <td><div class="audit">Created: ${esc(t.createdBy||t.createdByEmail||"Legacy")}</div><div class="audit">Status: ${esc(t.statusUpdatedBy||t.statusUpdatedByEmail||"-")} · ${esc(dateTime(t.statusUpdatedAt))}</div></td>
  ${actions?`<td class="actions compact-actions"><div class="trip-action-menu"><button class="secondary trip-actions-toggle" type="button" data-id="${esc(t.id)}" aria-expanded="false">Actions <span>▾</span></button><div class="trip-actions-panel hidden" data-menu-for="${esc(t.id)}"><button class="trip-action-item status-btn" data-id="${esc(t.id)}">Status</button>${isTripOpenStatus(t.status)&&canCreateTrips()?'<button class="trip-action-item close-trip" data-id="'+esc(t.id)+'">Close Trip</button>':''}<button class="trip-action-item docs-trip" data-id="${esc(t.id)}">Documents${(t.attachments||[]).length?` (${(t.attachments||[]).length})`:""}</button><button class="trip-action-item audit-trip" data-id="${esc(t.id)}">History</button>${isAdmin()?'<button class="trip-action-item edit-trip" data-id="'+esc(t.id)+'">Edit</button>':''}${canDeleteTrips()?'<button class="trip-action-item danger-item delete-trip" data-id="'+esc(t.id)+'">Delete</button>':''}</div></div></td>`:""}
  </tr>`).join("")}</tbody></table></div>`;
@@ -1464,6 +1508,7 @@ function wireTrips(){
        &&created>=fromMs&&created<=toMs
        &&(!q||haystack.includes(q));
    });
+   closeMarginBreakdown();
    $("#tripTableHost").innerHTML=tripTable(rows);
    const count=$("#tripResultCount");if(count)count.textContent=rows.length+" trip"+(rows.length===1?"":"s");
    wireTripButtons();
@@ -1503,12 +1548,134 @@ function wireTripButtons(){
    panel.classList.toggle("hidden",!opening);
    btn.setAttribute("aria-expanded",opening?"true":"false");
  });
+ document.querySelectorAll(".margin-breakdown-trigger").forEach(b=>b.onclick=e=>{e.stopPropagation();openMarginBreakdown(b.dataset.id,b);});
  document.querySelectorAll(".status-btn").forEach(b=>b.onclick=()=>{closeTripActionMenus();openStatus(b.dataset.id);});
  document.querySelectorAll(".close-trip").forEach(b=>b.onclick=()=>{closeTripActionMenus();closeTrip(b.dataset.id);});
  document.querySelectorAll(".delete-trip").forEach(b=>b.onclick=()=>{closeTripActionMenus();deleteTrip(b.dataset.id);});
  document.querySelectorAll(".edit-trip").forEach(b=>b.onclick=()=>{closeTripActionMenus();openEditTrip(b.dataset.id);});
  document.querySelectorAll(".audit-trip").forEach(b=>b.onclick=()=>{closeTripActionMenus();openTripAudit(b.dataset.id);});
  document.querySelectorAll(".docs-trip").forEach(b=>b.onclick=()=>{closeTripActionMenus();openTripDocuments(b.dataset.id);});
+}
+
+
+let activeMarginPopover=null;
+let activeMarginTrigger=null;
+let activeMarginTripId="";
+
+function marginMoney(value,{expense=false,showPlus=false}={}){
+  const n=Number(value||0);
+  const abs=money(Math.abs(n));
+  if(expense){
+    if(n<0)return {text:"+₹ "+abs,cls:"positive"};
+    return {text:"−₹ "+abs,cls:"negative"};
+  }
+  if(n<0)return {text:"−₹ "+abs,cls:"negative"};
+  return {text:(showPlus?"+":"")+"₹ "+abs,cls:"positive"};
+}
+function marginPercentView(value){
+  const n=Number(value||0);
+  return {text:(Number.isFinite(n)?n:0).toFixed(1)+"%",cls:n<0?"negative":"positive"};
+}
+function marginBreakdownMarkup(t){
+  const b=tripExpenseBreakdown(t);
+  const revenue=marginMoney(b.totalRevenue,{showPlus:true});
+  const totalExpense=marginMoney(b.totalExpenses,{expense:true});
+  const net=marginMoney(b.margin);
+  const pct=marginPercentView(b.marginPercent);
+  return `
+    <div class="margin-popover-head">
+      <div><h4>Margin Breakdown</h4><p>${esc(b.trip.vehicle||"-")} · Trip ${esc(displayTripNumber(b.trip))}</p></div>
+      <button type="button" class="margin-popover-close" aria-label="Close margin breakdown">×</button>
+    </div>
+    <div class="margin-popover-section">
+      <div class="margin-popover-row revenue-row"><span>Total Freight Amount</span><strong class="${revenue.cls}">${revenue.text}</strong></div>
+    </div>
+    <div class="margin-popover-section expenses-section">
+      <div class="margin-popover-caption">Expense Breakdown</div>
+      ${b.expenses.map(row=>{
+        const amt=marginMoney(row.value,{expense:true});
+        return `<div class="margin-popover-row"><span>${esc(row.label)}${row.detail?`<small>${esc(row.detail)}</small>`:""}</span><strong class="${amt.cls}">${amt.text}</strong></div>`;
+      }).join("")}
+    </div>
+    <div class="margin-popover-section totals-section">
+      <div class="margin-popover-row"><span>Total Revenue</span><strong class="${revenue.cls}">${revenue.text}</strong></div>
+      <div class="margin-popover-row"><span>Total Expenses</span><strong class="${totalExpense.cls}">${totalExpense.text}</strong></div>
+    </div>
+    <div class="margin-popover-section net-section">
+      <div class="margin-popover-row net-margin-row"><span>Net Margin</span><strong class="${net.cls}">${net.text}</strong></div>
+      <div class="margin-popover-row margin-percent-row"><span>Margin Percentage</span><strong class="${pct.cls}">${pct.text}</strong></div>
+    </div>`;
+}
+function positionMarginBreakdown(){
+  if(!activeMarginPopover||!activeMarginTrigger||!document.body.contains(activeMarginTrigger))return;
+  const gap=8,edge=12;
+  const triggerRect=activeMarginTrigger.getBoundingClientRect();
+  const popRect=activeMarginPopover.getBoundingClientRect();
+  let left=triggerRect.left+triggerRect.width/2-popRect.width/2;
+  left=Math.max(edge,Math.min(left,window.innerWidth-popRect.width-edge));
+  let top=triggerRect.bottom+gap;
+  if(top+popRect.height>window.innerHeight-edge){
+    top=triggerRect.top-popRect.height-gap;
+  }
+  top=Math.max(edge,Math.min(top,window.innerHeight-popRect.height-edge));
+  activeMarginPopover.style.left=Math.round(left)+"px";
+  activeMarginPopover.style.top=Math.round(top)+"px";
+}
+function closeMarginBreakdown(){
+  if(activeMarginTrigger)activeMarginTrigger.setAttribute("aria-expanded","false");
+  if(activeMarginPopover){
+    activeMarginPopover.classList.remove("open");
+    const old=activeMarginPopover;
+    setTimeout(()=>old.remove(),140);
+  }
+  activeMarginPopover=null;
+  activeMarginTrigger=null;
+  activeMarginTripId="";
+}
+function openMarginBreakdown(id,trigger){
+  const t=state.trips.find(x=>x.id===id);if(!t)return;
+  if(activeMarginTripId===id&&activeMarginPopover){closeMarginBreakdown();return;}
+  closeMarginBreakdown();
+  activeMarginTripId=id;
+  activeMarginTrigger=trigger;
+  trigger.setAttribute("aria-expanded","true");
+  const pop=document.createElement("div");
+  pop.className="margin-breakdown-popover";
+  pop.setAttribute("role","dialog");
+  pop.setAttribute("aria-label","Margin breakdown");
+  pop.dataset.tripId=id;
+  pop.innerHTML=marginBreakdownMarkup(t);
+  document.body.appendChild(pop);
+  activeMarginPopover=pop;
+  pop.querySelector(".margin-popover-close")?.addEventListener("click",e=>{e.stopPropagation();closeMarginBreakdown();});
+  requestAnimationFrame(()=>{
+    positionMarginBreakdown();
+    requestAnimationFrame(()=>pop.classList.add("open"));
+  });
+}
+function refreshActiveMarginBreakdown(){
+  if(!activeMarginPopover||!activeMarginTripId)return;
+  const trip=state.trips.find(x=>x.id===activeMarginTripId);
+  if(!trip){closeMarginBreakdown();return;}
+  const replacementTrigger=document.querySelector('.margin-breakdown-trigger[data-id="'+CSS.escape(activeMarginTripId)+'"]');
+  if(replacementTrigger){
+    activeMarginTrigger=replacementTrigger;
+    activeMarginTrigger.setAttribute("aria-expanded","true");
+  }
+  activeMarginPopover.innerHTML=marginBreakdownMarkup(trip);
+  activeMarginPopover.querySelector(".margin-popover-close")?.addEventListener("click",e=>{e.stopPropagation();closeMarginBreakdown();});
+  requestAnimationFrame(positionMarginBreakdown);
+}
+if(!document.documentElement.dataset.marginPopoverHandlers){
+  document.documentElement.dataset.marginPopoverHandlers="1";
+  document.addEventListener("pointerdown",e=>{
+    if(!activeMarginPopover)return;
+    if(activeMarginPopover.contains(e.target)||activeMarginTrigger?.contains(e.target))return;
+    closeMarginBreakdown();
+  });
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&activeMarginPopover)closeMarginBreakdown();});
+  window.addEventListener("resize",positionMarginBreakdown);
+  window.addEventListener("scroll",positionMarginBreakdown,true);
 }
 
 async function openTripDocuments(tripId){
