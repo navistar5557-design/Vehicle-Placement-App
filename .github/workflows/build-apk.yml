@@ -2,7 +2,7 @@ name: Test, Build and Smoke Test Android
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, fix/android-login-single-native-form ]
     paths-ignore:
       - 'web/**'
       - '.github/workflows/deploy-web.yml'
@@ -67,4 +67,13 @@ jobs:
             adb shell uiautomator dump /sdcard/cube-window.xml >/dev/null || true
             adb shell cat /sdcard/cube-window.xml | grep -q "Login" || (echo "LOGIN_SCREEN_NOT_VISIBLE"; adb shell cat /sdcard/cube-window.xml || true; exit 1)
             adb shell cat /sdcard/cube-window.xml | grep -q "Password" || (echo "PASSWORD_FIELD_NOT_VISIBLE"; adb shell cat /sdcard/cube-window.xml || true; exit 1)
+            adb shell cat /sdcard/cube-window.xml | grep -q "Vehicle Placement" || (echo "NEW_BRANDING_NOT_VISIBLE"; exit 1)
+            adb shell cat /sdcard/cube-window.xml | grep -q "Sign In" || (echo "SIGN_IN_NOT_VISIBLE"; exit 1)
+            mkdir -p screenshots
+            adb exec-out screencap -p > screenshots/android-login.png
             echo "FIREBASE_LOGIN_SCREEN_OK"
+      - name: Upload actual Android login screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-login-screen
+          path: screenshots/android-login.png
