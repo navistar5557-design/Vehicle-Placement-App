@@ -1,0 +1,15 @@
+import assert from "node:assert/strict";
+import {safeQuestion,cloudReady,createCloudRouter,cloudConfig} from "./gemini-cloud.mjs";
+import {questions} from "./cube-ai.mjs";
+const config={...cloudConfig,enabled:true,sparkVerified:true,appId:"1:123:web:abcdef",recaptchaSiteKey:"test-key-not-a-real-key"};
+assert.equal(cloudReady(cloudConfig),false);assert.ok(cloudReady(config));
+assert.equal(safeQuestion("Could you show me which trucks can take a load?"),"could you show me which trucks can take a load");
+for(const q of ["truck 6821","margin ₹500","vendor shivakrupa","from salem","test@example.com","delete trips","revenue last year",""])assert.equal(safeQuestion(q),null);
+let called=0,authorized=true;
+const make=(cfg=config,key="available")=>createCloudRouter({config:cfg,questions,isAuthorized:()=>authorized,loadModel:async()=>({generateContent:async prompt=>{called++;assert.match(prompt,/Generic question:/);return {response:{text:()=>key}};}})});
+assert.equal(await make(cloudConfig)("which trucks can take a load"),null);assert.equal(called,0);
+assert.equal(await make()("vehicle 6821"),null);assert.equal(called,0);
+assert.equal(await make()("which trucks can take a load"),"available");assert.equal(called,1);
+assert.equal(await make(config,"delete")("which trucks can take a load"),null);
+authorized=false;assert.equal(await make()("which trucks can take a load"),null);
+console.log("Gemini cloud configuration, safe vocabulary, intent allowlist and auth tests passed");

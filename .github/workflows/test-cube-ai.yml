@@ -1,7 +1,7 @@
 name: Test CUBE AI Web
 on:
   push:
-    branches: [feature/cube-ai-web]
+    branches: [feature/cube-ai-web, feature/gemini-firebase-free]
 permissions:
   contents: read
 jobs:
@@ -16,6 +16,7 @@ jobs:
       - run: node web/other-expense-test.mjs
       - run: node web/monthly-kpi-drilldown-test.mjs
       - run: node web/cube-ai-test.mjs
+      - run: node web/gemini-cloud-test.mjs
       - run: npm install --no-save --no-package-lock playwright
       - run: npx playwright install --with-deps chromium
       - run: node web/cube-ai-browser-test.mjs

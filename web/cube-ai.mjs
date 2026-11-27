@@ -83,7 +83,7 @@ export async function modelIntent(question,model){
   return Object.hasOwn(questions,k)?k:null;
  }catch{return null;}finally{try{session?.destroy();}catch{}}
 }
-export function mountCubeAI(getData){
+export function mountCubeAI(getData,cloudRouter=null){
  const el=document.createElement("section");
  el.id="cubeAi";el.hidden=true;
  el.innerHTML='<button class="cube-ai-launch" type="button" aria-expanded="false" aria-controls="cubeAiPanel">✦ CUBE AI</button><section id="cubeAiPanel" class="cube-ai-panel" hidden role="region" aria-label="CUBE AI fleet assistant"><header><div><strong>✦ CUBE AI</strong><small>Read-only fleet assistant</small></div><button type="button" class="cube-ai-close" aria-label="Close assistant">×</button></header><div class="cube-ai-mode"><span>Local analytics · No paid API</span><button type="button" class="cube-ai-enable">Enable on-device AI</button></div><div class="cube-ai-messages" role="log" aria-live="polite"></div><div class="cube-ai-suggestions"></div><form><input aria-label="Ask about your fleet" placeholder="Ask about your fleet…" maxlength="300" required><button type="submit">Ask</button></form><footer>Current month / current fleet · No data changes</footer></section>';
@@ -110,6 +110,7 @@ export function mountCubeAI(getData){
   try{
    let intent=classify(q);
    if(!intent)intent=await modelIntent(q,globalThis.LanguageModel);
+   if(!intent&&cloudRouter&&token===generation&&!el.hidden)intent=await cloudRouter(q);
    if(token!==generation||el.hidden)return;
    const result=answer(intent,getData());
    message(result.title,result.body,result.rows);

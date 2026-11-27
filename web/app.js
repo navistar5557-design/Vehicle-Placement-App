@@ -1,18 +1,20 @@
-import { mountCubeAI } from "./cube-ai.mjs?v=1";
+import { mountCubeAI, questions as cubeAIQuestions } from "./cube-ai.mjs?v=2";
+import { cloudConfig, createCloudRouter, firebaseCloudModel } from "./gemini-cloud.mjs?v=1";
 
-import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
-import { getMessaging, getToken, onMessage, isSupported as messagingSupported } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-messaging.js";
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-storage.js";
+import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { getMessaging, getToken, onMessage, isSupported as messagingSupported } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-messaging.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-storage.js";
 import {
   getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc,
   onSnapshot, query, orderBy, writeBatch, runTransaction
-} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA0AlvGWpiLa9D1aVbPEMuPcnI1M-DmCR4",
   authDomain: "cube-vehicle-placement.firebaseapp.com",
   projectId: "cube-vehicle-placement",
+  ...(cloudConfig.appId ? {appId:cloudConfig.appId} : {}),
   storageBucket: "cube-vehicle-placement.firebasestorage.app"
 };
 
@@ -56,6 +58,7 @@ let state = {
 };
 
 let cubeAIReady={trips:false,vehicles:false};
+const cloudRouter=createCloudRouter({questions:cubeAIQuestions,isAuthorized:()=>!!(state.user&&state.profile&&state.role&&state.user.uid===state.profile.uid),loadModel:firebaseCloudModel(app)});
 const cubeAI=mountCubeAI(()=>{
  const authorized=!!(state.user&&state.profile&&state.role&&state.user.uid===state.profile.uid);
  if(!authorized)return {authorized:false};
@@ -66,7 +69,7 @@ const cubeAI=mountCubeAI(()=>{
   summary:{...summary,trips:summary.trips.map(mapTrip)},
   kpiRows:Object.fromEntries(["active","transit","completed","low","delayed"].map(k=>[k,monthKpiRows(k==="low"?"lowMargin":k).map(mapTrip)])),
   vehicles:state.vehicles.map(v=>({number:v.number,active:v.active,availability:vehicleAvailability(v).key}))};
-});
+},cloudRouter);
 function toast(msg){ const el=$("#toast"); el.textContent=msg; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2200); }
 function setSync(text, ok=true, mode="synced"){
  const el=$("#syncState"); if(!el)return;
