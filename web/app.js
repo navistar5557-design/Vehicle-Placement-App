@@ -1,3 +1,4 @@
+import { mountCubeAI } from "./cube-ai.mjs?v=1";
 
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
@@ -19,7 +20,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const WEB_VERSION = "0.4.41";
+const WEB_VERSION = "0.4.42";
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));
@@ -54,6 +55,18 @@ let state = {
   settingsTab:"users", settingsRoles:[], settingsUsers:[], settingsLoading:false, settingsLoaded:false
 };
 
+let cubeAIReady={trips:false,vehicles:false};
+const cubeAI=mountCubeAI(()=>{
+ const authorized=!!(state.user&&state.profile&&state.role&&state.user.uid===state.profile.uid);
+ if(!authorized)return {authorized:false};
+ const summary=currentMonthOperationsSummary();
+ const mapTrip=t=>({...t,tripNumber:displayTripNumber(t),delay:delayInfo(t).label});
+ return {authorized,canViewReports:canViewReports(),tripsReady:cubeAIReady.trips,vehiclesReady:cubeAIReady.vehicles,
+  period:new Date(summary.start).toLocaleDateString("en-IN",{month:"long",year:"numeric"}),minMarginPercent:state.minMarginPercent,
+  summary:{...summary,trips:summary.trips.map(mapTrip)},
+  kpiRows:Object.fromEntries(["active","transit","completed","low","delayed"].map(k=>[k,monthKpiRows(k==="low"?"lowMargin":k).map(mapTrip)])),
+  vehicles:state.vehicles.map(v=>({number:v.number,active:v.active,availability:vehicleAvailability(v).key}))};
+});
 function toast(msg){ const el=$("#toast"); el.textContent=msg; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2200); }
 function setSync(text, ok=true, mode="synced"){
  const el=$("#syncState"); if(!el)return;
@@ -437,7 +450,7 @@ async function migrateLegacyOtherExpenseToAmount(){
 function startLiveSync(){
   state.unsubs.forEach(f=>f()); state.unsubs=[];
   setSync(navigator.onLine?"Connecting...":"Offline",navigator.onLine,navigator.onLine?"connecting":"offline");
-  const watch=(name,cb)=>state.unsubs.push(onSnapshot(collection(db,name),snap=>{cb(snap.docs.map(d=>({id:d.id,...d.data()}))); syncedNow(); render();},err=>{console.error(err);setSync("Sync error",false,"error");}));
+  const watch=(name,cb)=>state.unsubs.push(onSnapshot(collection(db,name),{includeMetadataChanges:Object.hasOwn(cubeAIReady,name)},snap=>{cb(snap.docs.map(d=>({id:d.id,...d.data()}))); if(Object.hasOwn(cubeAIReady,name))cubeAIReady[name]=!snap.metadata.fromCache&&!snap.metadata.hasPendingWrites; syncedNow(); render();},err=>{if(Object.hasOwn(cubeAIReady,name))cubeAIReady[name]=false;console.error(err);setSync("Sync error",false,"error");}));
   watch("trips",rows=>state.trips=rows.map(calcTrip).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0)));
   watch("vehicles",rows=>state.vehicles=rows.map(x=>({number:x.number||x.id,mileage:Number(x.mileage||0),active:x.active!==false})).sort((a,b)=>a.number.localeCompare(b.number)));
   watch("vendors",rows=>state.vendors=rows.map(x=>({name:x.name||x.id,active:x.active!==false})).sort((a,b)=>a.name.localeCompare(b.name)));
@@ -473,7 +486,7 @@ async function showApp(){
     toast("Existing trip correction could not complete");
   }
 
-  startLiveSync(); navigate("dashboard");
+  startLiveSync(); navigate("dashboard"); cubeAI.show();
 }
 function showLogin(){
  state.settingsLoaded=false;state.settingsRoles=[];state.settingsUsers=[];
@@ -567,6 +580,7 @@ document.querySelector(".forgot-password-web")?.addEventListener("click",async()
 });
 
 onAuthStateChanged(auth,async user=>{
+  cubeAI.hide(); cubeAIReady={trips:false,vehicles:false};
   state.user=user;
   if(!user){state.profile=null;state.role=null;state.unsubs.forEach(f=>f());state.unsubs=[];showLogin();return;}
   try{await loadProfile(user);await showApp();}catch(e){await signOut(auth);$("#loginError").textContent=e.message;}
