@@ -23,8 +23,11 @@ try{
  assert.equal(await page.locator("#cubeAi").isVisible(),false);
  await page.evaluate(()=>window.widget.show());
  await page.getByRole("button",{name:"CUBE AI"}).click();
+ await page.getByText("YOUR INTELLIGENT OPERATIONS PARTNER",{exact:true}).waitFor();
+ assert.equal(await page.locator(".cube-ai-suggestions button").count(),6);
  await page.getByRole("button",{name:"Which vehicles are available now?"}).click();
  await page.getByText("FREE-1 · Available",{exact:true}).waitFor();
+ assert.equal(await page.locator(".cube-ai-source[data-source=fleet]").count(),1);
  await page.getByRole("textbox",{name:"Ask CUBE AI"}).fill("Margin this month");
  await page.getByRole("button",{name:"Ask",exact:true}).click();
  await page.getByText("Total margin: ₹250.",{exact:false}).waitFor();
@@ -32,6 +35,7 @@ try{
  await page.getByRole("textbox",{name:"Ask CUBE AI"}).fill("What is diesel efficiency?");
  await page.getByRole("button",{name:"Ask",exact:true}).click();
  await page.getByText("General answer: What is diesel efficiency?",{exact:true}).waitFor();
+ assert.equal(await page.locator(".cube-ai-source[data-source=gemini]").count(),1);
  await page.getByRole("button",{name:"Expand assistant"}).click();
  assert.ok((await page.locator("#cubeAiPanel").boundingBox()).width>600);
  await page.getByRole("button",{name:"Restore assistant"}).click();
@@ -46,7 +50,12 @@ try{
  await page.getByRole("textbox",{name:"Ask CUBE AI"}).fill("Revenue this month");
  await page.getByRole("button",{name:"Ask",exact:true}).click();
  await page.getByText("Your role does not allow financial reports.").waitFor();
+ await page.getByRole("button",{name:"New conversation"}).click();
+ assert.equal(await page.locator(".cube-ai-suggestions button").count(),4);
+ await page.evaluate(()=>document.documentElement.dataset.theme="dark");
  await page.setViewportSize({width:375,height:667});
+ assert.ok(await page.getByRole("textbox",{name:"Ask CUBE AI"}).isVisible());
+ assert.equal(await page.locator(".cube-ai-suggestions button").count(),4);
  const rect=await page.locator("#cubeAiPanel").boundingBox();
  assert.ok(rect.x>=0&&rect.x+rect.width<=375&&rect.y>=0&&rect.y+rect.height<=667,"mobile panel fits viewport");
  await page.evaluate(()=>window.widget.hide());

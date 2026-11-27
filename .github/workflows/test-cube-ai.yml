@@ -1,7 +1,7 @@
 name: Test CUBE AI Web
 on:
   push:
-    branches: [feature/cube-ai-web, feature/gemini-firebase-free, feature/cube-ai-general, feature/cube-ai-unified]
+    branches: [feature/cube-ai-web, feature/gemini-firebase-free, feature/cube-ai-general, feature/cube-ai-unified, feature/cube-ai-premium]
 permissions:
   contents: read
 jobs:
