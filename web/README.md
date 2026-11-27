@@ -32,3 +32,9 @@ Owner provided screenshots confirming Spark, Gemini Developer API enabled, and e
 
 ## General AI mode (v0.4.44)
 Select General AI to ask free-form questions, including writing help, general logistics advice and general knowledge in English or Tamil. The typed prompt is sent to Gemini only in this explicit mode, without automatically attaching fleet records, credentials, or prior chats. Google free-tier data terms apply; do not enter confidential information. Fleet Analytics remains separate and uses authorized local data. No web search or live business data in General AI. Errors are surfaced without raw secrets. No paid services enabled.
+
+## Unified assistant (v0.4.45)
+No mode selector: local intent routing answers supported recorded fleet questions using authorized Firebase data. General questions go to Gemini, with a visible privacy notice; basic identifier and credential checks block obvious sensitive prompts. Unsupported fleet questions are not fabricated. Never paste confidential information: automatic checks are not comprehensive. This release does not give Gemini access to company data or live web search. Chat messages are in-memory only, cleared on logout/new conversation. The new responsive panel includes expand, copy, quick prompts, loading and keyboard controls. No paid billing changes.
+
+## Read-only fleet query tool (v0.4.46)
+Gemini may choose an allowlisted query plan using sanitized vocabulary only; the application validates it and computes results locally against authorized Firebase records. Supports common date ranges, ISO date ranges, vehicle/vendor filters, rankings, expenses and trip status. Never grants Gemini direct database access. Financial data remains behind existing role checks. Balance means freight less advance, not verified unpaid invoices. Unsupported scopes return clarification. No raw fleet records or identifiers are attached to Gemini prompts.

@@ -1,7 +1,7 @@
 // Owner verified Spark and registered Web App Check on 2026-11-27. Recheck billing before future changes.
 // Never put a Gemini Developer API key here. These are public Firebase web settings.
 export const cloudConfig=Object.freeze({enabled:true,sparkVerified:true,appId:"1:771656307864:web:91249084815c43570ceced",recaptchaSiteKey:"6LdoqjQuAAAAABXUSWE7qWMxjYKCkwZ_y8Mqy6Q-",model:"gemini-3.5-flash-lite"});
-// Fleet routing sends only generic fleet vocabulary. General AI is a separate explicit user-selected mode. No identifiers, amounts,
+// Fleet routing sends only generic fleet vocabulary. General questions are routed automatically in the unified assistant. No identifiers, amounts,
 // locations, names, dates, trip records, or arbitrary text are forwarded.
 const words=new Set("a about all am an any are at available availability best can completed completion cost costs could current currently delay delayed delays expense expenses fleet for free freight get give has have highest how i in is it list load loads low margin margins me month monthly most much now of on open operation operations overdue performance placement placements please profit profitable ready recorded report revenue run show status summary take the this to total transit trip trips truck trucks utilization utilisation vehicle vehicles what which who with would you".split(" "));
 export function safeQuestion(value){
@@ -70,11 +70,28 @@ export function createGeneralAI({config=cloudConfig,isAuthorized,loadModel}){
    if(!modelPromise)modelPromise=Promise.resolve().then(()=>loadModel(true)).catch(e=>{modelPromise=null;throw e;});
    const model=await modelPromise;
    if(!isAuthorized())return {ok:false,text:"Sign in required."};
-   const prompt="You are CUBE AI, a general-purpose assistant. Answer the user's question directly and clearly in the language used by the user, including Tamil. You have no access to their company records, live fleet, web search or tools. Never claim to have read or changed such data. For actual company figures, ask them to switch to Fleet Analytics. Say when uncertain. User question: "+JSON.stringify(q);
+   const prompt="You are CUBE AI, a general-purpose assistant. Answer the user's question directly and clearly in the language used by the user, including Tamil. You have no access to their company records, live fleet, web search or tools. Never claim to have read or changed such data. For actual company figures, say that the unified assistant can answer supported fleet queries from local records; never guess those figures. Say when uncertain. User question: "+JSON.stringify(q);
    const response=await model.generateContent(prompt);
    if(!isAuthorized())return {ok:false,text:"Sign in required."};
    const answer=String(response.response.text()??"").trim();
    return answer?{ok:true,text:answer}:{ok:false,text:"Gemini returned no text. Rephrase your question."};
   }catch(error){return {ok:false,text:generalError(error)};}
+ };
+}
+
+export function createFleetPlanner({config=cloudConfig,isAuthorized,loadModel}){
+ let pending;
+ return async safeQuestion=>{
+  if(!cloudReady(config)||!isAuthorized()||!safeQuestion||!/^[a-z ]{1,240}$/.test(safeQuestion))return null;
+  try{
+   if(!pending)pending=Promise.resolve().then(()=>loadModel(true)).catch(e=>{pending=null;throw e;});
+   const model=await pending;
+   if(!isAuthorized())return null;
+   const prompt="You are a read-only fleet query planner. You have no data. Return only JSON, or null if unclear. Allowed keys: metric (trips,revenue,margin,expenses,fuel,toll,distance,weight,advance,balance,marginPercent,summary), period (thisMonth only), status (all,active,transit,completed,delayed,low,loading,unloading,cancelled), group (none,vehicle,vendor,route), action (sum,list,rankHigh,rankLow), limit (1 to 40). Never invent records or financial values. Question keywords: "+JSON.stringify(safeQuestion);
+   const r=await model.generateContent(prompt);
+   if(!isAuthorized())return null;
+   const text=String(r.response.text()||"").trim().replace(/^\x60\x60\x60(?:json)?\s*/i,"").replace(/\s*\x60\x60\x60$/,"");
+   return JSON.parse(text);
+  }catch{return null;}
  };
 }

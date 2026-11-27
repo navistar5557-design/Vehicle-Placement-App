@@ -1,5 +1,5 @@
-import { mountCubeAI, questions as cubeAIQuestions } from "./cube-ai.mjs?v=4";
-import { cloudConfig, createCloudRouter, createGeneralAI, firebaseCloudModel } from "./gemini-cloud.mjs?v=3";
+import { mountCubeAI, questions as cubeAIQuestions } from "./cube-ai.mjs?v=6";
+import { cloudConfig, createCloudRouter, createGeneralAI, createFleetPlanner, firebaseCloudModel } from "./gemini-cloud.mjs?v=5";
 
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
@@ -23,7 +23,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const WEB_VERSION = "0.4.44";
+const WEB_VERSION = "0.4.46";
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));
@@ -63,6 +63,7 @@ const cloudAuthorized=()=>!!(state.user&&state.profile&&state.role&&state.user.u
 const cloudModel=firebaseCloudModel(app);
 const cloudRouter=createCloudRouter({questions:cubeAIQuestions,isAuthorized:cloudAuthorized,loadModel:cloudModel});
 const generalAI=createGeneralAI({isAuthorized:cloudAuthorized,loadModel:cloudModel});
+const fleetPlanner=createFleetPlanner({isAuthorized:cloudAuthorized,loadModel:cloudModel});
 const cubeAI=mountCubeAI(()=>{
  const authorized=!!(state.user&&state.profile&&state.role&&state.user.uid===state.profile.uid);
  if(!authorized)return {authorized:false};
@@ -71,9 +72,10 @@ const cubeAI=mountCubeAI(()=>{
  return {authorized,canViewReports:canViewReports(),tripsReady:cubeAIReady.trips,vehiclesReady:cubeAIReady.vehicles,
   period:new Date(summary.start).toLocaleDateString("en-IN",{month:"long",year:"numeric"}),minMarginPercent:state.minMarginPercent,
   summary:{...summary,trips:summary.trips.map(mapTrip)},
+  allTrips:state.trips.map(t=>({...mapTrip(calcTrip(t)),isOpen:isTripOpenStatus(t.status)})),
   kpiRows:Object.fromEntries(["active","transit","completed","low","delayed"].map(k=>[k,monthKpiRows(k==="low"?"lowMargin":k).map(mapTrip)])),
   vehicles:state.vehicles.map(v=>({number:v.number,active:v.active,availability:vehicleAvailability(v).key}))};
-},cloudRouter,generalAI);
+},cloudRouter,generalAI,fleetPlanner);
 function toast(msg){ const el=$("#toast"); el.textContent=msg; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2200); }
 function setSync(text, ok=true, mode="synced"){
  const el=$("#syncState"); if(!el)return;
