@@ -24,3 +24,8 @@ After the first deployment, add the GitHub Pages hostname (for example `navistar
 ## Notes
 - Firebase web API keys are identifiers and are expected to be present in client-side Firebase apps. Access control must be enforced through Firebase Authentication and Firestore Security Rules.
 - Master renames cascade to existing trip references, matching Android behavior.
+
+## Gemini cloud intent routing (configured on development branch)
+The existing local analytics and on-device Gemini Nano path continue to work. The cloud fallback sends only allowlisted generic fleet wording to Gemini; financial calculations and trip records stay local. No Gemini API key is exposed. The cloud model can only select existing supported report intents.
+
+Owner provided screenshots confirming Spark, Gemini Developer API enabled, and enforced Web App Check, plus the web app ID and public reCAPTCHA site key, on 2026-11-27. These public settings are configured on this branch. Verify current free model quota and project-level/per-user limits as supported. Do not enable on Blaze or submit confidential data. Check actual billing plan again before release. App Check must not be disabled. Test with non-sensitive generic questions before production. The current branch has not been live-tested against Firebase.

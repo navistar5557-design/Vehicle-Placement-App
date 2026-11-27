@@ -83,7 +83,7 @@ export async function modelIntent(question,model){
   return Object.hasOwn(questions,k)?k:null;
  }catch{return null;}finally{try{session?.destroy();}catch{}}
 }
-export function mountCubeAI(getData){
+export function mountCubeAI(getData,cloudRouter=null){
  const el=document.createElement("section");
  el.id="cubeAi";el.hidden=true;
  el.innerHTML='<button class="cube-ai-launch" type="button" aria-expanded="false" aria-controls="cubeAiPanel">✦ CUBE AI</button><section id="cubeAiPanel" class="cube-ai-panel" hidden role="region" aria-label="CUBE AI fleet assistant"><header><div><strong>✦ CUBE AI</strong><small>Read-only fleet assistant</small></div><button type="button" class="cube-ai-close" aria-label="Close assistant">×</button></header><div class="cube-ai-mode"><span>Local analytics · No paid API</span><button type="button" class="cube-ai-enable">Enable on-device AI</button></div><div class="cube-ai-messages" role="log" aria-live="polite"></div><div class="cube-ai-suggestions"></div><form><input aria-label="Ask about your fleet" placeholder="Ask about your fleet…" maxlength="300" required><button type="submit">Ask</button></form><footer>Current month / current fleet · No data changes</footer></section>';
@@ -109,17 +109,19 @@ export function mountCubeAI(getData){
   message("You",q,[],true);
   try{
    let intent=classify(q);
-   if(!intent)intent=await modelIntent(q,globalThis.LanguageModel);
+   let source="Local analytics";
+   if(!intent&&cloudRouter&&token===generation&&!el.hidden){intent=await cloudRouter(q);if(intent)source="Google Gemini · Free tier";}
+   if(!intent&&token===generation&&!el.hidden){intent=await modelIntent(q,globalThis.LanguageModel);if(intent)source="On-device AI";}
    if(token!==generation||el.hidden)return;
    const result=answer(intent,getData());
-   message(result.title,result.body,result.rows);
+   message(result.title,result.body+"\nSource: "+source,result.rows);
   }catch{if(token===generation)message("Unable to answer","Please try again.");}
   finally{if(token===generation){busy=false;form.querySelector("button").disabled=false;}}
  }
  function show(){
   clear();el.hidden=false;checkModel();
   const d=getData();
-  message("Welcome","Ask about recorded fleet operations. Answers use your existing trip data and permissions. On-device AI may interpret additional wording on supported browsers.");
+  message("Welcome","Ask about recorded fleet operations. Answers use your existing trip data and permissions. Gemini can interpret supported generic fleet questions; financial records are never sent to Gemini. Local analytics remains available.");
   for(const k of ["available","summary","low","delayed","best","trips"]){if(financial.has(k)&&!d.canViewReports)continue;const b=document.createElement("button");b.type="button";b.textContent=questions[k];b.onclick=()=>ask(questions[k]);suggestions.append(b);}
  }
  launch.onclick=()=>setOpen(panel.hidden);el.querySelector(".cube-ai-close").onclick=()=>setOpen(false);
