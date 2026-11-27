@@ -109,18 +109,19 @@ export function mountCubeAI(getData,cloudRouter=null){
   message("You",q,[],true);
   try{
    let intent=classify(q);
-   if(!intent)intent=await modelIntent(q,globalThis.LanguageModel);
-   if(!intent&&cloudRouter&&token===generation&&!el.hidden)intent=await cloudRouter(q);
+   let source="Local analytics";
+   if(!intent&&cloudRouter&&token===generation&&!el.hidden){intent=await cloudRouter(q);if(intent)source="Google Gemini · Free tier";}
+   if(!intent&&token===generation&&!el.hidden){intent=await modelIntent(q,globalThis.LanguageModel);if(intent)source="On-device AI";}
    if(token!==generation||el.hidden)return;
    const result=answer(intent,getData());
-   message(result.title,result.body,result.rows);
+   message(result.title,result.body+"\nSource: "+source,result.rows);
   }catch{if(token===generation)message("Unable to answer","Please try again.");}
   finally{if(token===generation){busy=false;form.querySelector("button").disabled=false;}}
  }
  function show(){
   clear();el.hidden=false;checkModel();
   const d=getData();
-  message("Welcome","Ask about recorded fleet operations. Answers use your existing trip data and permissions. On-device AI may interpret additional wording on supported browsers.");
+  message("Welcome","Ask about recorded fleet operations. Answers use your existing trip data and permissions. Gemini can interpret supported generic fleet questions; financial records are never sent to Gemini. Local analytics remains available.");
   for(const k of ["available","summary","low","delayed","best","trips"]){if(financial.has(k)&&!d.canViewReports)continue;const b=document.createElement("button");b.type="button";b.textContent=questions[k];b.onclick=()=>ask(questions[k]);suggestions.append(b);}
  }
  launch.onclick=()=>setOpen(panel.hidden);el.querySelector(".cube-ai-close").onclick=()=>setOpen(false);

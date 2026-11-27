@@ -1,6 +1,6 @@
-// Cloud AI is opt-in and disabled until the owner verifies Spark and registers App Check.
+// Owner verified Spark and registered Web App Check on 2026-11-27. Recheck billing before future changes.
 // Never put a Gemini Developer API key here. These are public Firebase web settings.
-export const cloudConfig=Object.freeze({enabled:false,sparkVerified:false,appId:"",recaptchaSiteKey:"",model:"gemini-3.5-flash-lite"});
+export const cloudConfig=Object.freeze({enabled:true,sparkVerified:true,appId:"1:771656307864:web:91249084815c43570ceced",recaptchaSiteKey:"6LdoqjQuAAAAABXUSWE7qWMxjYKCkwZ_y8Mqy6Q-",model:"gemini-3.5-flash-lite"});
 // Only generic fleet vocabulary may leave the browser. No identifiers, amounts,
 // locations, names, dates, trip records, or arbitrary text are forwarded.
 const words=new Set("a about all am an any are at available availability best can completed completion cost costs could current currently delay delayed delays expense expenses fleet for free freight get give has have highest how i in is it list load loads low margin margins me month monthly most much now of on open operation operations overdue performance placement placements please profit profitable ready recorded report revenue run show status summary take the this to total transit trip trips truck trucks utilization utilisation vehicle vehicles what which who with would you".split(" "));
@@ -39,6 +39,6 @@ export function firebaseCloudModel(app,config=cloudConfig){
   const attestation=check.initializeAppCheck(app,{provider:new check.ReCaptchaEnterpriseProvider(config.recaptchaSiteKey),isTokenAutoRefreshEnabled:true});
   await check.getToken(attestation);
   const service=ai.getAI(app,{backend:new ai.GoogleAIBackend(),useLimitedUseAppCheckTokens:true});
-  return ai.getGenerativeModel(service,{model:config.model,generationConfig:{temperature:0,maxOutputTokens:64}});
+  return ai.getGenerativeModel(service,{model:config.model,generationConfig:{temperature:0,maxOutputTokens:128}});
  };
 }

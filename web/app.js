@@ -1,5 +1,5 @@
-import { mountCubeAI, questions as cubeAIQuestions } from "./cube-ai.mjs?v=2";
-import { cloudConfig, createCloudRouter, firebaseCloudModel } from "./gemini-cloud.mjs?v=1";
+import { mountCubeAI, questions as cubeAIQuestions } from "./cube-ai.mjs?v=3";
+import { cloudConfig, createCloudRouter, firebaseCloudModel } from "./gemini-cloud.mjs?v=2";
 
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
@@ -11,10 +11,11 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA0AlvGWpiLa9D1aVbPEMuPcnI1M-DmCR4",
+  apiKey: "AIzaSyDPlAj4GulOWWAhoslRRgr1sx4aCT6FkAI",
   authDomain: "cube-vehicle-placement.firebaseapp.com",
   projectId: "cube-vehicle-placement",
-  ...(cloudConfig.appId ? {appId:cloudConfig.appId} : {}),
+  appId: cloudConfig.appId,
+  messagingSenderId: "771656307864",
   storageBucket: "cube-vehicle-placement.firebasestorage.app"
 };
 
@@ -22,7 +23,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const WEB_VERSION = "0.4.42";
+const WEB_VERSION = "0.4.43";
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));
