@@ -1,3 +1,4 @@
+import { extractFleetScope, localPlan, executePlan, plannerPrompt, validatePlan } from "./fleet-query.mjs?v=1";
 // Read-only fleet analytics. The model may choose a supported intent, never calculate values or execute actions.
 export const questions={
  summary:"Monthly operations summary",available:"Which vehicles are available now?",active:"Active trips this month",
@@ -117,7 +118,7 @@ export function routeQuestion(value){
  return {kind:"general"};
 }
 
-export function mountCubeAI(getData,cloudRouter=null,generalAI=null){
+export function mountCubeAI(getData,cloudRouter=null,generalAI=null,fleetPlanner=null){
  const el=document.createElement("section");el.id="cubeAi";el.hidden=true;
  el.innerHTML='<button class="cube-ai-launch" type="button" aria-expanded="false" aria-controls="cubeAiPanel"><span class="cube-ai-orb" aria-hidden="true">✦</span><span>CUBE AI</span><span class="cube-ai-launch-dot" aria-hidden="true"></span></button><section id="cubeAiPanel" class="cube-ai-panel" hidden role="region" aria-label="CUBE AI assistant"><header><div class="cube-ai-brand"><span class="cube-ai-orb" aria-hidden="true">✦</span><div><strong>CUBE AI <span class="cube-ai-edition">ASSISTANT</span></strong><small>One conversation. Smarter operations.</small></div></div><div class="cube-ai-header-actions"><button type="button" class="cube-ai-new" aria-label="New conversation" title="New conversation">＋</button><button type="button" class="cube-ai-expand" aria-label="Expand assistant" title="Expand assistant">↗</button><button type="button" class="cube-ai-close" aria-label="Close assistant" title="Close assistant">×</button></div></header><div class="cube-ai-status"><span><i aria-hidden="true"></i> Smart routing</span><span>Fleet data + Gemini</span></div><div class="cube-ai-messages" role="log" aria-live="polite"></div><div class="cube-ai-suggestions" aria-label="Suggested questions"></div><div class="cube-ai-thinking" hidden role="status"><span></span><span></span><span></span> Finding the answer…</div><form><textarea rows="2" aria-label="Ask CUBE AI" placeholder="Ask anything about your fleet or general knowledge…" maxlength="1000" required></textarea><button type="submit" aria-label="Ask" title="Send question">↑</button></form><footer>General questions may be sent to Google Gemini. Avoid confidential details. Fleet records stay local.</footer></section>';
  document.body.append(el);
@@ -137,8 +138,8 @@ export function mountCubeAI(getData,cloudRouter=null,generalAI=null){
  function populate(){
   log.replaceChildren();suggestions.replaceChildren();input.value="";
   const d=getData();
-  const hero=document.createElement("div");hero.className="cube-ai-welcome";hero.innerHTML='<span class="cube-ai-hero-orb" aria-hidden="true">✦</span><h2>How can I help?</h2><p>Your fleet insights and everyday AI, together in one place.</p>';log.append(hero);
-  const quick=[["◈",questions.available],["↗",questions.summary],["◷",questions.delayed],["✦","How can I improve diesel efficiency?"],["✎","Draft a professional logistics email"]];
+  const hero=document.createElement("div");hero.className="cube-ai-welcome";hero.innerHTML='<span class="cube-ai-hero-orb" aria-hidden="true">✦</span><h2>How can I help?</h2><p>Ask about trips, vehicles, vendors, freight, margins — or anything general.</p>';log.append(hero);
+  const quick=[["◈",questions.available],["↗",questions.summary],["◷",questions.delayed],["✦","Top 5 vehicles by margin this month"],["✎","Draft a professional logistics email"]];
   for(const [symbol,q] of quick){if(q===questions.summary&&!d.canViewReports)continue;const b=document.createElement("button");b.type="button";b.setAttribute("aria-label",q);const icon=document.createElement("span");icon.textContent=symbol;icon.setAttribute("aria-hidden","true");b.append(icon,document.createTextNode(q));b.onclick=()=>ask(q);suggestions.append(b);}
   suggestions.hidden=false;
  }
@@ -148,7 +149,22 @@ export function mountCubeAI(getData,cloudRouter=null,generalAI=null){
   const token=generation;setBusy(true);suggestions.hidden=true;log.querySelector(".cube-ai-welcome")?.remove();message("You",q,[],true);
   const current=()=>token===generation&&!el.hidden&&getData().authorized;
   try{
+   const data=getData(),scope=extractFleetScope(q,data);
    const route=routeQuestion(q);
+   if(scope.privateQuestion||scope.ambiguous||scope.unknownVehicle||scope.unknownVendor){message("Please clarify your fleet question","Use one known vehicle or vendor, and remove credentials or private contact information.",[],false,"Privacy protection");return;}
+   // Exact dashboard shortcuts keep existing behavior; richer queries use the local query tool.
+   const exact=Object.values(questions).some(v=>clean(v)===clean(q));
+   if(!exact){
+    const plan=localPlan(q,scope);
+    if(plan){const result=executePlan(plan,getData(),scope);if(result){message(result.title,result.body,result.rows,false,"Fleet analytics · Firebase records");return;}}
+   }
+   if((scope.vehicle||scope.vendor||scope.dates.length||route.kind==="fleet-unknown"||route.kind==="unsupported")&&!exact){
+    // Only send a sanitized vocabulary; unknown date ranges, actions and private queries fail closed.
+    const sanitized=plannerPrompt(q,scope);
+    const allowed=route.kind==="fleet-unknown"&&!scope.dates.length&&!/\b(last|previous|next|yesterday|today|week|year|month|january|february|march|april|may|june|july|august|september|october|november|december|delete|edit|cancel|update|change|create|add|send|close|and|or|average|compare|forecast|predict|idle|empty|gps|payment|outstanding)\b/i.test(q)&&!/\d/.test(q);
+    if(allowed&&fleetPlanner&&sanitized){const proposed=validatePlan(await fleetPlanner(sanitized));if(!current())return;if(proposed&&proposed.period==="thisMonth"){const result=executePlan(proposed,getData(),scope);if(result){message(result.title,result.body,result.rows,false,"Gemini query plan · Firebase records");return;}}}
+    message("Fleet question needs clarification","Try a single metric, vehicle or vendor and a supported date range. I will not invent company figures or send your records to Gemini.",[],false,"Fleet analytics · Local");return;
+   }
    if(route.kind==="blocked"){message("Private information","Please remove identifiers, credentials or personal details and ask again. No cloud request was sent.",[] ,false,"Privacy protection");return;}
    if(route.kind==="general"){
     const result=generalAI?await generalAI(q):{ok:false,text:"Gemini is not configured."};

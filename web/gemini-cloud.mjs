@@ -78,3 +78,20 @@ export function createGeneralAI({config=cloudConfig,isAuthorized,loadModel}){
   }catch(error){return {ok:false,text:generalError(error)};}
  };
 }
+
+export function createFleetPlanner({config=cloudConfig,isAuthorized,loadModel}){
+ let pending;
+ return async safeQuestion=>{
+  if(!cloudReady(config)||!isAuthorized()||!safeQuestion||!/^[a-z ]{1,240}$/.test(safeQuestion))return null;
+  try{
+   if(!pending)pending=Promise.resolve().then(()=>loadModel(true)).catch(e=>{pending=null;throw e;});
+   const model=await pending;
+   if(!isAuthorized())return null;
+   const prompt="You are a read-only fleet query planner. You have no data. Return only JSON, or null if unclear. Allowed keys: metric (trips,revenue,margin,expenses,fuel,toll,distance,weight,advance,balance,marginPercent,summary), period (thisMonth only), status (all,active,transit,completed,delayed,low,loading,unloading,cancelled), group (none,vehicle,vendor,route), action (sum,list,rankHigh,rankLow), limit (1 to 40). Never invent records or financial values. Question keywords: "+JSON.stringify(safeQuestion);
+   const r=await model.generateContent(prompt);
+   if(!isAuthorized())return null;
+   const text=String(r.response.text()||"").trim().replace(/^\x60\x60\x60(?:json)?\s*/i,"").replace(/\s*\x60\x60\x60$/,"");
+   return JSON.parse(text);
+  }catch{return null;}
+ };
+}

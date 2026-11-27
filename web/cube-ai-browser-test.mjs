@@ -5,7 +5,7 @@ import {readFile} from "node:fs/promises";
 const server=createServer(async(req,res)=>{
  const path=new URL(req.url,"http://localhost").pathname;
  if(path==="/"){res.setHeader("Content-Type","text/html");res.end('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/cube-ai.css"></head><body></body></html>');return;}
- if(!["/cube-ai.mjs","/cube-ai.css"].includes(path)){res.statusCode=404;res.end();return;}
+ if(!["/cube-ai.mjs","/cube-ai.css","/fleet-query.mjs"].includes(path)){res.statusCode=404;res.end();return;}
  res.setHeader("Content-Type",path.endsWith(".mjs")?"text/javascript":"text/css");res.end(await readFile(new URL("."+path,import.meta.url)));
 });
 await new Promise(r=>server.listen(0,"127.0.0.1",r));
@@ -17,7 +17,7 @@ try{
  await page.evaluate(async()=>{
   const {mountCubeAI}=await import("/cube-ai.mjs");
   const t={tripNumber:"TEST-1",vehicle:"TEST-VEHICLE",freight:1000,margin:250,totalExpenses:750,status:"Created",createdAt:1};
-  window.fixture={authorized:true,canViewReports:true,tripsReady:true,vehiclesReady:true,period:"Test month",minMarginPercent:10,summary:{trips:[t],active:1,transit:0,completed:0,revenue:1000,margin:250,low:0,delayed:0},kpiRows:{active:[t],transit:[],completed:[],low:[],delayed:[]},vehicles:[{number:"FREE-1",active:true,availability:"available"}]};
+  window.fixture={authorized:true,canViewReports:true,tripsReady:true,vehiclesReady:true,period:"Test month",minMarginPercent:10,allTrips:[{...t,isOpen:true,vendor:"TEST-VENDOR",createdAt:Date.now(),fuelExpense:200}],summary:{trips:[t],active:1,transit:0,completed:0,revenue:1000,margin:250,low:0,delayed:0},kpiRows:{active:[t],transit:[],completed:[],low:[],delayed:[]},vehicles:[{number:"FREE-1",active:true,availability:"available"}]};
   window.widget=mountCubeAI(()=>window.fixture,null,async q=>({ok:true,text:"General answer: "+q}));
  });
  assert.equal(await page.locator("#cubeAi").isVisible(),false);
