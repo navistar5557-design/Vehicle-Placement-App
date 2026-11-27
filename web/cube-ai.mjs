@@ -83,13 +83,15 @@ export async function modelIntent(question,model){
   return Object.hasOwn(questions,k)?k:null;
  }catch{return null;}finally{try{session?.destroy();}catch{}}
 }
-export function mountCubeAI(getData){
+export function mountCubeAI(getData,gemini=null){
  const el=document.createElement("section");
  el.id="cubeAi";el.hidden=true;
- el.innerHTML='<button class="cube-ai-launch" type="button" aria-expanded="false" aria-controls="cubeAiPanel">✦ CUBE AI</button><section id="cubeAiPanel" class="cube-ai-panel" hidden role="region" aria-label="CUBE AI fleet assistant"><header><div><strong>✦ CUBE AI</strong><small>Read-only fleet assistant</small></div><button type="button" class="cube-ai-close" aria-label="Close assistant">×</button></header><div class="cube-ai-mode"><span>Local analytics · No paid API</span><button type="button" class="cube-ai-enable">Enable on-device AI</button></div><div class="cube-ai-messages" role="log" aria-live="polite"></div><div class="cube-ai-suggestions"></div><form><input aria-label="Ask about your fleet" placeholder="Ask about your fleet…" maxlength="300" required><button type="submit">Ask</button></form><footer>Current month / current fleet · No data changes</footer></section>';
+ el.innerHTML='<button class="cube-ai-launch" type="button" aria-expanded="false" aria-controls="cubeAiPanel">✦ CUBE AI</button><section id="cubeAiPanel" class="cube-ai-panel" hidden role="region" aria-label="CUBE AI fleet assistant"><header><div><strong>✦ CUBE AI</strong><small>Read-only fleet assistant</small></div><button type="button" class="cube-ai-close" aria-label="Close assistant">×</button></header><div class="cube-ai-mode"><span>Local analytics · No paid API</span><button type="button" class="cube-ai-enable">Enable on-device AI</button></div><div class="cube-ai-cloud" hidden><label><input type="checkbox" class="cube-ai-consent"> Allow Gemini to interpret generic questions</label><small>Free-tier question text may be used by Google to improve its products. Do not enter confidential information. Trip records are not sent.</small></div><div class="cube-ai-messages" role="log" aria-live="polite"></div><div class="cube-ai-suggestions"></div><form><input aria-label="Ask about your fleet" placeholder="Ask about your fleet…" maxlength="300" required><button type="submit">Ask</button></form><footer>Current month / current fleet · No data changes</footer></section>';
  document.body.append(el);
  const launch=el.querySelector(".cube-ai-launch"),panel=el.querySelector(".cube-ai-panel"),log=el.querySelector(".cube-ai-messages"),form=el.querySelector("form"),input=form.querySelector("input"),suggestions=el.querySelector(".cube-ai-suggestions");
  let generation=0,busy=false;
+ const cloud=el.querySelector(".cube-ai-cloud"),consent=el.querySelector(".cube-ai-consent");
+ cloud.hidden=!gemini?.enabled;
  const mode=el.querySelector(".cube-ai-mode span"),enable=el.querySelector(".cube-ai-enable");
  function checkModel(){const token=generation;const model=globalThis.LanguageModel;enable.hidden=true;mode.textContent="Local analytics · No paid API";if(!model)return;Promise.resolve().then(()=>model.availability(modelOptions)).then(a=>{if(token!==generation)return;if(a==="available")mode.textContent="On-device AI available · No paid API";else if(a==="downloadable"||a==="downloading")enable.hidden=false;}).catch(()=>{});}
  enable.onclick=async()=>{const token=generation;enable.disabled=true;mode.textContent="Preparing browser AI model…";let session;try{session=await globalThis.LanguageModel.create(modelOptions);if(token===generation){mode.textContent="On-device AI ready · No paid API";enable.hidden=true;}}catch{if(token===generation)mode.textContent="Browser AI unavailable · Local analytics still works";}finally{try{session?.destroy();}catch{}enable.disabled=false;}};
@@ -101,7 +103,7 @@ export function mountCubeAI(getData){
   log.append(a);log.scrollTop=log.scrollHeight;
  }
  function setOpen(open){panel.hidden=!open;launch.setAttribute("aria-expanded",String(open));if(open)input.focus();else launch.focus();}
- function clear(){generation++;busy=false;log.replaceChildren();input.value="";form.querySelector("button").disabled=false;suggestions.replaceChildren();panel.hidden=true;launch.setAttribute("aria-expanded","false");}
+ function clear(){generation++;busy=false;consent.checked=false;log.replaceChildren();input.value="";form.querySelector("button").disabled=false;suggestions.replaceChildren();panel.hidden=true;launch.setAttribute("aria-expanded","false");}
  async function ask(q){
   if(busy||el.hidden||!q.trim())return;
   const current=getData();if(!current.authorized)return;
@@ -110,6 +112,8 @@ export function mountCubeAI(getData){
   try{
    let intent=classify(q);
    if(!intent)intent=await modelIntent(q,globalThis.LanguageModel);
+   if(token!==generation||el.hidden)return;
+   if(!intent&&gemini?.enabled&&consent.checked&&getData().authorized)intent=await gemini.route(q,true);
    if(token!==generation||el.hidden)return;
    const result=answer(intent,getData());
    message(result.title,result.body,result.rows);
