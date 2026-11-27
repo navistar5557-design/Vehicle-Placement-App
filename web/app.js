@@ -450,7 +450,7 @@ async function migrateLegacyOtherExpenseToAmount(){
 function startLiveSync(){
   state.unsubs.forEach(f=>f()); state.unsubs=[];
   setSync(navigator.onLine?"Connecting...":"Offline",navigator.onLine,navigator.onLine?"connecting":"offline");
-  const watch=(name,cb)=>state.unsubs.push(onSnapshot(collection(db,name),{includeMetadataChanges:true},snap=>{cb(snap.docs.map(d=>({id:d.id,...d.data()}))); if(Object.hasOwn(cubeAIReady,name))cubeAIReady[name]=!snap.metadata.fromCache; syncedNow(); render();},err=>{if(Object.hasOwn(cubeAIReady,name))cubeAIReady[name]=false;console.error(err);setSync("Sync error",false,"error");}));
+  const watch=(name,cb)=>state.unsubs.push(onSnapshot(collection(db,name),{includeMetadataChanges:Object.hasOwn(cubeAIReady,name)},snap=>{cb(snap.docs.map(d=>({id:d.id,...d.data()}))); if(Object.hasOwn(cubeAIReady,name))cubeAIReady[name]=!snap.metadata.fromCache&&!snap.metadata.hasPendingWrites; syncedNow(); render();},err=>{if(Object.hasOwn(cubeAIReady,name))cubeAIReady[name]=false;console.error(err);setSync("Sync error",false,"error");}));
   watch("trips",rows=>state.trips=rows.map(calcTrip).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0)));
   watch("vehicles",rows=>state.vehicles=rows.map(x=>({number:x.number||x.id,mileage:Number(x.mileage||0),active:x.active!==false})).sort((a,b)=>a.number.localeCompare(b.number)));
   watch("vendors",rows=>state.vendors=rows.map(x=>({name:x.name||x.id,active:x.active!==false})).sort((a,b)=>a.name.localeCompare(b.name)));

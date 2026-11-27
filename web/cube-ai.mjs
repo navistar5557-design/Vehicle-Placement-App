@@ -11,7 +11,7 @@ export function classify(question){
  const q=clean(question);
  for(const [key,value] of Object.entries(questions))if(q===clean(value))return key;
  // Refuse unsupported scope, identifiers, write requests and compound queries rather than silently answering a different question.
- if(/\b(last|previous|next|yesterday|today|tomorrow|week|year|vendor|route|idle|empty|forecast|predict|minimum|average|driver|gps|location|add|delete|change|edit|create|close|update|cancel|send|and|or)\b/.test(q)||/\d/.test(q))return null;
+ if(/\b(last|previous|next|yesterday|today|tomorrow|week|year|january|february|march|april|may|june|july|august|september|october|november|december|vendor|route|idle|empty|forecast|predict|minimum|average|driver|gps|location|add|delete|change|edit|create|close|update|cancel|send|and|or)\b/.test(q)||/\d/.test(q))return null;
  if(/\b(available|availability|free vehicles)\b/.test(q))return "available";
  if(/\b(utilization|utilisation)\b/.test(q))return "utilization";
  if(/\b(low margin|loss making|loss making trips)\b/.test(q))return "low";
@@ -68,15 +68,16 @@ export function answer(intent,data){
  return {title,body,rows:selected.map(t=>view(t)+(intent==="revenue"?" · Freight "+money(t.freight):["margin","low"].includes(intent)?" · Margin "+money(t.margin)+" ("+num(t.marginPercent).toFixed(1)+"%)":intent==="expenses"?" · Expenses "+money(t.totalExpenses):intent==="delayed"?" · "+t.delay+" late":intent==="completed"?" · Completed "+date(t.closedAt||t.statusUpdatedAt):""))};
 }
 // On-device language model is strictly an intent router. No trip records are supplied to it.
+const modelOptions={expectedInputs:[{type:"text",languages:["en"]}],expectedOutputs:[{type:"text",languages:["en"]}]};
 export async function modelIntent(question,model){
  if(!model||typeof model.availability!=="function")return null;
  // The model cannot broaden the supported date scope or authorize write operations.
  const q=clean(question);
- if(/\b(last|previous|next|yesterday|today|tomorrow|week|year|vendor|route|idle|empty|forecast|predict|minimum|average|driver|gps|location|add|delete|change|edit|create|close|update|cancel|send|and|or)\b/.test(q)||/\d/.test(q))return null;
+ if(/\b(last|previous|next|yesterday|today|tomorrow|week|year|january|february|march|april|may|june|july|august|september|october|november|december|vendor|route|idle|empty|forecast|predict|minimum|average|driver|gps|location|add|delete|change|edit|create|close|update|cancel|send|and|or)\b/.test(q)||/\d/.test(q))return null;
  let session;
  try{
-  if(await model.availability()!=="available")return null;
-  session=await model.create();
+  if(await model.availability(modelOptions)!=="available")return null;
+  session=await model.create(modelOptions);
   const raw=await session.prompt("Classify this fleet question into exactly one key from "+JSON.stringify(questions)+". Only current-month analytics or current fleet availability; unsupported questions return NONE. Never answer the question. Question: "+JSON.stringify(question.slice(0,300)));
   const k=String(raw).trim();
   return Object.hasOwn(questions,k)?k:null;
@@ -85,10 +86,13 @@ export async function modelIntent(question,model){
 export function mountCubeAI(getData){
  const el=document.createElement("section");
  el.id="cubeAi";el.hidden=true;
- el.innerHTML='<button class="cube-ai-launch" type="button" aria-expanded="false" aria-controls="cubeAiPanel">✦ CUBE AI</button><section id="cubeAiPanel" class="cube-ai-panel" hidden role="region" aria-label="CUBE AI fleet assistant"><header><div><strong>✦ CUBE AI</strong><small>Read-only fleet assistant</small></div><button type="button" class="cube-ai-close" aria-label="Close assistant">×</button></header><div class="cube-ai-mode">Local analytics · No paid API</div><div class="cube-ai-messages" role="log" aria-live="polite"></div><div class="cube-ai-suggestions"></div><form><input aria-label="Ask about your fleet" placeholder="Ask about your fleet…" maxlength="300" required><button type="submit">Ask</button></form><footer>Current month / current fleet · No data changes</footer></section>';
+ el.innerHTML='<button class="cube-ai-launch" type="button" aria-expanded="false" aria-controls="cubeAiPanel">✦ CUBE AI</button><section id="cubeAiPanel" class="cube-ai-panel" hidden role="region" aria-label="CUBE AI fleet assistant"><header><div><strong>✦ CUBE AI</strong><small>Read-only fleet assistant</small></div><button type="button" class="cube-ai-close" aria-label="Close assistant">×</button></header><div class="cube-ai-mode"><span>Local analytics · No paid API</span><button type="button" class="cube-ai-enable">Enable on-device AI</button></div><div class="cube-ai-messages" role="log" aria-live="polite"></div><div class="cube-ai-suggestions"></div><form><input aria-label="Ask about your fleet" placeholder="Ask about your fleet…" maxlength="300" required><button type="submit">Ask</button></form><footer>Current month / current fleet · No data changes</footer></section>';
  document.body.append(el);
  const launch=el.querySelector(".cube-ai-launch"),panel=el.querySelector(".cube-ai-panel"),log=el.querySelector(".cube-ai-messages"),form=el.querySelector("form"),input=form.querySelector("input"),suggestions=el.querySelector(".cube-ai-suggestions");
  let generation=0,busy=false;
+ const mode=el.querySelector(".cube-ai-mode span"),enable=el.querySelector(".cube-ai-enable");
+ function checkModel(){const token=generation;const model=globalThis.LanguageModel;enable.hidden=true;mode.textContent="Local analytics · No paid API";if(!model)return;Promise.resolve().then(()=>model.availability(modelOptions)).then(a=>{if(token!==generation)return;if(a==="available")mode.textContent="On-device AI available · No paid API";else if(a==="downloadable"||a==="downloading")enable.hidden=false;}).catch(()=>{});}
+ enable.onclick=async()=>{const token=generation;enable.disabled=true;mode.textContent="Preparing browser AI model…";let session;try{session=await globalThis.LanguageModel.create(modelOptions);if(token===generation){mode.textContent="On-device AI ready · No paid API";enable.hidden=true;}}catch{if(token===generation)mode.textContent="Browser AI unavailable · Local analytics still works";}finally{try{session?.destroy();}catch{}enable.disabled=false;}};
  function message(title,body,rows=[],user=false){
   const a=document.createElement("article");if(user)a.className="cube-ai-user";
   const h=document.createElement("strong");h.textContent=title;a.append(h);
@@ -113,7 +117,7 @@ export function mountCubeAI(getData){
   finally{if(token===generation){busy=false;form.querySelector("button").disabled=false;}}
  }
  function show(){
-  clear();el.hidden=false;
+  clear();el.hidden=false;checkModel();
   const d=getData();
   message("Welcome","Ask about recorded fleet operations. Answers use your existing trip data and permissions. On-device AI may interpret additional wording on supported browsers.");
   for(const k of ["available","summary","low","delayed","best","trips"]){if(financial.has(k)&&!d.canViewReports)continue;const b=document.createElement("button");b.type="button";b.textContent=questions[k];b.onclick=()=>ask(questions[k]);suggestions.append(b);}
