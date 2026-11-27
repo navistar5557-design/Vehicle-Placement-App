@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {safeQuestion,cloudReady,createCloudRouter,cloudConfig} from "./gemini-cloud.mjs";
+import {safeQuestion,cloudReady,createCloudRouter,cloudConfig,createGeneralAI,generalError} from "./gemini-cloud.mjs";
 import {questions} from "./cube-ai.mjs";
 const config={...cloudConfig,enabled:true,sparkVerified:true,appId:"1:123:web:abcdef",recaptchaSiteKey:"test-key-not-a-real-key"};
 const disabled={...cloudConfig,enabled:false};
@@ -14,3 +14,10 @@ assert.equal(await make()("which trucks can take a load"),"available");assert.eq
 assert.equal(await make(config,"delete")("which trucks can take a load"),null);
 authorized=false;assert.equal(await make()("which trucks can take a load"),null);
 console.log("Gemini cloud configuration, safe vocabulary, intent allowlist and auth tests passed");
+
+let generalCalls=0;authorized=true;
+const general=createGeneralAI({config,isAuthorized:()=>authorized,loadModel:async isGeneral=>{assert.equal(isGeneral,true);return {generateContent:async prompt=>{generalCalls++;assert.match(prompt,/no access to their company records/);assert.match(prompt,/What is diesel efficiency/);return {response:{text:()=>"Diesel efficiency is distance per unit of fuel."}};}};}});
+assert.equal((await general("What is diesel efficiency?")).ok,true);assert.equal(generalCalls,1);
+authorized=false;assert.equal((await general("What is diesel efficiency?")).ok,false);assert.equal(generalCalls,1);
+assert.match(generalError(Error("429")),/quota/);assert.match(generalError(Error("App Check failed")),/verify/);
+console.log("General Gemini responses, authorization and error messages passed");
