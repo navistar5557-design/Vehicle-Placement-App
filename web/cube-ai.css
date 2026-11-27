@@ -1,0 +1,27 @@
+
+/* CUBE AI: isolated floating assistant */
+#cubeAi[hidden],#cubeAiPanel[hidden]{display:none!important}
+#cubeAi{position:fixed;right:24px;bottom:24px;z-index:100; font-family:inherit;color:#102a56}
+#cubeAi button{cursor:pointer;font:inherit}
+.cube-ai-launch{display:block;margin-left:auto;background:linear-gradient(135deg,#073b7a,#2278d4);color:white;border:0;border-radius:30px;padding:13px 20px;font-weight:800!important;box-shadow:0 9px 28px #073b7a40}
+.cube-ai-panel{position:absolute;bottom:58px;right:0;width:min(420px,calc(100vw - 32px));max-height:min(690px,calc(100dvh - 100px));display:flex;flex-direction:column;background:#fff;border:1px solid #cddbee;border-radius:18px;box-shadow:0 16px 50px #102a5633;overflow:hidden;animation:cube-ai-enter .22s ease-out}
+@keyframes cube-ai-enter{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+.cube-ai-panel header{display:flex;justify-content:space-between;align-items:center;background:#073b7a;color:white;padding:14px 16px}
+.cube-ai-panel header strong{font-size:17px}.cube-ai-panel header small{display:block;color:#dae8fa;font-size:11px;margin-top:3px}
+.cube-ai-close{background:transparent;border:0;color:white;font-size:24px!important;padding:4px 9px}
+.cube-ai-mode,.cube-ai-panel footer{font-size:10px;color:#526782;padding:8px 13px;background:#f1f6fc}
+.cube-ai-messages{min-height:100px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:8px;padding:12px;font-size:12px}
+.cube-ai-messages article{border:1px solid #e1e9f3;border-radius:11px;padding:10px;background:#f8fbff;overflow-wrap:anywhere}
+.cube-ai-messages article.cube-ai-user{align-self:flex-end;background:#e9f2ff;max-width:92%}
+.cube-ai-messages p{white-space:pre-wrap;margin:5px 0;line-height:1.5}
+.cube-ai-messages ul{padding-left:18px;margin:6px 0}.cube-ai-messages li{padding:5px 0;border-bottom:1px solid #e2ebf6}
+.cube-ai-suggestions{display:flex;flex-wrap:wrap;gap:5px;padding:8px 12px;border-top:1px solid #edf1f6;max-height:105px;overflow:auto}
+.cube-ai-suggestions button{border:1px solid #c9daf0;background:#f5f9ff;color:#174581;padding:5px 8px;border-radius:8px;font-size:10px!important}
+.cube-ai-panel form{display:flex;gap:7px;padding:10px 12px}.cube-ai-panel input{flex:1;min-width:0;border:1px solid #c6d5e9;border-radius:9px;padding:9px;font:inherit;font-size:12px}
+.cube-ai-panel form button{background:#073b7a;color:#fff;border:0;border-radius:9px;padding:9px 15px;font-weight:bold!important}
+#cubeAi button:focus-visible,#cubeAi input:focus-visible{outline:2px solid #ff6500;outline-offset:2px}
+[data-theme="dark"] .cube-ai-panel{background:#17243b;color:#e7efff;border-color:#344866}
+[data-theme="dark"] .cube-ai-messages article{background:#233652;border-color:#344866}
+[data-theme="dark"] .cube-ai-mode,[data-theme="dark"] .cube-ai-panel footer{background:#233652;color:#dbe7fc}
+@media(max-width:600px){#cubeAi{right:12px;bottom:12px}.cube-ai-panel{width:calc(100vw - 24px);max-height:calc(100dvh - 86px)}}
+@media(prefers-reduced-motion:reduce){.cube-ai-panel{animation:none}}

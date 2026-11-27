@@ -1,0 +1,18 @@
+name: Test CUBE AI Web
+on:
+  push:
+    branches: [feature/cube-ai-web]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node --check web/app.js
+      - run: node --check web/cube-ai.mjs
+      - run: node web/phase1-smoke-test.mjs
+      - run: node web/margin-breakdown-test.mjs
+      - run: node web/other-expense-test.mjs
+      - run: node web/monthly-kpi-drilldown-test.mjs
+      - run: node web/cube-ai-test.mjs
