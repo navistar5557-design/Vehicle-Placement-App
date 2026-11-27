@@ -83,13 +83,16 @@ export async function modelIntent(question,model){
   return Object.hasOwn(questions,k)?k:null;
  }catch{return null;}finally{try{session?.destroy();}catch{}}
 }
-export function mountCubeAI(getData,cloudRouter=null){
+export function mountCubeAI(getData,cloudRouter=null,generalAI=null){
  const el=document.createElement("section");
  el.id="cubeAi";el.hidden=true;
- el.innerHTML='<button class="cube-ai-launch" type="button" aria-expanded="false" aria-controls="cubeAiPanel">✦ CUBE AI</button><section id="cubeAiPanel" class="cube-ai-panel" hidden role="region" aria-label="CUBE AI fleet assistant"><header><div><strong>✦ CUBE AI</strong><small>Read-only fleet assistant</small></div><button type="button" class="cube-ai-close" aria-label="Close assistant">×</button></header><div class="cube-ai-mode"><span>Local analytics · No paid API</span><button type="button" class="cube-ai-enable">Enable on-device AI</button></div><div class="cube-ai-messages" role="log" aria-live="polite"></div><div class="cube-ai-suggestions"></div><form><input aria-label="Ask about your fleet" placeholder="Ask about your fleet…" maxlength="300" required><button type="submit">Ask</button></form><footer>Current month / current fleet · No data changes</footer></section>';
+ el.innerHTML='<button class="cube-ai-launch" type="button" aria-expanded="false" aria-controls="cubeAiPanel">✦ CUBE AI</button><section id="cubeAiPanel" class="cube-ai-panel" hidden role="region" aria-label="CUBE AI fleet assistant"><header><div><strong>✦ CUBE AI</strong><small>Fleet analytics & general AI</small></div><button type="button" class="cube-ai-close" aria-label="Close assistant">×</button></header><div class="cube-ai-mode"><span>Local analytics · No paid API</span><button type="button" class="cube-ai-enable">Enable on-device AI</button></div><div class="cube-ai-tabs" role="group" aria-label="AI mode"><button type="button" data-ai-mode="fleet" aria-pressed="true">Fleet Analytics</button><button type="button" data-ai-mode="general" aria-pressed="false">General AI</button></div><div class="cube-ai-privacy" hidden>Questions in General AI are sent to Google Gemini. Do not enter private company, customer, vehicle or personal information. No database records are attached.</div><div class="cube-ai-messages" role="log" aria-live="polite"></div><div class="cube-ai-suggestions"></div><form><input aria-label="Ask about your fleet" placeholder="Ask about your fleet…" maxlength="300" required><button type="submit">Ask</button></form><footer>Current month / current fleet · No data changes</footer></section>';
  document.body.append(el);
  const launch=el.querySelector(".cube-ai-launch"),panel=el.querySelector(".cube-ai-panel"),log=el.querySelector(".cube-ai-messages"),form=el.querySelector("form"),input=form.querySelector("input"),suggestions=el.querySelector(".cube-ai-suggestions");
- let generation=0,busy=false;
+ let generation=0,busy=false,aiMode="fleet";
+ const tabs=el.querySelectorAll('[data-ai-mode]'),privacy=el.querySelector('.cube-ai-privacy'),footer=panel.querySelector('footer');
+ function selectMode(next){if(busy)return;aiMode=next;for(const tab of tabs)tab.setAttribute('aria-pressed',String(tab.dataset.aiMode===next));privacy.hidden=next!=='general';suggestions.hidden=next==='general';input.maxLength=next==='general'?1000:300;input.placeholder=next==='general'?'Ask a general question…':'Ask about your fleet…';input.setAttribute('aria-label',next==='general'?'Ask a general question':'Ask about your fleet');footer.textContent=next==='general'?'Google Gemini · Free quota · No live data access':'Current month / current fleet · No data changes';input.value='';}
+ for(const tab of tabs)tab.onclick=()=>{selectMode(tab.dataset.aiMode);input.focus();};
  const mode=el.querySelector(".cube-ai-mode span"),enable=el.querySelector(".cube-ai-enable");
  function checkModel(){const token=generation;const model=globalThis.LanguageModel;enable.hidden=true;mode.textContent="Local analytics · No paid API";if(!model)return;Promise.resolve().then(()=>model.availability(modelOptions)).then(a=>{if(token!==generation)return;if(a==="available")mode.textContent="On-device AI available · No paid API";else if(a==="downloadable"||a==="downloading")enable.hidden=false;}).catch(()=>{});}
  enable.onclick=async()=>{const token=generation;enable.disabled=true;mode.textContent="Preparing browser AI model…";let session;try{session=await globalThis.LanguageModel.create(modelOptions);if(token===generation){mode.textContent="On-device AI ready · No paid API";enable.hidden=true;}}catch{if(token===generation)mode.textContent="Browser AI unavailable · Local analytics still works";}finally{try{session?.destroy();}catch{}enable.disabled=false;}};
@@ -101,18 +104,24 @@ export function mountCubeAI(getData,cloudRouter=null){
   log.append(a);log.scrollTop=log.scrollHeight;
  }
  function setOpen(open){panel.hidden=!open;launch.setAttribute("aria-expanded",String(open));if(open)input.focus();else launch.focus();}
- function clear(){generation++;busy=false;log.replaceChildren();input.value="";form.querySelector("button").disabled=false;suggestions.replaceChildren();panel.hidden=true;launch.setAttribute("aria-expanded","false");}
+ function clear(){generation++;busy=false;selectMode("fleet");log.replaceChildren();input.value="";form.querySelector("button").disabled=false;suggestions.replaceChildren();panel.hidden=true;launch.setAttribute("aria-expanded","false");}
  async function ask(q){
   if(busy||el.hidden||!q.trim())return;
   const current=getData();if(!current.authorized)return;
   const token=generation;busy=true;form.querySelector("button").disabled=true;
   message("You",q,[],true);
   try{
+   if(aiMode==="general"){
+    const result=generalAI?await generalAI(q):{ok:false,text:"General AI is not configured."};
+    if(token!==generation||el.hidden||!getData().authorized)return;
+    message(result.ok?"Google Gemini · Free tier":"General AI unavailable",result.text);return;
+   }
    let intent=classify(q);
    let source="Local analytics";
    if(!intent&&cloudRouter&&token===generation&&!el.hidden){intent=await cloudRouter(q);if(intent)source="Google Gemini · Free tier";}
    if(!intent&&token===generation&&!el.hidden){intent=await modelIntent(q,globalThis.LanguageModel);if(intent)source="On-device AI";}
    if(token!==generation||el.hidden)return;
+   if(!intent){message("Question not supported in Fleet Analytics","For general knowledge, advice, writing or calculations, select General AI above and ask again. For actual fleet figures use the suggested questions.");return;}
    const result=answer(intent,getData());
    message(result.title,result.body+"\nSource: "+source,result.rows);
   }catch{if(token===generation)message("Unable to answer","Please try again.");}
@@ -121,7 +130,7 @@ export function mountCubeAI(getData,cloudRouter=null){
  function show(){
   clear();el.hidden=false;checkModel();
   const d=getData();
-  message("Welcome","Ask about recorded fleet operations. Answers use your existing trip data and permissions. Gemini can interpret supported generic fleet questions; financial records are never sent to Gemini. Local analytics remains available.");
+  message("Welcome","Ask about recorded fleet operations. Answers use your existing trip data and permissions. Gemini can interpret supported generic fleet questions; financial records are never sent to Gemini. For general questions, select General AI above. Local analytics remains available.");
   for(const k of ["available","summary","low","delayed","best","trips"]){if(financial.has(k)&&!d.canViewReports)continue;const b=document.createElement("button");b.type="button";b.textContent=questions[k];b.onclick=()=>ask(questions[k]);suggestions.append(b);}
  }
  launch.onclick=()=>setOpen(panel.hidden);el.querySelector(".cube-ai-close").onclick=()=>setOpen(false);

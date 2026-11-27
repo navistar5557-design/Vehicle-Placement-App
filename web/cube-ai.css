@@ -27,3 +27,5 @@
 @media(prefers-reduced-motion:reduce){.cube-ai-panel{animation:none}}
 
 .cube-ai-mode{display:flex;align-items:center;justify-content:space-between;gap:6px}.cube-ai-enable{border:1px solid #bfd3ef;border-radius:6px;background:#fff;color:#174581;font-size:10px!important;padding:4px 7px}.cube-ai-enable[hidden]{display:none!important}
+
+.cube-ai-tabs{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid #dfe8f4}.cube-ai-tabs button{flex:1;border:1px solid #b9cee8;background:#f4f8ff;color:#174581;border-radius:8px;padding:7px;font-size:12px!important}.cube-ai-tabs button[aria-pressed="true"]{background:#073b7a;color:white;border-color:#073b7a}.cube-ai-privacy{padding:8px 12px;font-size:11px;line-height:1.4;background:#fff6e5;color:#794d08}.cube-ai-privacy[hidden],.cube-ai-suggestions[hidden]{display:none!important}

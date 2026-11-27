@@ -1,5 +1,5 @@
-import { mountCubeAI, questions as cubeAIQuestions } from "./cube-ai.mjs?v=3";
-import { cloudConfig, createCloudRouter, firebaseCloudModel } from "./gemini-cloud.mjs?v=2";
+import { mountCubeAI, questions as cubeAIQuestions } from "./cube-ai.mjs?v=4";
+import { cloudConfig, createCloudRouter, createGeneralAI, firebaseCloudModel } from "./gemini-cloud.mjs?v=3";
 
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
@@ -23,7 +23,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const WEB_VERSION = "0.4.43";
+const WEB_VERSION = "0.4.44";
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));
@@ -59,7 +59,10 @@ let state = {
 };
 
 let cubeAIReady={trips:false,vehicles:false};
-const cloudRouter=createCloudRouter({questions:cubeAIQuestions,isAuthorized:()=>!!(state.user&&state.profile&&state.role&&state.user.uid===state.profile.uid),loadModel:firebaseCloudModel(app)});
+const cloudAuthorized=()=>!!(state.user&&state.profile&&state.role&&state.user.uid===state.profile.uid);
+const cloudModel=firebaseCloudModel(app);
+const cloudRouter=createCloudRouter({questions:cubeAIQuestions,isAuthorized:cloudAuthorized,loadModel:cloudModel});
+const generalAI=createGeneralAI({isAuthorized:cloudAuthorized,loadModel:cloudModel});
 const cubeAI=mountCubeAI(()=>{
  const authorized=!!(state.user&&state.profile&&state.role&&state.user.uid===state.profile.uid);
  if(!authorized)return {authorized:false};
@@ -70,7 +73,7 @@ const cubeAI=mountCubeAI(()=>{
   summary:{...summary,trips:summary.trips.map(mapTrip)},
   kpiRows:Object.fromEntries(["active","transit","completed","low","delayed"].map(k=>[k,monthKpiRows(k==="low"?"lowMargin":k).map(mapTrip)])),
   vehicles:state.vehicles.map(v=>({number:v.number,active:v.active,availability:vehicleAvailability(v).key}))};
-},cloudRouter);
+},cloudRouter,generalAI);
 function toast(msg){ const el=$("#toast"); el.textContent=msg; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2200); }
 function setSync(text, ok=true, mode="synced"){
  const el=$("#syncState"); if(!el)return;
