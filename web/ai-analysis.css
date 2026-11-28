@@ -1,0 +1,16 @@
+.analysis-page { display: grid; gap: 1rem; }
+.analysis-page h3 { margin: 0 0 .8rem; }
+.analysis-page .card { min-width: 0; }
+.analysis-controls { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; margin: .65rem 0; }
+.analysis-controls label { flex: 1 1 165px; min-width: 0; }
+.analysis-controls input, .analysis-controls select { width: 100%; }
+.analysis-note { opacity: .8; font-size: .88rem; margin: 0; }
+.analysis-page details { margin-top: .75rem; padding: .65rem 0; }
+.analysis-page summary { cursor: pointer; font-weight: 600; margin-bottom: .45rem; }
+.analysis-page textarea { width: 100%; color: inherit; background: transparent; border: 1px solid currentColor; border-radius: .55rem; padding: .6rem; }
+.analysis-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.analysis-bars { display: grid; gap: .6rem; max-height: 30rem; overflow: auto; }
+.analysis-bars > div { display: grid; grid-template-columns: minmax(5rem, 1fr) minmax(3rem, 2fr) minmax(4rem, 1fr); gap: .5rem; align-items: center; }
+.analysis-bars meter { width: 100%; }
+.analysis-bars strong { text-align: right; }
+.analysis-page [hidden] { display: none; }

@@ -38,3 +38,14 @@ No mode selector: local intent routing answers supported recorded fleet question
 
 ## Read-only fleet query tool (v0.4.46)
 Gemini may choose an allowlisted query plan using sanitized vocabulary only; the application validates it and computes results locally against authorized Firebase records. Supports common date ranges, ISO date ranges, vehicle/vendor filters, rankings, expenses and trip status. Never grants Gemini direct database access. Financial data remains behind existing role checks. Balance means freight less advance, not verified unpaid invoices. Unsupported scopes return clarification. No raw fleet records or identifiers are attached to Gemini prompts.
+
+## AI Analysis
+
+The AI Analysis sidebar report shares the Reports role permission and uses the existing trip and vehicle listeners. Reviewed imports require Create Trip permission and use the regular trip form and Save Trip action. Firestore security rules are managed outside this repository.
+
+- Date filters use India time. Historical financial totals exclude cancelled trips. The forecast projects current-month booked freight at the current calendar-day run rate. The optional target is a report input.
+- Availability is based on open assignments across all trips. Last recorded destinations and completion timestamps are planning clues. Alerts use recorded empty distance, placement plus planned transit, the existing margin threshold, prior completed route expenses and the user-entered freight target.
+- The report assistant runs locally. Browser voice support varies. History and favorites are held in memory for the sign-in. Exports and briefing drafts are user-initiated. Trip ingestion accepts plain text with labeled fields.
+- Live location, verified idle duration, distance estimates and idle revenue loss need GPS or dispatch event data. Verified receipts and balances need payment records. Scans and images need OCR. Scheduled briefings and alerts outside the open report need a separately approved background workflow.
+
+Run the report calculation tests with `node web/ai-analysis-test.mjs`.
