@@ -1,6 +1,6 @@
-import { mountAnalysis } from "./ai-analysis.mjs?v=5";
+import { mountAnalysis } from "./ai-analysis.mjs?v=6";
 import { draftFields } from "./ai-analysis-data.mjs?v=2";
-import { reportSectionButtons, wireReportSections } from "./report-sections.mjs?v=2";
+import { reportSectionButtons, wireReportDirectory } from "./report-sections.mjs?v=3";
 import { mountCubeAI, questions as cubeAIQuestions } from "./cube-ai.mjs?v=10";
 import { cloudConfig, createCloudRouter, createGeneralAI, createFleetPlanner, firebaseCloudModel } from "./gemini-cloud.mjs?v=6";
 
@@ -1276,7 +1276,6 @@ function renderAnalysisReport(root) {
     return;
   }
   root.innerHTML = `<div class="section-head">
-    <h3>AI Analysis</h3>
     <button id="reportsBack" class="secondary" type="button">Back to report catalog</button>
   </div><div id="reportsAnalysisContent"></div>`;
   $("#reportsBack").onclick = () => {
@@ -2609,34 +2608,17 @@ function reportsHtml(){
 }
 
 function wireReports(root){
- const search = $("#reportsSearch");
- const groups = root.querySelectorAll(".report-directory-group");
- const show = wireReportSections(root, openReportSection, id => {
-   openReportSection = id;
-   $("#reportsSelectionHint").hidden = Boolean(id);
+ wireReportDirectory(root, {
+   search: $("#reportsSearch"), empty: $("#reportsNoMatches"), hint: $("#reportsSelectionHint"),
+   initial: openReportSection,
+   onSelect: id => { openReportSection = id; },
+   onSearch: query => { reportSearch = query; }
  });
- function filterReports(){
-   const terms = search.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
-   let visible = 0;
-   for (const group of groups) {
-     const buttons = [...group.querySelectorAll("button")];
-     for (const button of buttons) {
-       const name = (button.textContent + " " + group.querySelector("h3").textContent).toLowerCase();
-       button.hidden = !terms.every(term => name.includes(term));
-       if (!button.hidden) visible++;
-       if (button.hidden && button.getAttribute("aria-expanded") === "true") show("");
-     }
-     group.hidden = buttons.every(button => button.hidden);
-   }
-   $("#reportsNoMatches").hidden = visible > 0;
- }
- search.oninput = () => { reportSearch = search.value; filterReports(); };
  $("#reportsOpenAnalysis").onclick = () => {
    if (!cloudAuthorized() || !canViewReports()) return;
    openReportSection = analysisReport;
    render();
  };
- filterReports();
  $("#saveMarginThreshold")?.addEventListener("click",async()=>{
    const value=Number($("#marginThresholdInput")?.value||10);
    if(!Number.isFinite(value)){toast("Enter a valid margin threshold");return;}
