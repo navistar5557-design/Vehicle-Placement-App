@@ -115,3 +115,44 @@
 #cubeAi .cube-ai-language-select{transition:border-color .18s,box-shadow .18s}
 #cubeAi .cube-ai-language-select:hover{border-color:#8eb4e0}
 @media(prefers-reduced-motion:reduce){#cubeAi,#cubeAi *,#cubeAi *::before,#cubeAi *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* v0.4.50: compact default assistant, full-size expanded view */
+@media(min-width:601px){
+ #cubeAiPanel:not(.cube-ai-expanded){width:min(420px,calc(100vw - 48px));height:min(570px,calc(100dvh - 116px));border-radius:20px}
+ #cubeAiPanel:not(.cube-ai-expanded) header{min-height:64px;padding:11px 13px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-orb{width:34px;height:34px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-orb svg{width:21px!important;height:21px!important}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-brand strong{font-size:20px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-brand small{font-size:10px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-eyebrow{font-size:7px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-header-actions{gap:4px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-header-actions button{width:30px;height:30px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-status{padding:7px 12px;font-size:10px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-language-select{min-width:92px;max-width:120px;padding:4px 6px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-language{gap:4px;font-size:9px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-messages{padding:12px 14px;gap:12px;font-size:13px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-welcome{padding:2px 0}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-hero-visual{width:70px;height:66px;margin-bottom:5px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-hero-orb{width:44px;height:44px;border-radius:14px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-hero-orb svg{width:26px;height:26px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-kicker{font-size:8px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-welcome h2{font-size:23px;margin:5px 0}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-welcome p{font-size:11px;line-height:1.4}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-suggestion-heading{padding:0 12px 5px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-suggestions{padding:0 12px 8px;gap:6px;max-height:172px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-suggestions button{min-height:44px;padding:6px;gap:7px;border-radius:9px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-prompt-icon{width:27px;height:27px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-prompt-icon svg{width:16px;height:16px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-prompt-text strong{font-size:11px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-prompt-text small{font-size:9px}
+ #cubeAiPanel:not(.cube-ai-expanded) form{margin:0 12px 6px;border-radius:13px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-composer{padding:6px 8px}
+ #cubeAiPanel:not(.cube-ai-expanded) textarea{font-size:13px;min-height:32px}
+ #cubeAiPanel:not(.cube-ai-expanded) form button{width:31px;height:31px}
+ #cubeAiPanel:not(.cube-ai-expanded) footer{padding:0 12px 8px;font-size:9px}
+}
+@media(min-width:601px) and (max-height:650px){
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-suggestions{max-height:105px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-hero-visual{width:55px;height:52px}
+ #cubeAiPanel:not(.cube-ai-expanded) .cube-ai-hero-orb{width:36px;height:36px}
+}
