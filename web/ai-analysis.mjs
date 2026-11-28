@@ -1,6 +1,6 @@
 import { analyze, csvCell, dayKey, decisionInsights, draftFields, freightEstimate, tripDraft } from "./ai-analysis-data.mjs?v=2";
 import { extractFleetScope, localPlan, executePlan } from "./fleet-query.mjs";
-import { reportSectionButtons, wireReportSections } from "./report-sections.mjs";
+import { reportSectionButtons, wireReportSections } from "./report-sections.mjs?v=2";
 
 const escape = value => String(value ?? "").replace(/[&<>"']/g,
   char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);

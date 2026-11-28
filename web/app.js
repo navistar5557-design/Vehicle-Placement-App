@@ -1,6 +1,6 @@
-import { mountAnalysis } from "./ai-analysis.mjs?v=4";
+import { mountAnalysis } from "./ai-analysis.mjs?v=5";
 import { draftFields } from "./ai-analysis-data.mjs?v=2";
-import { reportSectionButtons, wireReportSections } from "./report-sections.mjs";
+import { reportSectionButtons, wireReportSections } from "./report-sections.mjs?v=2";
 import { mountCubeAI, questions as cubeAIQuestions } from "./cube-ai.mjs?v=10";
 import { cloudConfig, createCloudRouter, createGeneralAI, createFleetPlanner, firebaseCloudModel } from "./gemini-cloud.mjs?v=6";
 
@@ -63,6 +63,7 @@ let state = {
 
 let analysisView, analysisDraft;
 let openReportSection = "";
+let reportSearch = "";
 let analysisSession = { history: [], favorites: new Set() };
 let cubeAIReady={trips:false,vehicles:false};
 const cloudAuthorized=()=>!!(state.user&&state.profile&&state.role&&state.user.uid===state.profile.uid);
@@ -600,6 +601,7 @@ document.querySelector(".forgot-password-web")?.addEventListener("click",async()
 
 onAuthStateChanged(auth,async user=>{
   openReportSection = "";
+  reportSearch = "";
   analysisView?.dispose();
   if (analysisDraft) $("#tripForm")?.remove();
   analysisView = analysisDraft = undefined;
@@ -1267,12 +1269,15 @@ function render(){
   if(state.page==="vendors"){root.innerHTML=masterHtml("vendors");wireMaster("vendors");}
   if(state.page==="locations"){root.innerHTML=masterHtml("locations");wireMaster("locations");}
   if (state.page === "reports") {
-    const focusedControl = root.contains(document.activeElement) && document.activeElement.id.startsWith("reports-toggle-")
-      ? document.activeElement.id : "";
+    const previousFocus = document.activeElement;
+    const focusedControl = root.contains(previousFocus) &&
+      (previousFocus.id.startsWith("reports-toggle-") || previousFocus.id === "reportsSearch") ? previousFocus.id : "";
+    const searchCaret = focusedControl === "reportsSearch" ? [previousFocus.selectionStart, previousFocus.selectionEnd] : null;
     root.innerHTML = canViewReports() ? reportsHtml() : '<div class="empty">Your role does not allow Reports.</div>';
     if (canViewReports()) {
       wireReports(root);
       if (focusedControl) document.getElementById(focusedControl)?.focus({ preventScroll: true });
+      if (searchCaret) $("#reportsSearch").setSelectionRange(...searchCaret);
     }
   }
   if(state.page==="settings"){root.innerHTML=settingsHtml();wireSettings();}
@@ -2550,28 +2555,66 @@ function vehiclePerformanceHtml(){
 
 function reportsHtml(){
  const freight=state.trips.reduce((s,t)=>s+Number(t.freight||0),0),exp=state.trips.reduce((s,t)=>s+t.totalExpenses,0),margin=state.trips.reduce((s,t)=>s+t.margin,0);
- const sections = [["trips", "Trip details"], ["vendors", "Vendor performance"], ["vehicles", "Vehicle performance"]];
- if (isAdmin()) sections.push(["threshold", "Margin alert threshold"]);
  const metric = (label, value, tone = "") => `<article class="analysis-metric ${tone}"><span>${label}</span><strong>${value}</strong></article>`;
- return `<div class="analysis-page">
- <header class="analysis-hero"><h2>Report sections</h2>
- <div class="analysis-section-controls" role="group" aria-label="Report sections">${reportSectionButtons(sections, "reports")}</div></header>
- <div class="analysis-metrics" aria-label="Report totals">
+ return `<div class="analysis-page report-directory">
+ <header class="report-directory-head">
+   <h2>Report catalog</h2>
+   <label for="reportsSearch"><span class="sr-only">Search reports</span>
+     <span class="report-search-icon" aria-hidden="true"></span>
+     <input id="reportsSearch" type="text" inputmode="search" placeholder="Search reports" autocomplete="off" value="${esc(reportSearch)}">
+   </label>
+ </header>
+ <div class="report-directory-body">
+ <div class="report-directory-list" aria-label="Available reports">
+   <div class="report-directory-group"><h3>Operations</h3>
+     ${reportSectionButtons([["trips", "Trip details"], ["vehicles", "Vehicle performance"]], "reports")}
+   </div>
+   <div class="report-directory-group"><h3>Finance</h3>
+     ${reportSectionButtons([["vendors", "Vendor performance"], ...(isAdmin() ? [["threshold", "Margin alert threshold"]] : [])], "reports")}
+   </div>
+   <p id="reportsNoMatches" role="status" class="analysis-note" hidden>No matching reports.</p>
+ </div>
+ <div class="report-directory-detail">
+ <p class="analysis-empty" id="reportsSelectionHint">Select a report to view its details.</p>
+ <section class="card" id="reports-trips" aria-labelledby="reports-toggle-trips" hidden>
+ <div class="section-head"><h3>Trip details</h3><button id="csvBtn" class="secondary" type="button">Download CSV</button></div>
+ <div class="analysis-metrics" aria-label="Trip totals">
  ${metric("Freight", "₹ " + money(freight))}
  ${metric("Expenses", "₹ " + money(exp))}
  ${metric("Margin", "₹ " + money(margin), margin < 0 ? "is-risk" : "is-positive")}
  ${metric("Trips", state.trips.length)}
  </div>
- <section class="card" id="reports-trips" aria-labelledby="reports-toggle-trips" hidden>
- <div class="section-head"><h3>Trip Detail Report</h3><button id="csvBtn" class="secondary" type="button">Download CSV</button></div>${tripTable(state.trips,false)}</section>
+ ${tripTable(state.trips,false)}</section>
  <section class="card" id="reports-vendors" aria-labelledby="reports-toggle-vendors" hidden>${vendorPerformanceHtml()}</section>
  <section class="card" id="reports-vehicles" aria-labelledby="reports-toggle-vehicles" hidden>${vehiclePerformanceHtml()}</section>
  ${isAdmin()?`<section class="card" id="reports-threshold" aria-labelledby="reports-toggle-threshold" hidden><div class="report-setting-card"><div><strong>Margin Alert Threshold</strong><small>Trips below this margin % are flagged as low-margin.</small></div><div class="report-setting-control"><input id="marginThresholdInput" aria-label="Margin alert threshold percent" type="number" min="-100" max="100" step="0.5" value="${Number(state.minMarginPercent ?? 10)}"><span>%</span><button id="saveMarginThreshold" class="secondary" type="button">Save</button></div></div></section>`:""}
- </div>`;
+ </div></div></div>`;
 }
 
 function wireReports(root){
- wireReportSections(root, openReportSection, id => { openReportSection = id; });
+ const search = $("#reportsSearch");
+ const groups = root.querySelectorAll(".report-directory-group");
+ const show = wireReportSections(root, openReportSection, id => {
+   openReportSection = id;
+   $("#reportsSelectionHint").hidden = Boolean(id);
+ });
+ function filterReports(){
+   const terms = search.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+   let visible = 0;
+   for (const group of groups) {
+     const buttons = [...group.querySelectorAll("[data-report-section]")];
+     for (const button of buttons) {
+       const name = (button.textContent + " " + group.querySelector("h3").textContent).toLowerCase();
+       button.hidden = !terms.every(term => name.includes(term));
+       if (!button.hidden) visible++;
+       if (button.hidden && button.getAttribute("aria-expanded") === "true") show("");
+     }
+     group.hidden = buttons.every(button => button.hidden);
+   }
+   $("#reportsNoMatches").hidden = visible > 0;
+ }
+ search.oninput = () => { reportSearch = search.value; filterReports(); };
+ filterReports();
  $("#saveMarginThreshold")?.addEventListener("click",async()=>{
    const value=Number($("#marginThresholdInput")?.value||10);
    if(!Number.isFinite(value)){toast("Enter a valid margin threshold");return;}
