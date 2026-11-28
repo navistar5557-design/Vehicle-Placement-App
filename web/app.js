@@ -1,5 +1,6 @@
-import { mountAnalysis } from "./ai-analysis.mjs?v=3";
+import { mountAnalysis } from "./ai-analysis.mjs?v=4";
 import { draftFields } from "./ai-analysis-data.mjs?v=2";
+import { reportSectionButtons, wireReportSections } from "./report-sections.mjs";
 import { mountCubeAI, questions as cubeAIQuestions } from "./cube-ai.mjs?v=10";
 import { cloudConfig, createCloudRouter, createGeneralAI, createFleetPlanner, firebaseCloudModel } from "./gemini-cloud.mjs?v=6";
 
@@ -61,6 +62,7 @@ let state = {
 };
 
 let analysisView, analysisDraft;
+let openReportSection = "";
 let analysisSession = { history: [], favorites: new Set() };
 let cubeAIReady={trips:false,vehicles:false};
 const cloudAuthorized=()=>!!(state.user&&state.profile&&state.role&&state.user.uid===state.profile.uid);
@@ -597,6 +599,7 @@ document.querySelector(".forgot-password-web")?.addEventListener("click",async()
 });
 
 onAuthStateChanged(auth,async user=>{
+  openReportSection = "";
   analysisView?.dispose();
   if (analysisDraft) $("#tripForm")?.remove();
   analysisView = analysisDraft = undefined;
@@ -1263,7 +1266,15 @@ function render(){
   if(state.page==="vehicles"){root.innerHTML=masterHtml("vehicles");wireMaster("vehicles");}
   if(state.page==="vendors"){root.innerHTML=masterHtml("vendors");wireMaster("vendors");}
   if(state.page==="locations"){root.innerHTML=masterHtml("locations");wireMaster("locations");}
-  if(state.page==="reports"){root.innerHTML=canViewReports()?reportsHtml():'<div class="empty">Your role does not allow Reports.</div>';if(canViewReports())wireReports();}
+  if (state.page === "reports") {
+    const focusedControl = root.contains(document.activeElement) && document.activeElement.id.startsWith("reports-toggle-")
+      ? document.activeElement.id : "";
+    root.innerHTML = canViewReports() ? reportsHtml() : '<div class="empty">Your role does not allow Reports.</div>';
+    if (canViewReports()) {
+      wireReports(root);
+      if (focusedControl) document.getElementById(focusedControl)?.focus({ preventScroll: true });
+    }
+  }
   if(state.page==="settings"){root.innerHTML=settingsHtml();wireSettings();}
   root.classList.remove("page-enter");
   requestAnimationFrame(()=>requestAnimationFrame(()=>root.classList.add("page-enter")));
@@ -2539,14 +2550,28 @@ function vehiclePerformanceHtml(){
 
 function reportsHtml(){
  const freight=state.trips.reduce((s,t)=>s+Number(t.freight||0),0),exp=state.trips.reduce((s,t)=>s+t.totalExpenses,0),margin=state.trips.reduce((s,t)=>s+t.margin,0);
- return `<div class="grid kpis"><div class="kpi"><div class="label">Freight</div><div class="value">₹ ${money(freight)}</div></div><div class="kpi"><div class="label">Expenses</div><div class="value">₹ ${money(exp)}</div></div><div class="kpi green"><div class="label">Margin</div><div class="value">₹ ${money(margin)}</div></div><div class="kpi"><div class="label">Trips</div><div class="value">${state.trips.length}</div></div></div>
- ${isAdmin()?`<div class="report-setting-card"><div><strong>Margin Alert Threshold</strong><small>Trips below this margin % are flagged as low-margin.</small></div><div class="report-setting-control"><input id="marginThresholdInput" type="number" min="-100" max="100" step="0.5" value="${Number(state.minMarginPercent||10)}"><span>%</span><button id="saveMarginThreshold" class="secondary" type="button">Save</button></div></div>`:""}
- ${vendorPerformanceHtml()}
- ${vehiclePerformanceHtml()}
- <div class="section-head"><h3>Trip Detail Report</h3><button id="csvBtn" class="secondary">Download CSV</button></div>${tripTable(state.trips,false)}`;
+ const sections = [["trips", "Trip details"], ["vendors", "Vendor performance"], ["vehicles", "Vehicle performance"]];
+ if (isAdmin()) sections.push(["threshold", "Margin alert threshold"]);
+ const metric = (label, value, tone = "") => `<article class="analysis-metric ${tone}"><span>${label}</span><strong>${value}</strong></article>`;
+ return `<div class="analysis-page">
+ <header class="analysis-hero"><h2>Report sections</h2>
+ <div class="analysis-section-controls" role="group" aria-label="Report sections">${reportSectionButtons(sections, "reports")}</div></header>
+ <div class="analysis-metrics" aria-label="Report totals">
+ ${metric("Freight", "₹ " + money(freight))}
+ ${metric("Expenses", "₹ " + money(exp))}
+ ${metric("Margin", "₹ " + money(margin), margin < 0 ? "is-risk" : "is-positive")}
+ ${metric("Trips", state.trips.length)}
+ </div>
+ <section class="card" id="reports-trips" aria-labelledby="reports-toggle-trips" hidden>
+ <div class="section-head"><h3>Trip Detail Report</h3><button id="csvBtn" class="secondary" type="button">Download CSV</button></div>${tripTable(state.trips,false)}</section>
+ <section class="card" id="reports-vendors" aria-labelledby="reports-toggle-vendors" hidden>${vendorPerformanceHtml()}</section>
+ <section class="card" id="reports-vehicles" aria-labelledby="reports-toggle-vehicles" hidden>${vehiclePerformanceHtml()}</section>
+ ${isAdmin()?`<section class="card" id="reports-threshold" aria-labelledby="reports-toggle-threshold" hidden><div class="report-setting-card"><div><strong>Margin Alert Threshold</strong><small>Trips below this margin % are flagged as low-margin.</small></div><div class="report-setting-control"><input id="marginThresholdInput" aria-label="Margin alert threshold percent" type="number" min="-100" max="100" step="0.5" value="${Number(state.minMarginPercent ?? 10)}"><span>%</span><button id="saveMarginThreshold" class="secondary" type="button">Save</button></div></div></section>`:""}
+ </div>`;
 }
 
-function wireReports(){
+function wireReports(root){
+ wireReportSections(root, openReportSection, id => { openReportSection = id; });
  $("#saveMarginThreshold")?.addEventListener("click",async()=>{
    const value=Number($("#marginThresholdInput")?.value||10);
    if(!Number.isFinite(value)){toast("Enter a valid margin threshold");return;}

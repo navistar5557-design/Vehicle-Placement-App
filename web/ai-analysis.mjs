@@ -1,5 +1,6 @@
 import { analyze, csvCell, dayKey, decisionInsights, draftFields, freightEstimate, tripDraft } from "./ai-analysis-data.mjs?v=2";
 import { extractFleetScope, localPlan, executePlan } from "./fleet-query.mjs";
+import { reportSectionButtons, wireReportSections } from "./report-sections.mjs";
 
 const escape = value => String(value ?? "").replace(/[&<>"']/g,
   char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -56,9 +57,7 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
       <header class="analysis-hero">
         <h2>Fleet performance</h2>
         <div class="analysis-section-controls" role="group" aria-label="Report sections">
-          ${reportSections.map(([id, label]) =>
-            '<button type="button" id="analysis-toggle-' + id + '" aria-controls="analysis-' + id +
-            '" aria-expanded="false">' + label + '</button>').join("")}
+          ${reportSectionButtons(reportSections, "analysis")}
         </div>
       </header>
       <details class="card analysis-filter-box">
@@ -137,22 +136,7 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
   const $ = selector => root.querySelector(selector);
   const out = name => $('[data-output="' + name + '"]');
   const controls = $(".analysis-filters");
-  const sectionButtons = [...root.querySelectorAll(".analysis-section-controls button")];
-  let activeSection = "";
-  function showSection(id) {
-    activeSection = id;
-    for (const button of sectionButtons) {
-      const panel = button.getAttribute("aria-controls");
-      button.setAttribute("aria-expanded", String(panel === id));
-      $("#" + panel).hidden = panel !== id;
-    }
-  }
-  for (const button of sectionButtons) {
-    button.onclick = () => {
-      const panel = button.getAttribute("aria-controls");
-      showSection(activeSection === panel ? "" : panel);
-    };
-  }
+  const showSection = wireReportSections(root);
   const setOptions = (select, values, label) => {
     const markup = options(values, label);
     if (select.dataset.options === markup) return;
@@ -354,8 +338,7 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
       $("#analysisChart").value = "expenses";
       renderChart();
     }
-    showSection(panel);
-    sectionButtons.find(control => control.getAttribute("aria-controls") === panel)?.focus({ preventScroll: true });
+    showSection(panel, true);
   });
   $("#analysisTarget").oninput = update;
   for (const id of ["#analysisFreight", "#analysisCosts", "#analysisMargin"]) $(id).oninput = quote;
