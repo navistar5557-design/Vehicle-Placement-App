@@ -1,6 +1,6 @@
 import { analyze, csvCell, dayKey, decisionInsights, draftFields, freightEstimate, tripDraft } from "./ai-analysis-data.mjs?v=2";
 import { extractFleetScope, localPlan, executePlan } from "./fleet-query.mjs";
-import { reportSectionButtons, wireReportSections } from "./report-sections.mjs?v=2";
+import { reportSectionButtons, wireReportDirectory } from "./report-sections.mjs?v=3";
 
 const escape = value => String(value ?? "").replace(/[&<>"']/g,
   char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -34,9 +34,11 @@ const insight = (title, metric, detail, link, action, tone = "") =>
   '</strong><p>' + escape(detail) + '</p><button type="button" data-analysis-open="' + link +
   '">' + escape(action) + ' <span aria-hidden="true">→</span></button></article>';
 
-const reportSections = [
-  ["priorities", "Priorities"], ["alerts", "Trip alerts"], ["visuals", "Charts"],
-  ["operations", "Operations"], ["finance", "Finance"], ["assistant", "Assistant"]
+const reportGroups = [
+  ["Overview", [["priorities", "Priorities"], ["visuals", "Performance charts"]]],
+  ["Operations", [["alerts", "Trip alerts"], ["operations", "Dispatch advisor"]]],
+  ["Finance", [["finance", "Profitability & freight planning"]]],
+  ["Tools", [["assistant", "Analysis assistant"]]]
 ];
 
 function download(name, content, type) {
@@ -53,14 +55,22 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
   const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
   let disposed = false;
   root.innerHTML = `
-    <div class="analysis-page">
-      <header class="analysis-hero">
-        <h2>Fleet performance</h2>
-        <div class="analysis-section-controls" role="group" aria-label="Report sections">
-          ${reportSectionButtons(reportSections, "analysis")}
-        </div>
+    <div class="analysis-page report-directory">
+      <header class="report-directory-head">
+        <h2>AI Analysis</h2>
+        <label for="analysisDirectorySearch"><span class="sr-only">Search analysis reports</span>
+          <span class="report-search-icon" aria-hidden="true"></span>
+          <input id="analysisDirectorySearch" type="search" placeholder="Search analysis reports" autocomplete="off">
+        </label>
       </header>
-      <details class="card analysis-filter-box">
+      <div class="report-directory-body">
+      <div class="report-directory-list" role="group" aria-label="Available analysis reports">
+        ${reportGroups.map(([title, sections]) => `<div class="report-directory-group"><h3>${title}</h3>
+          ${reportSectionButtons(sections, "analysis")}</div>`).join("")}
+        <p id="analysisNoMatches" role="status" class="analysis-note" hidden>No matching reports.</p>
+      </div>
+      <div class="report-directory-detail">
+      <details class="analysis-filter-box">
       <summary>Filters <span data-output="filter-count"></span></summary>
       <form class="analysis-controls analysis-filters" aria-label="Report filters">
         <label>From<input name="from" type="date"></label><label>Through<input name="to" type="date"></label>
@@ -70,8 +80,10 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
       <p class="analysis-note">Trip dates are placement dates in India time. Financial totals use booked freight and calculated trip expenses, excluding cancellations.</p>
       </details>
       <p class="analysis-empty" data-output="status" role="status" hidden></p>
-      <div class="analysis-metrics" data-output="metrics" aria-label="Key metrics"></div>
-      <section class="card" id="analysis-priorities" aria-labelledby="analysis-toggle-priorities" hidden><h3>What needs attention</h3>
+      <p class="analysis-empty" id="analysisSelectionHint">Select an analysis report to view its details.</p>
+      <section class="card" id="analysis-priorities" aria-labelledby="analysis-toggle-priorities" hidden><h3>Fleet overview</h3>
+        <div class="analysis-metrics" data-output="metrics" aria-label="Key metrics"></div>
+        <h4>What needs attention</h4>
         <div class="analysis-insights" data-output="insights"></div>
       </section>
       <section class="card" id="analysis-visuals" aria-labelledby="analysis-toggle-visuals" hidden><h3>Performance charts</h3>
@@ -132,11 +144,13 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
         <p class="analysis-note">Checked while the report is open. Empty runs above 40 km are flagged and above 100 km marked for review. Open-trip delay uses placement time plus planned hours. Expense comparisons use prior completed trips on the same route.</p>
         <div data-output="alerts"></div>
       </section>
-    </div>`;
+    </div></div></div>`;
   const $ = selector => root.querySelector(selector);
   const out = name => $('[data-output="' + name + '"]');
   const controls = $(".analysis-filters");
-  const showSection = wireReportSections(root);
+  const showSection = wireReportDirectory(root, {
+    search: $("#analysisDirectorySearch"), empty: $("#analysisNoMatches"), hint: $("#analysisSelectionHint")
+  });
   const setOptions = (select, values, label) => {
     const markup = options(values, label);
     if (select.dataset.options === markup) return;
