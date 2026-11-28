@@ -24,6 +24,9 @@ try{
  await page.evaluate(()=>window.widget.show());
  await page.getByRole("button",{name:"CUBE AI"}).click();
  await page.getByText("YOUR INTELLIGENT OPERATIONS PARTNER",{exact:true}).waitFor();
+ await page.waitForFunction(()=>{const r=document.querySelector("#cubeAiPanel").getBoundingClientRect();return Math.abs(r.width-420)<1&&Math.abs(r.height-570)<1;});
+ assert.ok(await page.getByRole("textbox",{name:"Ask CUBE AI"}).isVisible());
+ assert.ok(await page.getByRole("combobox",{name:"Answer language"}).isVisible());
  assert.equal(await page.locator(".cube-ai-suggestions button").count(),6);
  await page.getByRole("button",{name:"Which vehicles are available now?"}).click();
  await page.getByText("FREE-1 · Available",{exact:true}).waitFor();
@@ -54,6 +57,7 @@ try{
  await page.waitForFunction(()=>document.querySelector("#cubeAiPanel").getBoundingClientRect().width>600);
  assert.ok((await page.locator("#cubeAiPanel").boundingBox()).width>600);
  await page.getByRole("button",{name:"Restore assistant"}).click();
+ await page.waitForFunction(()=>Math.abs(document.querySelector("#cubeAiPanel").getBoundingClientRect().width-420)<1);
  await page.getByRole("textbox",{name:"Ask CUBE AI"}).fill("Revenue this month");
  await page.getByRole("button",{name:"Ask",exact:true}).click();
  await page.getByText("Total freight: ₹1,000.",{exact:false}).waitFor();
