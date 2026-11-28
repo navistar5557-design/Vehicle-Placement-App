@@ -130,7 +130,8 @@ export function mountCubeAI(getData,cloudRouter=null,generalAI=null,fleetPlanner
  let generation=0,busy=false;
  const languageSelect=el.querySelector('.cube-ai-language-select');
  let language='en';try{language=normalizeLanguage(localStorage.getItem('cube.ai.answerLanguage'));}catch{}
- languageSelect.value=language;languageSelect.onchange=()=>{language=normalizeLanguage(languageSelect.value);try{localStorage.setItem('cube.ai.answerLanguage',language);}catch{}};
+ languageSelect.value=language;let languageAnimation;
+ languageSelect.onchange=()=>{language=normalizeLanguage(languageSelect.value);try{localStorage.setItem('cube.ai.answerLanguage',language);}catch{}if(typeof languageSelect.animate==='function'&&!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches){languageAnimation?.cancel();languageAnimation=languageSelect.animate([{boxShadow:'0 0 0 0 #f5823780',transform:'scale(1)'},{boxShadow:'0 0 0 4px #f5823720',transform:'scale(1.035)'},{boxShadow:'0 0 0 0 transparent',transform:'scale(1)'}],{duration:360,easing:'ease-out'});}};
  function message(title,body,rows=[],user=false,source="",alreadyLocalized=false){
   const T=s=>tr(s,language);if(!user){title=T(title);if(!alreadyLocalized)body=T(body);}
 
@@ -142,8 +143,8 @@ export function mountCubeAI(getData,cloudRouter=null,generalAI=null,fleetPlanner
   if(!user&&body){const copy=document.createElement("button");copy.type="button";copy.className="cube-ai-copy";copy.innerHTML=aiIcon("copy")+"<span>Copy</span>";copy.setAttribute("aria-label","Copy answer");copy.onclick=async()=>{try{await navigator.clipboard.writeText([title,body,...rows.slice(0,40)].join("\n"));copy.textContent="Copied";}catch{copy.textContent="Copy unavailable";}};a.append(copy);}
   log.append(a);log.scrollTop=log.scrollHeight;
  }
- function setOpen(open){panel.hidden=!open;launch.setAttribute("aria-expanded",String(open));if(open)input.focus();else launch.focus();}
- function setBusy(value){busy=value;send.disabled=value;languageSelect.disabled=value;thinking.hidden=!value;for(const b of suggestions.querySelectorAll("button"))b.disabled=value;}
+ function setOpen(open){panel.hidden=!open;launch.setAttribute("aria-expanded",String(open));if(open)input.focus({preventScroll:true});else launch.focus({preventScroll:true});}
+ function setBusy(value){busy=value;panel.classList.toggle('cube-ai-busy',value);send.disabled=value;languageSelect.disabled=value;thinking.hidden=!value;for(const b of suggestions.querySelectorAll("button"))b.disabled=value;}
  function populate(){
   log.replaceChildren();suggestions.replaceChildren();input.value="";
   const d=getData();

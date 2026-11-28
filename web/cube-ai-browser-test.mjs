@@ -38,6 +38,7 @@ try{
  assert.equal(await page.locator(".cube-ai-source[data-source=gemini]").count(),1);
  const lang=page.getByRole("combobox",{name:"Answer language"});
  assert.equal(await lang.locator("option").count(),5);
+ assert.equal(await lang.inputValue(),"en");
  for(const [code,label] of [["hi","कुल लाभ"],["kn","ಒಟ್ಟು ಲಾಭ"],["ta","மொத்த லாபம்"],["te","మొత్తం లాభం"]]){
   await lang.selectOption(code);
   await page.getByRole("textbox",{name:"Ask CUBE AI"}).fill("Margin this month");
@@ -50,6 +51,7 @@ try{
  assert.equal(await page.evaluate(()=>localStorage.getItem("cube.ai.answerLanguage")),"te");
  await lang.selectOption("en");
  await page.getByRole("button",{name:"Expand assistant"}).click();
+ await page.waitForFunction(()=>document.querySelector("#cubeAiPanel").getBoundingClientRect().width>600);
  assert.ok((await page.locator("#cubeAiPanel").boundingBox()).width>600);
  await page.getByRole("button",{name:"Restore assistant"}).click();
  await page.getByRole("textbox",{name:"Ask CUBE AI"}).fill("Revenue this month");
@@ -69,6 +71,9 @@ try{
  await page.setViewportSize({width:375,height:667});
  assert.ok(await page.getByRole("textbox",{name:"Ask CUBE AI"}).isVisible());
  assert.equal(await page.locator(".cube-ai-suggestions button").count(),4);
+ await page.emulateMedia({reducedMotion:"reduce"});
+ assert.equal(await page.locator("#cubeAiPanel").evaluate(el=>getComputedStyle(el).animationName),"none");
+ assert.equal(await page.locator("#cubeAiPanel").evaluate(el=>getComputedStyle(el).transitionDuration),"0s");
  const rect=await page.locator("#cubeAiPanel").boundingBox();
  assert.ok(rect.x>=0&&rect.x+rect.width<=375&&rect.y>=0&&rect.y+rect.height<=667,"mobile panel fits viewport");
  await page.evaluate(()=>window.widget.hide());
