@@ -164,3 +164,9 @@ html[data-theme="dark"] .analysis-page {
   .report-directory-body { grid-template-columns: minmax(0,1fr); }
   .report-directory-list { border-inline-end: 0; border-bottom: 1px solid var(--analysis-line); }
 }
+
+.analysis-review-output { margin-top: 12px; }
+.analysis-review-output .analysis-note + .analysis-metrics { margin-top: 8px; }
+.analysis-report-questions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
+.analysis-page #analysis-weekly .table-wrap { overflow-x: auto; }
+.analysis-page #analysis-weekly table { min-width: 420px; }
