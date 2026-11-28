@@ -1,11 +1,11 @@
 export function reportSectionButtons(sections, prefix) {
   return sections.map(([id, label]) =>
     '<button type="button" id="' + prefix + '-toggle-' + id + '" aria-controls="' + prefix + '-' + id +
-    '" aria-expanded="false">' + label + '</button>').join("");
+    '" aria-expanded="false" data-report-section>' + label + '</button>').join("");
 }
 
 export function wireReportSections(root, initial = "", onChange = () => {}) {
-  const buttons = [...root.querySelectorAll(".analysis-section-controls button")];
+  const buttons = [...root.querySelectorAll("[data-report-section]")];
   let active;
   function show(id, focus = false) {
     active = id;
