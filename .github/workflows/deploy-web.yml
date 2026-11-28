@@ -2,6 +2,11 @@ name: Deploy Web Portal to GitHub Pages
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'web/**'
+      - '.github/workflows/deploy-web.yml'
   push:
     branches: [ main ]
     paths:
@@ -10,15 +15,35 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: ${{ github.event_name == 'pull_request' && format('web-pr-{0}', github.event.pull_request.number) || 'pages' }}
   cancel-in-progress: true
 
 jobs:
+  test:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check web JavaScript syntax
+        run: |
+          node --check web/app.js
+          node --check web/ai-analysis.mjs
+      - name: Run web tests
+        run: node --test $(find web -maxdepth 1 -name '*test.mjs' ! -name '*browser*' -print)
+
   deploy:
+    if: github.event_name != 'pull_request'
+    needs: test
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -30,12 +55,6 @@ jobs:
           cat web/.asset-chunks/benz-sidebar-*.b64 | base64 --decode > web/benz-container-sidebar.webp
           test -s web/benz-container-sidebar.webp
           rm -rf web/.asset-chunks
-      - name: Check web JavaScript syntax
-        run: node --check web/app.js
-      - name: Run Phase 1 smoke tests
-        run: node web/phase1-smoke-test.mjs
-      - name: Run AI Analysis tests
-        run: node web/ai-analysis-test.mjs
       - uses: actions/configure-pages@v5
         with:
           enablement: true
