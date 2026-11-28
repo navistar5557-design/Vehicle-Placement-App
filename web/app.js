@@ -1,3 +1,5 @@
+import { mountAnalysis } from "./ai-analysis.mjs";
+import { draftFields } from "./ai-analysis-data.mjs";
 import { mountCubeAI, questions as cubeAIQuestions } from "./cube-ai.mjs?v=10";
 import { cloudConfig, createCloudRouter, createGeneralAI, createFleetPlanner, firebaseCloudModel } from "./gemini-cloud.mjs?v=6";
 
@@ -23,7 +25,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const WEB_VERSION = "0.4.51";
+const WEB_VERSION = "0.4.52";
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));
@@ -58,6 +60,8 @@ let state = {
   settingsTab:"users", settingsRoles:[], settingsUsers:[], settingsLoading:false, settingsLoaded:false
 };
 
+let analysisView, analysisDraft;
+let analysisSession = { history: [], favorites: new Set() };
 let cubeAIReady={trips:false,vehicles:false};
 const cloudAuthorized=()=>!!(state.user&&state.profile&&state.role&&state.user.uid===state.profile.uid);
 const cloudModel=firebaseCloudModel(app);
@@ -459,7 +463,7 @@ async function migrateLegacyOtherExpenseToAmount(){
 function startLiveSync(){
   state.unsubs.forEach(f=>f()); state.unsubs=[];
   setSync(navigator.onLine?"Connecting...":"Offline",navigator.onLine,navigator.onLine?"connecting":"offline");
-  const watch=(name,cb)=>state.unsubs.push(onSnapshot(collection(db,name),{includeMetadataChanges:Object.hasOwn(cubeAIReady,name)},snap=>{cb(snap.docs.map(d=>({id:d.id,...d.data()}))); if(Object.hasOwn(cubeAIReady,name))cubeAIReady[name]=!snap.metadata.fromCache&&!snap.metadata.hasPendingWrites; syncedNow(); render();},err=>{if(Object.hasOwn(cubeAIReady,name))cubeAIReady[name]=false;console.error(err);setSync("Sync error",false,"error");}));
+  const watch=(name,cb)=>state.unsubs.push(onSnapshot(collection(db,name),{includeMetadataChanges:Object.hasOwn(cubeAIReady,name)},snap=>{cb(snap.docs.map(d=>({id:d.id,...d.data()}))); if(Object.hasOwn(cubeAIReady,name))cubeAIReady[name]=!snap.metadata.fromCache&&!snap.metadata.hasPendingWrites; syncedNow(); render();},err=>{if(Object.hasOwn(cubeAIReady,name))cubeAIReady[name]=false;console.error(err);setSync("Sync error",false,"error"); analysisView?.update();}));
   watch("trips",rows=>state.trips=rows.map(calcTrip).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0)));
   watch("vehicles",rows=>state.vehicles=rows.map(x=>({number:x.number||x.id,mileage:Number(x.mileage||0),active:x.active!==false})).sort((a,b)=>a.number.localeCompare(b.number)));
   watch("vendors",rows=>state.vendors=rows.map(x=>({name:x.name||x.id,active:x.active!==false})).sort((a,b)=>a.name.localeCompare(b.name)));
@@ -467,6 +471,7 @@ function startLiveSync(){
   state.unsubs.push(onSnapshot(doc(db,"settings","fuelRate"),d=>{ if(d.exists()) state.fuelRate=Number(d.data().value||100); render(); }));
   state.unsubs.push(onSnapshot(doc(db,"settings","profitability"),d=>{
     if(d.exists()) state.minMarginPercent=Number(d.data().minMarginPercent??10);
+    analysisView?.update();
   },err=>console.warn("Profitability settings unavailable",err)));
   state.unsubs.push(onSnapshot(collection(db,"notifications"),snap=>{
     state.notifications=snap.docs.map(d=>({id:d.id,...d.data()})).filter(visibleNotification).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0)).slice(0,50);
@@ -483,7 +488,10 @@ async function showApp(){
   const versionEl=$("#profileVersion");if(versionEl)versionEl.textContent="v"+WEB_VERSION;
   const newTripBtn=document.querySelector('[data-page="newtrip"]'); if(newTripBtn) newTripBtn.style.display=canCreateTrips()?"":"none";
   ["vehicles","vendors","locations"].forEach(p=>{const b=document.querySelector(`[data-page="${p}"]`);if(b)b.style.display=canManageMasters()?"":"none";});
-  const reportsBtn=document.querySelector('[data-page="reports"]');if(reportsBtn)reportsBtn.style.display=canViewReports()?"":"none";
+  for (const page of ["reports", "analysis"]) {
+    const button = document.querySelector('[data-page="' + page + '"]');
+    if (button) button.style.display = canViewReports() ? "" : "none";
+  }
 
   try{
     const migrated=await migrateExistingTripsToV3();
@@ -589,6 +597,10 @@ document.querySelector(".forgot-password-web")?.addEventListener("click",async()
 });
 
 onAuthStateChanged(auth,async user=>{
+  analysisView?.dispose();
+  if (analysisDraft) $("#tripForm")?.remove();
+  analysisView = analysisDraft = undefined;
+  analysisSession = { history: [], favorites: new Set() };
   cubeAI.hide(); cubeAIReady={trips:false,vehicles:false};
   state.user=user;
   if(!user){state.profile=null;state.role=null;state.unsubs.forEach(f=>f());state.unsubs=[];showLogin();return;}
@@ -1191,13 +1203,18 @@ function configureTopbarForPage(page){
 }
 
 function navigate(page){
-  if(page==="reports"&&!canViewReports()){toast("Your role does not allow Reports");page="dashboard";}
+  if(["reports","analysis"].includes(page)&&!canViewReports()){toast("Your role does not allow Reports");page="dashboard";}
+  if (page !== "analysis" && analysisView) {
+    analysisView.dispose();
+    analysisView = undefined;
+  }
+  if (page !== "newtrip") analysisDraft = undefined;
   state.page=page;
   document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
   syncSidebarLayout();
   if(page!=="dashboard"){
     restoreStandardTopbar();
-    const titles={trips:["Trips","Live trip placement and status"],newtrip:["Create Trip","Add a new vehicle placement"],vehicles:["Vehicles","Vehicle master"],vendors:["Vendors","Vendor master"],locations:["Locations","Location master"],reports:["Reports","Operational and profitability summary"],settings:["Settings","Users, roles and access permissions"]};
+    const titles={trips:["Trips","Live trip placement and status"],newtrip:["Create Trip","Add a new vehicle placement"],vehicles:["Vehicles","Vehicle master"],vendors:["Vendors","Vendor master"],locations:["Locations","Location master"],reports:["Reports","Operational and profitability summary"],analysis:["AI Analysis","Fleet operations and profitability"],settings:["Settings","Users, roles and access permissions"]};
     $("#pageTitle").textContent=titles[page]?.[0]||"CUBE";
     $("#pageSubtitle").textContent=titles[page]?.[1]||"";
   }
@@ -1214,7 +1231,35 @@ function render(){
     root.innerHTML=dashboardHtml();configureTopbarForPage("dashboard");wireDashboard();
   }
   if(state.page==="trips"){root.innerHTML=tripsHtml();wireTrips();}
-  if(state.page==="newtrip"){root.innerHTML=newTripHtml();wireNewTrip();}
+  if (state.page === "analysis") {
+    if (!cloudAuthorized() || !canViewReports()) {
+      analysisView?.dispose();
+      analysisView = undefined;
+      root.textContent = "Your role does not allow Reports.";
+      return;
+    }
+    if (analysisView) analysisView.update();
+    else analysisView = mountAnalysis(root, () => ({
+      ready: cloudAuthorized() && canViewReports() && cubeAIReady.trips && cubeAIReady.vehicles,
+      canCreateTrips: cloudAuthorized() && canViewReports() && canCreateTrips(),
+      trips: state.trips.map(t => ({
+        ...t, tripNumber: displayTripNumber(t), isOpen: isTripOpenStatus(t.status),
+        freight: parseMoneyValue(t.freight), fastag: parseMoneyValue(t.fastag),
+        fixedExpenses: parseMoneyValue(t.fixedExpenses),
+        advance: t.advance == null || t.advance === "" ? undefined : parseMoneyValue(t.advance)
+      })),
+      vehicles: state.vehicles, locations: state.locations.map(item => item.name),
+      minMargin: state.minMarginPercent
+    }), draft => {
+      if (!cloudAuthorized() || !canViewReports() || !canCreateTrips()) return;
+      analysisDraft = draft;
+      navigate("newtrip");
+    }, analysisSession);
+  }
+  if (state.page === "newtrip" && !(analysisDraft && $("#tripForm"))) {
+    root.innerHTML = newTripHtml();
+    if (canCreateTrips()) wireNewTrip();
+  }
   if(state.page==="vehicles"){root.innerHTML=masterHtml("vehicles");wireMaster("vehicles");}
   if(state.page==="vendors"){root.innerHTML=masterHtml("vendors");wireMaster("vendors");}
   if(state.page==="locations"){root.innerHTML=masterHtml("locations");wireMaster("locations");}
@@ -2220,6 +2265,7 @@ function newTripHtml(){
 }
 function wireNewTrip(){
  const form=$("#tripForm");
+ let saving = false;
  if(form){
    form.reset();
    ["fFreight","fAdvance","fWeight","fKm","fHours","fOriginKm","fLoad","fUnload","fOther","fFastag","fRto","fFixed"].forEach(id=>{const el=$("#"+id);if(el)el.value="";});
@@ -2254,8 +2300,28 @@ function wireNewTrip(){
    $("#"+id)?.addEventListener("change",previewProfitability);
  });
  v.addEventListener("change",setMileage);
+ if (analysisDraft) {
+   const missing = [];
+   for (const [key, value] of Object.entries(analysisDraft)) {
+     const field = document.getElementById(draftFields[key]);
+     if (!field) continue;
+     if (field.tagName === "SELECT" && !Array.from(field.options).some(option => option.value === value && !option.disabled)) {
+       missing.push(key);
+       continue;
+     }
+     field.value = value;
+     if (!field.value) missing.push(key);
+   }
+   const note = document.createElement("p");
+   note.className = "analysis-note";
+   note.textContent = "Imported draft. Review all values before selecting Save Trip." +
+     (missing.length ? " Enter or correct these unmatched fields: " + missing.join(", ") + "." : "");
+   form.prepend(note);
+   if (v.value) setMileage();
+ }
  previewProfitability();
  $("#tripForm").addEventListener("submit",async e=>{e.preventDefault();
+ if (saving || !cloudAuthorized() || !canCreateTrips()) return;
  const n=id=>Number($("#"+id).value||0);
  const m=id=>parseMoneyValue($("#"+id).value);
  const now=Date.now(),id=uid(),freight=m("fFreight");
@@ -2269,7 +2335,13 @@ function wireNewTrip(){
    const ok=confirm((preview.margin<0?"Negative":"Low")+" margin: ₹ "+money(preview.margin)+" ("+preview.marginPercent.toFixed(1)+"%). Save this trip anyway?");
    if(!ok)return;
  }
+ const account = state.profile;
+ const submit = form.querySelector('button[type="submit"]');
+ saving = true;
+ submit.disabled = true;
+ try {
  const tripNumber=await nextTripNumber(now);
+ if (!cloudAuthorized() || state.profile !== account || !canCreateTrips()) return;
  const trip={id,tripNumber,createdAt:now,vendor:$("#fVendor").value,vehicle:selectedVehicle,currentLocation:$("#fCurrent").value,from:$("#fFrom").value,to:$("#fTo").value,freight,netFreight:freight,advance:m("fAdvance"),weightTon:weight,currentToOriginKm:m("fOriginKm"),totalKm:m("fKm"),transitHours:m("fHours"),mileage:n("fMileage"),fuelRate:state.fuelRate,fixedExpenses:m("fFixed"),fastag:m("fFastag"),rtoTarpaulin:m("fRto"),loadingUnloading:0,loadingExpensePerTon:loadPerTon,unloadingExpensePerTon:unloadPerTon,otherExpense,expenseCalcVersion:3,numericDataVersion:2,expenseRules:[],createdBy:state.profile.username,createdByEmail:state.profile.loginEmail,status:"Created",statusUpdatedBy:state.profile.username,statusUpdatedByEmail:state.profile.loginEmail,statusUpdatedAt:now,updatedAt:now};
  await persistTrip(id,trip,false,"CREATE");
  await createLiveNotification("New Trip Created",trip.vehicle+" — "+trip.from+" → "+trip.to,id,"trip_created");
@@ -2277,7 +2349,14 @@ function wireNewTrip(){
  if(savedCalc.margin<0 || savedCalc.marginPercent<Number(state.minMarginPercent||10)){
    await createLiveNotification("Margin Warning",trip.vehicle+" margin ₹"+money(savedCalc.margin)+" ("+savedCalc.marginPercent.toFixed(1)+"%)",id,"margin_warning");
  }
- toast("Trip created");navigate("trips");});
+ if (state.profile === account) { toast("Trip created"); navigate("trips"); }
+ } catch (error) {
+   console.error("Trip save failed", error);
+ } finally {
+   saving = false;
+   submit.disabled = false;
+ }
+ });
 }
 
 function openEditTrip(id){
