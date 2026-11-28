@@ -1,4 +1,3 @@
-const dayMs = 86400000;
 const number = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 const open = trip => trip.isOpen ?? !["Completed", "Cancelled"].includes(trip.status);
 const sum = (rows, field) => rows.reduce((total, row) => total + number(row[field]), 0);
@@ -78,8 +77,9 @@ export function analyze({ trips, vehicles, filters = {}, now, minMargin, target 
   for (const trip of booked) {
     const km = number(trip.currentToOriginKm);
     if (km > 40) alerts.push({ trip, level: km > 100 ? "Review" : "Watch", reason: "Empty run · " + km + " km" });
-    if (number(trip.freight) > 0 && trip.marginPercent < minMargin) {
-      alerts.push({ trip, level: "Review", reason: "Margin · " + trip.marginPercent.toFixed(1) + "%" });
+    if (number(trip.margin) < 0 || (number(trip.freight) > 0 && trip.marginPercent < minMargin)) {
+      alerts.push({ trip, level: "Review", reason: number(trip.freight) > 0 && Number.isFinite(trip.marginPercent)
+        ? "Margin · " + trip.marginPercent.toFixed(1) + "%" : "Negative calculated margin" });
     }
     const peers = routeKey(trip) ? (completedRoutes.get(routeKey(trip)) || []).filter(peer =>
       peer !== trip && peer.status === "Completed" && (number(peer.closedAt) || number(peer.statusUpdatedAt)) > 0 &&
@@ -123,6 +123,25 @@ export function freightEstimate({ freight, cost, margin }) {
   if (![freight, cost, margin].every(Number.isFinite) || freight <= 0 || cost < 0 || margin < 0 || margin >= 100) return null;
   return { minimum: Math.ceil(cost / (1 - margin / 100) * 100) / 100, profit: freight - cost,
     margin: (freight - cost) / freight * 100 };
+}
+
+export function decisionInsights(report) {
+  const losses = report.booked.filter(trip => number(trip.margin) < 0);
+  const overTarget = report.booked.filter(trip => number(trip.currentToOriginKm) > 40);
+  const cost = report.expenses.reduce((largest, row) =>
+    row.value > (largest?.value ?? 0) ? row : largest, null);
+  const route = report.routes.reduce((best, row) =>
+    row.count >= 3 && row.margin > (best?.margin ?? 0) ? row : best, null);
+  return {
+    lossTrips: losses.length,
+    losses: Math.abs(sum(losses, "margin")),
+    emptyTripsOverTarget: overTarget.length,
+    kmAboveTarget: sum(overTarget, "currentToOriginKm") - 40 * overTarget.length,
+    cost,
+    costShare: cost && report.totals.expenses > 0 && cost.value <= report.totals.expenses
+      ? 100 * cost.value / report.totals.expenses : null,
+    route
+  };
 }
 
 export const draftFields = {
