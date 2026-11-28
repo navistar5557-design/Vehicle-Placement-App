@@ -139,7 +139,7 @@ export function mountCubeAI(getData,cloudRouter=null,generalAI=null,fleetPlanner
   const h=document.createElement("strong");h.className="cube-ai-message-title";if(!user){const avatar=document.createElement("span");avatar.className="cube-ai-mini-avatar";avatar.innerHTML=aiIcon("spark");h.append(avatar);}h.append(document.createTextNode(title));a.append(h);
   if(body){const p=document.createElement("p");p.textContent=body;a.append(p);}
   if(rows.length){const list=document.createElement("ul");for(const row of rows.slice(0,40)){const li=document.createElement("li");li.textContent=row;list.append(li);}a.append(list);if(rows.length>40){const p=document.createElement("p");p.textContent=T("Showing first 40 of")+" "+rows.length+" "+T("records. See reports for all records.");a.append(p);}}
-  if(source){const meta=document.createElement("span");meta.className="cube-ai-source";meta.dataset.source=source.includes("Firebase")?"fleet":source.includes("Gemini")?"gemini":"local";meta.textContent=T(source);a.append(meta);}
+  if(source&&source!=="Google Gemini · Free tier"){const meta=document.createElement("span");meta.className="cube-ai-source";meta.dataset.source=source.includes("Firebase")?"fleet":source.includes("Gemini")?"gemini":"local";meta.textContent=T(source);a.append(meta);}
   if(!user&&body){const copy=document.createElement("button");copy.type="button";copy.className="cube-ai-copy";copy.innerHTML=aiIcon("copy")+"<span>Copy</span>";copy.setAttribute("aria-label","Copy answer");copy.onclick=async()=>{try{await navigator.clipboard.writeText([title,body,...rows.slice(0,40)].join("\n"));copy.textContent="Copied";}catch{copy.textContent="Copy unavailable";}};a.append(copy);}
   log.append(a);log.scrollTop=log.scrollHeight;
  }
@@ -178,7 +178,7 @@ export function mountCubeAI(getData,cloudRouter=null,generalAI=null,fleetPlanner
    if(route.kind==="blocked"){message("Private information","Please remove identifiers, credentials or personal details and ask again. No cloud request was sent.",[] ,false,"Privacy protection");return;}
    if(route.kind==="general"){
     const result=generalAI?await generalAI(q,language):{ok:false,text:"Gemini is not configured."};
-    if(current())message(result.ok?"CUBE AI":"Gemini unavailable",result.text,[],false,result.ok?"Google Gemini · Free tier":"Connection status",result.ok);return;
+    if(current())message(result.ok?"CUBE AI":"Gemini unavailable",result.text,[],false,result.ok?"":"Connection status",result.ok);return;
    }
    let intent=route.intent;
    if(route.kind==="fleet-unknown"&&cloudRouter){intent=await cloudRouter(q);if(!current())return;}
