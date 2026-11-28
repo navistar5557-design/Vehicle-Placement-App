@@ -38,7 +38,9 @@ try{
  await page.getByRole("textbox",{name:"Ask CUBE AI"}).fill("What is diesel efficiency?");
  await page.getByRole("button",{name:"Ask",exact:true}).click();
  await page.getByText("General answer: What is diesel efficiency?",{exact:true}).waitFor();
- assert.equal(await page.locator(".cube-ai-source[data-source=gemini]").count(),1);
+ assert.equal(await page.locator(".cube-ai-source[data-source=gemini]").count(),0);
+ assert.ok(await page.locator(".cube-ai-answer").last().getByRole("button",{name:"Copy answer"}).isVisible());
+ assert.equal(await page.getByText("Google Gemini · Free tier",{exact:true}).count(),0);
  const lang=page.getByRole("combobox",{name:"Answer language"});
  assert.equal(await lang.locator("option").count(),5);
  assert.equal(await lang.inputValue(),"en");
@@ -50,6 +52,8 @@ try{
   await page.getByRole("textbox",{name:"Ask CUBE AI"}).fill("What is diesel efficiency?");
   await page.getByRole("button",{name:"Ask",exact:true}).click();
   await page.getByText("General answer: What is diesel efficiency? · "+code,{exact:true}).waitFor();
+  assert.equal(await page.locator(".cube-ai-answer").last().locator(".cube-ai-source").count(),0);
+  assert.ok(await page.locator(".cube-ai-answer").last().getByRole("button",{name:"Copy answer"}).isVisible());
  }
  assert.equal(await page.evaluate(()=>localStorage.getItem("cube.ai.answerLanguage")),"te");
  await lang.selectOption("en");
