@@ -1,5 +1,5 @@
-import { mountCubeAI, questions as cubeAIQuestions } from "./cube-ai.mjs?v=7";
-import { cloudConfig, createCloudRouter, createGeneralAI, createFleetPlanner, firebaseCloudModel } from "./gemini-cloud.mjs?v=5";
+import { mountCubeAI, questions as cubeAIQuestions } from "./cube-ai.mjs?v=8";
+import { cloudConfig, createCloudRouter, createGeneralAI, createFleetPlanner, firebaseCloudModel } from "./gemini-cloud.mjs?v=6";
 
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
@@ -23,7 +23,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const WEB_VERSION = "0.4.47";
+const WEB_VERSION = "0.4.48";
 
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(Number(n||0));

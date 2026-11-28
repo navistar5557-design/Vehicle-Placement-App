@@ -1,3 +1,4 @@
+import {tr} from "./ai-language.mjs?v=1";
 // Read-only query plans. Raw records and matched identifiers never leave this module.
 const metrics=new Set(["trips","revenue","margin","expenses","fuel","toll","distance","weight","advance","balance","marginPercent","summary"]);
 const periods=new Set(["today","yesterday","thisWeek","lastWeek","thisMonth","lastMonth","thisYear","lastYear","all","custom"]);
@@ -88,25 +89,26 @@ export function plannerPrompt(question,scope){
  const tokens=q.match(/[a-z]+/g)||[];
  return tokens.filter(w=>safeWords.has(w)).join(" ").slice(0,240);
 }
-export function executePlan(plan,data,scope={},now=Date.now()){
- if(!data?.authorized)return {title:"Sign in required",body:"Sign in with an authorized account.",rows:[]};
+export function executePlan(plan,data,scope={},now=Date.now(),language="en"){
+ const T=s=>tr(s,language);
+ if(!data?.authorized)return {title:T("Sign in required"),body:T("Sign in with an authorized account."),rows:[]};
  const p=validatePlan(plan);if(!p)return null;
  const financial=currency.has(p.metric)||p.metric==="marginPercent"||p.metric==="summary"||p.status==="low";
- if(financial&&!data.canViewReports)return {title:"Restricted",body:"Your role does not allow financial reports.",rows:[]};
- if(!data.tripsReady||!Array.isArray(data.allTrips))return {title:"Data not ready",body:"Wait for Firebase to synchronize and try again.",rows:[]};
+ if(financial&&!data.canViewReports)return {title:T("Restricted"),body:T("Your role does not allow financial reports."),rows:[]};
+ if(!data.tripsReady||!Array.isArray(data.allTrips))return {title:T("Data not ready"),body:T("Wait for Firebase to synchronize and try again."),rows:[]};
  if(scope.ambiguous||scope.unknownVehicle||scope.unknownVendor||scope.privateQuestion)return null;
  const bounds=periodBounds(p.period,now,p.from,p.to);if(!bounds)return null;
  const rows=data.allTrips.filter(t=>{const time=n(t.createdAt);if(!(time>0&&time>=bounds.start&&time<bounds.end))return false;if(scope.vehicle&&t.vehicle!==scope.vehicle)return false;if(scope.vendor&&t.vendor!==scope.vendor)return false;
  switch(p.status){case "active":return t.isOpen===true;case "transit":return t.status==="In Transit";case "completed":return t.status==="Completed";case "cancelled":return /cancel/i.test(t.status||"");case "loading":return t.status==="Loading";case "unloading":return ["Reached","Unloading"].includes(t.status);case "delayed":return t.isOpen===true&&n(t.transitHours)>0&&time+n(t.transitHours)*3600000<now;case "low":return n(t.margin)<0||n(t.marginPercent)<n(data.minMarginPercent??10);default:return true;}});
  const value=(r)=>{if(p.metric==="trips")return r.length;if(p.metric==="marginPercent"){const f=r.reduce((s,t)=>s+n(t.freight),0);return f?r.reduce((s,t)=>s+n(t.margin),0)/f*100:0;}return r.reduce((s,t)=>s+({revenue:n(t.freight),margin:n(t.margin),expenses:n(t.totalExpenses),fuel:n(t.fuelExpense),toll:n(t.fastag),distance:n(t.totalKm),weight:n(t.weightTon),advance:n(t.advance),balance:n(t.freight)-n(t.advance)}[p.metric]||0),0);};
  const formatted=v=>(currency.has(p.metric)?"₹":"")+fmt(v)+(p.metric==="distance"?" km":p.metric==="weight"?" t":p.metric==="marginPercent"?"%":"");
- const scopeText=[bounds.label,scope.vehicle,scope.vendor,p.status!=="all"?p.status:""].filter(Boolean).join(" · ");
- const header={title:labels[p.metric],body:scopeText+"\nBased on trip creation date · "+rows.length+" matching trips.",rows:[]};
- if(!rows.length){header.body+="\nNo matching records.";return header;}
- if(p.metric==="summary"){const sum=k=>rows.reduce((s,t)=>s+n(t[k]),0);header.body+="\nRevenue ₹"+fmt(sum("freight"))+" · Margin ₹"+fmt(sum("margin"))+" · Expenses ₹"+fmt(sum("totalExpenses"));return header;}
- if(p.group!=="none"){const map=new Map();for(const t of rows){const key=p.group==="route"?[t.from,t.to].filter(Boolean).join(" → "):t[p.group];if(!key)continue;if(!map.has(key))map.set(key,[]);map.get(key).push(t);}const rank=[...map].map(([key,r])=>({key,value:value(r),count:r.length})).sort((a,b)=>p.action==="rankLow"?a.value-b.value:b.value-a.value);header.body+="\n"+rank.length+" groups · showing "+Math.min(p.limit,rank.length);header.rows=rank.slice(0,p.limit).map(x=>x.key+" · "+formatted(x.value)+" · "+x.count+" trips");return header;}
- header.body+="\n"+labels[p.metric]+": "+formatted(value(rows));
- if(p.metric==="balance")header.body+=" (freight less advance; not verified outstanding receivables)";
- if(p.action==="list")header.rows=[...rows].sort((a,b)=>n(b.createdAt)-n(a.createdAt)).slice(0,40).map(t=>[t.tripNumber,t.vehicle,iso(n(t.createdAt)),t.status].filter(Boolean).join(" · "));
+ const scopeText=[T(bounds.label),scope.vehicle,scope.vendor,p.status!=="all"?T(p.status):""].filter(Boolean).join(" · ");
+ const header={title:T(labels[p.metric]),body:scopeText+"\n"+T("Based on trip creation date")+" · "+rows.length+" "+T("matching trips."),rows:[]};
+ if(!rows.length){header.body+="\n"+T("No matching records.");return header;}
+ if(p.metric==="summary"){const sum=k=>rows.reduce((s,t)=>s+n(t[k]),0);header.body+="\n"+T("Revenue")+" ₹"+fmt(sum("freight"))+" · "+T("Margin")+" ₹"+fmt(sum("margin"))+" · "+T("Expenses")+" ₹"+fmt(sum("totalExpenses"));return header;}
+ if(p.group!=="none"){const map=new Map();for(const t of rows){const key=p.group==="route"?[t.from,t.to].filter(Boolean).join(" → "):t[p.group];if(!key)continue;if(!map.has(key))map.set(key,[]);map.get(key).push(t);}const rank=[...map].map(([key,r])=>({key,value:value(r),count:r.length})).sort((a,b)=>p.action==="rankLow"?a.value-b.value:b.value-a.value);header.body+="\n"+rank.length+" "+T("groups")+" · "+T("showing")+" "+Math.min(p.limit,rank.length);header.rows=rank.slice(0,p.limit).map(x=>x.key+" · "+formatted(x.value)+" · "+x.count+" "+T("trips"));return header;}
+ header.body+="\n"+T(labels[p.metric])+": "+formatted(value(rows));
+ if(p.metric==="balance")header.body+=" ("+T("freight less advance; not verified outstanding receivables")+")";
+ if(p.action==="list")header.rows=[...rows].sort((a,b)=>n(b.createdAt)-n(a.createdAt)).slice(0,40).map(t=>[t.tripNumber,t.vehicle,iso(n(t.createdAt)),T(t.status||"")].filter(Boolean).join(" · "));
  return header;
 }
