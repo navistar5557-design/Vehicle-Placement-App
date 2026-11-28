@@ -1,5 +1,5 @@
-import { mountAnalysis } from "./ai-analysis.mjs?v=6";
-import { draftFields } from "./ai-analysis-data.mjs?v=2";
+import { mountAnalysis } from "./ai-analysis.mjs?v=7";
+import { draftFields } from "./ai-analysis-data.mjs?v=3";
 import { reportSectionButtons, wireReportDirectory } from "./report-sections.mjs?v=3";
 import { mountCubeAI, questions as cubeAIQuestions } from "./cube-ai.mjs?v=10";
 import { cloudConfig, createCloudRouter, createGeneralAI, createFleetPlanner, firebaseCloudModel } from "./gemini-cloud.mjs?v=6";

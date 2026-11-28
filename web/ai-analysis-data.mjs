@@ -1,6 +1,8 @@
 const number = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 const open = trip => trip.isOpen ?? !["Completed", "Cancelled"].includes(trip.status);
 const sum = (rows, field) => rows.reduce((total, row) => total + number(row[field]), 0);
+const routeKey = trip => trip.from && trip.to ? trip.from + " → " + trip.to : "";
+const dayMs = 86400000;
 const indiaDate = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit"
 });
@@ -32,6 +34,104 @@ function groupRows(rows, key) {
     result.get(label).push(row);
   }
   return result;
+}
+
+function marginDriver(current, previous, label) {
+  const groups = new Map();
+  for (const [period, rows] of [["current", current], ["previous", previous]]) {
+    for (const row of rows) {
+      const name = label(row);
+      if (!name || !Number.isFinite(row.margin)) continue;
+      if (!groups.has(name)) groups.set(name, { label: name, current: 0, previous: 0 });
+      groups.get(name)[period] += row.margin;
+    }
+  }
+  return [...groups.values()].map(group => ({ ...group, change: group.current - group.previous }))
+    .filter(group => Math.abs(group.change) >= .005)
+    .sort((a, b) => Math.abs(b.change) - Math.abs(a.change) || a.label.localeCompare(b.label))[0] ?? null;
+}
+
+export function weeklyReview(trips, now) {
+  const today = dayKey(now);
+  const ranges = [[7, 1], [14, 8]].map(([first, last]) => {
+    const from = dayKey(now - first * dayMs), to = dayKey(now - last * dayMs);
+    return { from, to, rows: [] };
+  });
+  const [current, previous] = ranges;
+  for (const trip of trips) {
+    const date = dayKey(trip.createdAt);
+    if (!date || date >= today || trip.status === "Cancelled") continue;
+    const range = ranges.find(range => date >= range.from && date <= range.to);
+    if (range) range.rows.push(trip);
+  }
+  const totals = ({ from, to, rows }) => {
+    const originDistances = rows.filter(trip => number(trip.currentToOriginKm) > 0);
+    const priced = rows.filter(trip => Number.isFinite(trip.margin));
+    return { from, to, count: rows.length, freight: sum(rows, "freight"),
+      margin: priced.length ? sum(priced, "margin") : null, marginCount: priced.length,
+      emptyKm: originDistances.length ? sum(originDistances, "currentToOriginKm") : null,
+      emptyCount: originDistances.length };
+  };
+  return {
+    current: totals(current), previous: totals(previous),
+    route: marginDriver(current.rows, previous.rows, routeKey),
+    vendor: marginDriver(current.rows, previous.rows, trip => trip.vendor)
+  };
+}
+
+function numericInput(value) {
+  const input = typeof value === "string" ? value.replaceAll(",", "") : value;
+  return typeof input === "number" || typeof input === "string" ? Number(input) : NaN;
+}
+
+const benchmarkInputs = [
+  ["freight", "Booked freight"], ["totalKm", "Trip distance"],
+  ["mileage", "Vehicle mileage"], ["fuelRate", "Fuel rate"]
+];
+const hasLocation = value => typeof value === "string" && value.trim().length > 0;
+
+export function tripDataQuality(booked) {
+  const flagged = [];
+  const counts = new Map();
+  for (const trip of booked) {
+    const fields = benchmarkInputs.filter(([key]) => {
+      const value = numericInput(trip[key]);
+      return !Number.isFinite(value) || value <= 0;
+    }).map(([, label]) => label);
+    if (!hasLocation(trip.from) || !hasLocation(trip.to)) fields.push("Route");
+    if (!dayKey(trip.createdAt)) fields.push("Placement date");
+    if (!fields.length && ![trip.margin, trip.marginPercent, trip.totalExpenses].every(Number.isFinite)) {
+      fields.push("Calculated costs or margin");
+    }
+    if (!fields.length) continue;
+    flagged.push({ trip, fields });
+    for (const field of fields) counts.set(field, (counts.get(field) || 0) + 1);
+  }
+  return { total: booked.length, flagged, counts: [...counts].sort((a, b) => b[1] - a[1]) };
+}
+
+function median(values) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+export function routeQuoteBenchmark(booked, quality, now) {
+  const excluded = new Set(quality.flagged.map(row => row.trip));
+  const completed = booked.filter(trip => trip.status === "Completed" && hasLocation(trip.from) &&
+    hasLocation(trip.to) && (!dayKey(trip.createdAt) || Number(trip.createdAt) <= now));
+  return Array.from(groupRows(completed, trip => JSON.stringify([trip.from, trip.to])), ([id, rows]) => {
+    const eligible = rows.filter(trip => !excluded.has(trip));
+    const enough = eligible.length >= 3;
+    const dates = eligible.map(trip => dayKey(trip.createdAt)).sort();
+    return {
+      id, label: routeKey(rows[0]), count: eligible.length, excluded: rows.length - eligible.length,
+      from: dates[0], to: dates.at(-1),
+      freight: enough ? median(eligible.map(trip => numericInput(trip.freight))) : null,
+      expenses: enough ? median(eligible.map(trip => trip.totalExpenses)) : null,
+      margin: enough ? median(eligible.map(trip => trip.marginPercent)) : null
+    };
+  }).sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export function analyze({ trips, vehicles, filters = {}, now, minMargin, target }) {
@@ -68,7 +168,6 @@ export function analyze({ trips, vehicles, filters = {}, now, minMargin, target 
   });
   const alerts = [];
   const empty = booked.filter(trip => number(trip.currentToOriginKm) > 0);
-  const routeKey = trip => trip.from && trip.to ? trip.from + " → " + trip.to : "";
   const expenseKeys = { fuelExpense: "Estimated fuel", fastag: "FASTag", loadingExpense: "Loading",
     unloadingExpense: "Unloading", rtoTarpaulin: "RTO / tarpaulin", totalOtherExpense: "Other",
     fixedExpenses: "Fixed", legacyLoadingUnloadingExpense: "Legacy handling" };
@@ -86,11 +185,9 @@ export function analyze({ trips, vehicles, filters = {}, now, minMargin, target 
       (number(peer.closedAt) || number(peer.statusUpdatedAt)) < number(trip.createdAt)) : [];
     if (peers.length < 3) continue;
     for (const [key, label] of categories) {
-      const values = peers.map(peer => number(peer[key])).filter(value => value > 0).sort((a, b) => a - b);
+      const values = peers.map(peer => number(peer[key])).filter(value => value > 0);
       if (values.length < 3) continue;
-      const middle = Math.floor(values.length / 2);
-      const median = (values[middle] + values[Math.ceil(values.length / 2) - 1]) / 2;
-      if (number(trip[key]) > median * 1.5) {
+      if (number(trip[key]) > median(values) * 1.5) {
         alerts.push({ trip, level: "Watch", reason: label + " > 150% of prior route median (" + values.length + " records)" });
       }
     }

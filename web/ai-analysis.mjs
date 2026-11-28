@@ -1,4 +1,7 @@
-import { analyze, csvCell, dayKey, decisionInsights, draftFields, freightEstimate, tripDraft } from "./ai-analysis-data.mjs?v=2";
+import {
+  analyze, csvCell, dayKey, decisionInsights, draftFields, freightEstimate, routeQuoteBenchmark,
+  tripDataQuality, tripDraft, weeklyReview
+} from "./ai-analysis-data.mjs?v=3";
 import { extractFleetScope, localPlan, executePlan } from "./fleet-query.mjs";
 import { reportSectionButtons, wireReportDirectory } from "./report-sections.mjs?v=3";
 
@@ -35,11 +38,16 @@ const insight = (title, metric, detail, link, action, tone = "") =>
   '">' + escape(action) + ' <span aria-hidden="true">→</span></button></article>';
 
 const reportGroups = [
-  ["Overview", [["priorities", "Priorities"], ["visuals", "Performance charts"]]],
+  ["Overview", [["priorities", "Priorities"], ["weekly", "Weekly business review"], ["visuals", "Performance charts"]]],
   ["Operations", [["alerts", "Trip alerts"], ["operations", "Dispatch advisor"]]],
-  ["Finance", [["finance", "Profitability & freight planning"]]],
-  ["Tools", [["assistant", "Analysis assistant"]]]
+  ["Finance", [["finance", "Profitability & freight planning"], ["benchmark", "Route quote benchmark"]]],
+  ["Tools", [["quality", "Trip data quality"], ["assistant", "Analysis assistant"]]]
 ];
+const decimal = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
+const km = value => decimal.format(value) + " km";
+const compareDelta = (current, previous, format) => current === null || previous === null ? "Comparison unavailable"
+  : (current > previous ? "+" : current < previous ? "−" : "") + format(Math.abs(current - previous));
+const dateRange = (from, to) => from === to ? from : from + " to " + to;
 
 function download(name, content, type) {
   const url = URL.createObjectURL(new Blob([content], { type }));
@@ -51,7 +59,7 @@ function download(name, content, type) {
 }
 
 export function mountAnalysis(root, getData, reviewDraft, { history, favorites }) {
-  let report, briefing = "", recognition, draft = {}, previousPlan, previousScope, lastAnswer = "";
+  let report, weekly, quality, benchmarks = [], briefing = "", recognition, draft = {}, previousPlan, previousScope, lastAnswer = "";
   const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
   let disposed = false;
   root.innerHTML = `
@@ -86,6 +94,10 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
         <h4>What needs attention</h4>
         <div class="analysis-insights" data-output="insights"></div>
       </section>
+      <section class="card" id="analysis-weekly" aria-labelledby="analysis-toggle-weekly" hidden><h3>Weekly business review</h3>
+        <p class="analysis-note">Compares the last seven complete days with the preceding seven in India time, using placement dates. This review uses fixed dates and your vehicle and vendor filters. Cancelled trips are excluded.</p>
+        <div class="analysis-review-output" data-output="weekly"></div>
+      </section>
       <section class="card" id="analysis-visuals" aria-labelledby="analysis-toggle-visuals" hidden><h3>Performance charts</h3>
         <div class="analysis-controls">
           <label>Chart<select id="analysisChart"><option value="daily">Daily booked freight</option><option value="vehicles">Vehicle booked freight</option><option value="margin">Vehicle margin</option><option value="expenses">Expense breakdown</option></select></label>
@@ -115,12 +127,28 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
         <details><summary>Vendor performance</summary><div data-output="vendors"></div></details>
         <details open><summary>Route profitability</summary><div data-output="routes"></div></details>
       </section>
+      <section class="card" id="analysis-benchmark" aria-labelledby="analysis-toggle-benchmark" hidden><h3>Route quote benchmark</h3>
+        <p class="analysis-note">Compare with completed trips on the same direction of travel within your filters. Medians require three trips with usable freight, distance, mileage and fuel rate. Loads, dates and costs can still differ.</p>
+        <div class="analysis-controls">
+          <label>Route<select id="analysisBenchmarkRoute"></select></label>
+          <label>Proposed freight (₹)<input id="analysisBenchmarkQuote" type="number" min="0.01" step="0.01"></label>
+        </div>
+        <div class="analysis-review-output" data-output="benchmark"></div>
+      </section>
+      <section class="card" id="analysis-quality" aria-labelledby="analysis-toggle-quality" hidden><h3>Trip data quality</h3>
+        <p class="analysis-note">Review missing or unusable inputs that affect route and margin comparisons. A zero value for optional expenses is allowed.</p>
+        <div class="analysis-review-output" data-output="quality"></div>
+      </section>
       <section class="card" id="analysis-assistant" aria-labelledby="analysis-toggle-assistant" hidden><h3>Analysis assistant</h3>
         <p>Ask about freight, profit, expenses or trip status. Follow up with “what about yesterday?” or select a saved question. Answers use the selected report records on this device.</p>
         <form id="analysisAsk" class="analysis-controls"><label>Question<input id="analysisQuestion" required maxlength="240" placeholder="Show total freight this month"></label>
           <button class="primary">Ask</button><button type="button" class="secondary" id="analysisVoice" ${Speech ? "" : "hidden"}>Dictate</button>
           <button type="button" class="secondary" id="analysisSpeak" ${"speechSynthesis" in window ? "" : "hidden"}>Read answer</button>
           <button type="button" class="secondary" id="analysisFavorite">Favorite question</button></form>
+        <div id="analysisReportQuestions" class="analysis-report-questions" aria-label="Suggested questions">
+          <button class="secondary" type="button">Show weekly review</button>
+          <button class="secondary" type="button">Check data quality</button>
+        </div>
         <p class="analysis-note">History and favorites last for this sign-in. Relative dates in questions use your browser time zone. Dictation may use the browser provider’s speech service.</p>
         <p data-output="answer" class="analysis-text" aria-live="polite"></p>
         <details><summary>History and favorites</summary><div data-output="history"></div></details>
@@ -197,6 +225,65 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
       : "Enter proposed freight, total costs and a margin from 0% to under 100% to estimate profitability.";
   }
 
+  function renderWeekly() {
+    const { current, previous, route, vendor } = weekly;
+    const range = period => dateRange(period.from, period.to);
+    const indicators = [
+      ["Placements", "count", value => decimal.format(value)],
+      ["Booked freight", "freight", rupees],
+      ["Calculated margin", "margin", rupees],
+      ["Recorded empty distance", "emptyKm", km]
+    ];
+    const rows = indicators.map(([label, key, format]) => [
+      label, current[key] === null ? "Unavailable" : format(current[key]),
+      previous[key] === null ? "Unavailable" : format(previous[key]),
+      compareDelta(current[key], previous[key], format)
+    ]);
+    out("weekly").innerHTML = table(["Metric", range(current), range(previous), "Change"], rows) +
+      '<p class="analysis-note">A calculated margin is present for ' + current.marginCount + ' of ' + current.count +
+      ' placements this period and ' + previous.marginCount + ' of ' + previous.count +
+      ' in the prior period. Positive empty distance recorded on ' + current.emptyCount + ' and ' +
+      previous.emptyCount + ' trips, respectively. Check Trip data quality for incomplete inputs.</p>' +
+      (route || vendor ? '<h4>Largest margin changes</h4>' + table(["Group", "Name", "Current", "Previous", "Change"],
+        [["Route", route], ["Vendor", vendor]].filter(([, row]) => row).map(([label, row]) => [
+          label, row.label, rupees(row.current), rupees(row.previous), compareDelta(row.current, row.previous, rupees)
+        ])) : "");
+  }
+
+  function renderQuality() {
+    const { total, flagged, counts } = quality;
+    const summary = total ? flagged.length + " of " + total + " selected trips flagged." : "No trips in this selection.";
+    out("quality").innerHTML = '<p>' + escape(summary) + '</p>' +
+      (flagged.length ? '<p class="analysis-note">' + escape(counts.map(([field, count]) => field + " · " + count).join("   |   ")) +
+        '</p>' + table(["Trip", "Vehicle", "Route", "Review inputs"], flagged.map(({ trip, fields }) => [
+          tripId(trip), trip.vehicle, [trip.from, trip.to].filter(Boolean).join(" → ") || "—", fields.join(", ")
+        ])) : "");
+  }
+
+  function renderBenchmark() {
+    if (!report) return;
+    const selected = benchmarks.find(row => row.id === $("#analysisBenchmarkRoute").value);
+    const host = out("benchmark");
+    if (!selected) {
+      host.textContent = benchmarks.length ? "Select a route to see its trip history." : "No completed routes in this selection.";
+      return;
+    }
+    const sample = selected.count + " usable completed trips" + (selected.from ? " · " + dateRange(selected.from, selected.to) : "") +
+      (selected.excluded ? " · " + selected.excluded + " excluded for unusable inputs" : "");
+    if (selected.freight === null) {
+      host.textContent = sample + ". At least 3 usable trips are needed for a benchmark.";
+      return;
+    }
+    const proposed = Number($("#analysisBenchmarkQuote").value);
+    const difference = Number.isFinite(proposed) && proposed > 0
+      ? '<p>Proposed freight versus historical median ' + escape(compareDelta(proposed, selected.freight, rupees)) + '</p>' : "";
+    host.innerHTML = '<p class="analysis-note">' + escape(sample) + '</p><div class="analysis-metrics">' +
+      tile("Median booked freight", rupees(selected.freight), "Historical bookings") +
+      tile("Median calculated expenses", rupees(selected.expenses), "Historical trip costs") +
+      tile("Median margin rate", selected.margin.toFixed(1) + "%", "Across individual trips") +
+      '</div>' + difference;
+  }
+
   function update() {
     if (disposed) return;
     const data = getData();
@@ -206,8 +293,10 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
     out("filter-count").textContent = filterCount ? "(" + filterCount + " active)" : "";
     if (!data.ready || (scope.from && scope.to && scope.from > scope.to)) {
       report = undefined;
+      weekly = quality = undefined;
+      benchmarks = [];
       briefing = "";
-      for (const name of ["load","finance","alerts","chart","vendors","routes","answer","briefing","insights","metrics"]) out(name).textContent = "";
+      for (const name of ["load","finance","alerts","chart","vendors","routes","answer","briefing","insights","metrics","weekly","quality","benchmark"]) out(name).textContent = "";
       delete out("insights").dataset.markup;
       out("status").hidden = false;
       out("status").textContent = data.ready ? "Choose an end date on or after the start date." : "Waiting for confirmed trip and vehicle data from Firebase.";
@@ -218,7 +307,24 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
     setOptions(controls.elements.vendor, data.trips.map(t => t.vendor), "All vendors");
     setOptions($("#analysisOrigin"), [...data.locations, ...data.trips.map(t => t.from)], "Select origin");
     const now = Date.now();
-    report = analyze({ ...data, filters: filters(), now, target: Number($("#analysisTarget").value) });
+    const selected = filters();
+    report = analyze({ ...data, filters: selected, now, target: Number($("#analysisTarget").value) });
+    weekly = weeklyReview(data.trips.filter(trip =>
+      (!selected.vehicle || trip.vehicle === selected.vehicle) && (!selected.vendor || trip.vendor === selected.vendor)), now);
+    quality = tripDataQuality(report.booked);
+    benchmarks = routeQuoteBenchmark(report.booked, quality, now);
+    const routeSelect = $("#analysisBenchmarkRoute");
+    const routeMarkup = '<option value="">Select route</option>' + benchmarks.map(row =>
+      '<option value="' + escape(row.id) + '">' + escape(row.label) + '</option>').join("");
+    if (routeSelect.dataset.options !== routeMarkup) {
+      const value = routeSelect.value;
+      routeSelect.innerHTML = routeMarkup;
+      routeSelect.dataset.options = routeMarkup;
+      routeSelect.value = benchmarks.some(row => row.id === value) ? value : "";
+    }
+    renderWeekly();
+    renderQuality();
+    renderBenchmark();
     const { totals, monthFreight, forecast, targetGap } = report;
     const insights = decisionInsights(report);
     out("metrics").innerHTML = [
@@ -239,6 +345,9 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
       insights.emptyTripsOverTarget && insight("Empty travel above 40 km", insights.kmAboveTarget.toLocaleString("en-IN") + " km",
         insights.emptyTripsOverTarget + " trips above the recorded origin-distance target. Check same-origin candidates for the next load.",
         "analysis-operations", "Open load advisor", "is-watch"),
+      quality.flagged.length && insight("Trips with inputs to review", quality.flagged.length + " of " + quality.total,
+        "Unusable or missing inputs can affect cost or route comparisons.",
+        "analysis-quality", "Review trip data", "is-watch"),
       insights.cost && insight("Largest expense category", insights.cost.label,
         rupees(insights.cost.value) + (insights.costShare === null ? "" : " · " + insights.costShare.toFixed(0) + "% of calculated expenses"),
         "analysis-visuals", "View expense breakdown"),
@@ -284,6 +393,12 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
   }
 
   const input = $("#analysisQuestion");
+  $("#analysisReportQuestions").onclick = event => {
+    const button = event.target.closest("button");
+    if (!button) return;
+    input.value = button.textContent.trim();
+    $("#analysisAsk").requestSubmit();
+  };
   $("#analysisAsk").onsubmit = event => {
     event.preventDefault();
     const q = input.value.trim();
@@ -296,6 +411,7 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
     const extracted = extractFleetScope(q, data);
     const scope = followUp ? { ...extracted, vehicle: extracted.vehicle || previousScope?.vehicle,
       vendor: extracted.vendor || previousScope?.vendor } : extracted;
+    const reportQuestion = q.toLowerCase().replace(/[?.!]$/, "");
     let plan = localPlan(q, scope);
     if (followUp && previousPlan && !plan &&
       /^(?:and|what about|how about)\s+(?:(?:today|yesterday|this week|last week|this month|last month|this year|last year|all time)|\d{4}-\d{2}-\d{2})[?.!]?$/i.test(q)) {
@@ -304,10 +420,21 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
     }
     if (plan?.status !== "cancelled") data.allTrips = report.booked;
     const result = plan ? executePlan(plan, data, scope) : null;
-    lastAnswer = result ? [result.title, result.body, ...(result.rows || []).map(row => Array.isArray(row) ? row.join(" · ") : String(row))].filter(Boolean).join("\n")
-      : "Try asking about booked freight, expenses, margin or trip status.";
+    const reportAnswer = reportQuestion === "show weekly review"
+      ? ["Weekly business review", dateRange(weekly.current.from, weekly.current.to) + " IST",
+        weekly.current.count + " placements · " + rupees(weekly.current.freight) + " booked freight",
+        "Freight change versus " + dateRange(weekly.previous.from, weekly.previous.to) + " · " +
+          compareDelta(weekly.current.freight, weekly.previous.freight, rupees),
+        "See Weekly business review for margin, recorded empty distance and largest changes."].join("\n")
+      : reportQuestion === "check data quality"
+        ? ["Trip data quality", quality.flagged.length + " of " + quality.total + " selected trips flagged.",
+          ...quality.counts.map(([field, count]) => field + " · " + count),
+          "Open Trip data quality to see the records."].join("\n") : "";
+    lastAnswer = reportAnswer || (result ? [result.title, result.body, ...(result.rows || []).map(row => Array.isArray(row) ? row.join(" · ") : String(row))].filter(Boolean).join("\n")
+      : "Try asking about booked freight, expenses, margin or trip status.");
     out("answer").textContent = lastAnswer;
-    if (plan && result) { previousPlan = plan; previousScope = scope; }
+    if (reportAnswer) previousPlan = previousScope = null;
+    else if (plan && result) { previousPlan = plan; previousScope = scope; }
     if (!history.includes(q)) history.unshift(q);
     if (history.length > 20) history.pop();
     renderHistory();
@@ -344,6 +471,8 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
   controls.onreset = () => setTimeout(() => { if (!disposed) controls.onchange(); });
   $("#analysisOrigin").onchange = $("#analysisOrder").onchange = renderLoad;
   $("#analysisChart").onchange = renderChart;
+  $("#analysisBenchmarkRoute").onchange = renderBenchmark;
+  $("#analysisBenchmarkQuote").oninput = renderBenchmark;
   out("insights").addEventListener("click", event => {
     const button = event.target.closest("[data-analysis-open]");
     if (!button) return;
