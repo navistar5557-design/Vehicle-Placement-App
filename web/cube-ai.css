@@ -67,7 +67,6 @@
 
 /* v0.4.49 — premium motion, finite decorative sequences and reduced-motion support */
 @keyframes cube-ai-launch-enter{0%{opacity:0;transform:translateY(12px) scale(.94)}70%{opacity:1;transform:translateY(-2px) scale(1.015)}100%{opacity:1;transform:none}}
-@keyframes cube-ai-shine{0%,15%{transform:translateX(-160%) skewX(-18deg);opacity:0}30%{opacity:.5}65%,100%{transform:translateX(250%) skewX(-18deg);opacity:0}}
 @keyframes cube-ai-panel-reveal{0%{opacity:0;transform:translateY(18px) scale(.96)}72%{opacity:1;transform:translateY(-2px) scale(1.005)}100%{opacity:1;transform:none}}
 @keyframes cube-ai-hero-float{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-5px) rotate(3deg)}}
 @keyframes cube-ai-orbit-turn{from{transform:rotate(19deg)}to{transform:rotate(379deg)}}
@@ -76,13 +75,121 @@
 @keyframes cube-ai-response-in{0%{opacity:0;transform:translateY(8px) scale(.985)}100%{opacity:1;transform:none}}
 @keyframes cube-ai-think-glow{0%,100%{box-shadow:0 0 0 0 #f5823700}50%{box-shadow:0 0 0 4px #f5823727}}
 @keyframes cube-ai-processing{0%{background-position:0% 50%}100%{background-position:200% 50%}}
-#cubeAi .cube-ai-launch{position:relative;isolation:isolate;overflow:hidden;animation:cube-ai-launch-enter .42s cubic-bezier(.18,.75,.25,1);transition:transform .22s,box-shadow .22s}
-#cubeAi .cube-ai-launch::after{content:"";position:absolute;pointer-events:none;inset:-20% auto -20% 0;width:75%;background:linear-gradient(90deg,transparent,#ffffff50,transparent);opacity:0;animation:cube-ai-shine 1.5s .2s 1 both}
-#cubeAi .cube-ai-launch:hover .cube-ai-launch-arrow{transform:translateX(3px)}
-#cubeAi .cube-ai-launch-arrow{transition:transform .22s}
-#cubeAi .cube-ai-launch:active{transform:scale(.97)}
+#cubeAi .cube-ai-launch{
+ position:relative;isolation:isolate;overflow:hidden;
+ animation:cube-ai-launch-enter .48s cubic-bezier(.18,.75,.25,1);
+ transition:transform .36s cubic-bezier(.2,.85,.25,1.35),box-shadow .24s
+}
+#cubeAi .cube-ai-launch::before{
+ content:"";position:absolute;z-index:1;inset:0;pointer-events:none;border-radius:inherit;padding:1px;
+ background:conic-gradient(from var(--cube-ai-ring-angle,-85deg),transparent 0deg 204deg,#3885ce 252deg,#8edcff 299deg,#fff0d9 330deg,#ff9c53 347deg,transparent 360deg);
+ mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+ mask-composite:exclude;opacity:0;animation:cube-ai-edge-enter 2.65s .12s both
+}
+#cubeAi .cube-ai-launch::after{
+ content:"";position:absolute;z-index:-1;pointer-events:none;inset:0;
+ background:radial-gradient(ellipse at 20% 75%,#ff9c534d,transparent 52%),radial-gradient(ellipse at 95% 40%,#55bbff55,transparent 58%);
+ opacity:0;transition:opacity .36s ease
+}
+#cubeAi .cube-ai-launch:is(:hover,:focus-visible){transform:translateY(-3px);box-shadow:0 16px 38px #071c4c75,0 0 22px #519cfb38}
+#cubeAi .cube-ai-launch:is(:hover,:focus-visible)::before{animation:cube-ai-edge-interact 1.35s both;opacity:1}
+#cubeAi .cube-ai-launch:is(:hover,:focus-visible)::after{opacity:1}
+#cubeAi .cube-ai-launch:active{transform:translateY(-1px) scale(.97)}
+#cubeAi .cube-ai-launch:focus-visible{outline:2px solid #baddff;outline-offset:3px}
+#cubeAi .cube-ai-launch-arrow{transition:transform .3s cubic-bezier(.2,.85,.25,1.3),color .24s}
+#cubeAi .cube-ai-launch:is(:hover,:focus-visible) .cube-ai-launch-arrow{transform:translateX(4px);color:#fff}
+
+@property --cube-ai-ring-angle{
+ syntax:"<angle>";
+ inherits:false;
+ initial-value:-85deg;
+}
+@keyframes cube-ai-edge-enter{
+ 0%{--cube-ai-ring-angle:-85deg;opacity:0}
+ 16%,70%{opacity:1}
+ 100%{--cube-ai-ring-angle:445deg;opacity:0}
+}
+@keyframes cube-ai-edge-interact{
+ from{--cube-ai-ring-angle:-85deg}
+ to{--cube-ai-ring-angle:275deg}
+}
 #cubeAiPanel{transform-origin:bottom right;animation:cube-ai-panel-reveal .36s cubic-bezier(.18,.75,.25,1);transition:width .28s cubic-bezier(.2,.8,.2,1),height .28s cubic-bezier(.2,.8,.2,1)}
 #cubeAiPanel header::after{background:linear-gradient(90deg,#f58237,#ffb66d,#4b8ada,transparent 90%)}
+#cubeAiPanel:not([hidden],.cube-ai-busy) header::before{
+ content:"";position:absolute;z-index:1;pointer-events:none;inset:auto 0 -3px;height:8px;
+ background:
+   radial-gradient(ellipse at center,#fff5db 0%,#ffb575 8%,#68caff 25%,transparent 66%) no-repeat,
+   linear-gradient(90deg,transparent,#ef8647,#b4e3ff,#6aafff,transparent) no-repeat;
+ background-position:-38% 50%, -55% 50%;
+ background-size:24% 100%,34% 2px;
+ opacity:0;animation:cube-ai-divider-sweep 2.35s .14s cubic-bezier(.26,.65,.32,1) both
+}
+@keyframes cube-ai-divider-sweep{
+ 0%{background-position:-38% 50%,-55% 50%;opacity:0}
+ 15%{opacity:1}
+ 54%{background-position:78% 50%,70% 50%;opacity:1}
+ 76%{background-position:103% 50%,110% 50%;opacity:.8}
+ 100%{background-position:138% 50%,155% 50%;opacity:0}
+}
+#cubeAi .cube-ai-launch .cube-ai-orb{
+ position:relative;isolation:isolate;overflow:hidden;
+ animation:cube-ai-mark-reveal .9s .16s cubic-bezier(.2,.8,.28,1) both
+}
+#cubeAi .cube-ai-launch .cube-ai-orb svg{
+ position:relative;z-index:1;transform-origin:center;
+ animation:cube-ai-star-ignite .95s .23s cubic-bezier(.2,.7,.25,1) both
+}
+#cubeAi .cube-ai-launch .cube-ai-orb::before,
+#cubeAi .cube-ai-launch .cube-ai-orb::after{
+ content:"";position:absolute;pointer-events:none;opacity:0
+}
+#cubeAi .cube-ai-launch .cube-ai-orb::before{
+ inset:-30%;background:linear-gradient(112deg,transparent 38%,#ffe0a544 46%,#fff9eab3 50%,#ffc56240 54%,transparent 64%)
+}
+#cubeAi .cube-ai-launch .cube-ai-orb::after{
+ inset:0;z-index:2;
+ background:
+   radial-gradient(circle at 23% 28%,#fff4d8 0 1px,transparent 2.5px),
+   radial-gradient(circle at 76% 23%,#fff9eb 0 1px,transparent 2.5px),
+   radial-gradient(circle at 79% 71%,#ffd091 0 1px,transparent 2.5px),
+   radial-gradient(circle at 26% 78%,#fff1d4 0 1px,transparent 2.5px)
+}
+#cubeAi .cube-ai-launch:is(:hover,:focus-visible,[aria-expanded="true"]) .cube-ai-orb svg{
+ animation:cube-ai-star-bloom .8s cubic-bezier(.19,.72,.28,1) both
+}
+#cubeAi .cube-ai-launch:is(:hover,:focus-visible,[aria-expanded="true"]) .cube-ai-orb::before{
+ animation:cube-ai-mark-reflection .72s ease-out both
+}
+#cubeAi .cube-ai-launch:is(:hover,:focus-visible,[aria-expanded="true"]) .cube-ai-orb::after{
+ animation:cube-ai-mark-sparks .68s .1s ease-out both
+}
+@keyframes cube-ai-mark-reveal{
+ 0%{transform:scale(.78);opacity:.5}
+ 55%{transform:scale(1.08);opacity:1}
+ 78%{transform:scale(.98)}
+ 100%{transform:none;opacity:1}
+}
+@keyframes cube-ai-star-ignite{
+ 0%{transform:rotate(-28deg) scale(.46);opacity:.35}
+ 48%{transform:rotate(8deg) scale(1.2);opacity:1;filter:drop-shadow(0 0 5px #fff1c9)}
+ 73%{transform:rotate(-3deg) scale(.97)}
+ 100%{transform:none;opacity:1;filter:none}
+}
+@keyframes cube-ai-star-bloom{
+ 0%,100%{transform:none;filter:none}
+ 29%{transform:rotate(23deg) scale(1.24);filter:drop-shadow(0 0 5px #fff0c6)}
+ 64%{transform:rotate(-6deg) scale(.95)}
+}
+@keyframes cube-ai-mark-reflection{
+ 0%{transform:translateX(-72%);opacity:0}
+ 35%{opacity:.8}
+ 100%{transform:translateX(72%);opacity:0}
+}
+@keyframes cube-ai-mark-sparks{
+ 0%{transform:scale(.4);opacity:0}
+ 28%{opacity:1}
+ 100%{transform:scale(1.14);opacity:0}
+}
 #cubeAi .cube-ai-header-actions button{transition:background .18s,transform .18s,border-color .18s}
 #cubeAi .cube-ai-header-actions button:active{transform:scale(.88)}
 #cubeAi .cube-ai-welcome-state .cube-ai-hero-orb{animation:cube-ai-hero-float 2s ease-in-out 2}
@@ -115,6 +222,10 @@
 #cubeAi .cube-ai-language-select{transition:border-color .18s,box-shadow .18s}
 #cubeAi .cube-ai-language-select:hover{border-color:#8eb4e0}
 @media(prefers-reduced-motion:reduce){#cubeAi,#cubeAi *,#cubeAi *::before,#cubeAi *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media(prefers-reduced-motion:reduce){
+ #cubeAi .cube-ai-launch:is(:hover,:focus-visible,:active),
+ #cubeAi .cube-ai-launch:is(:hover,:focus-visible) .cube-ai-launch-arrow{transform:none}
+}
 
 /* v0.4.50: compact default assistant, full-size expanded view */
 @media(min-width:601px){
