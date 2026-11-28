@@ -1,3 +1,4 @@
+import { languages, normalizeLanguage } from "./ai-language.mjs?v=1";
 // Owner verified Spark and registered Web App Check on 2026-11-27. Recheck billing before future changes.
 // Never put a Gemini Developer API key here. These are public Firebase web settings.
 export const cloudConfig=Object.freeze({enabled:true,sparkVerified:true,appId:"1:771656307864:web:91249084815c43570ceced",recaptchaSiteKey:"6LdoqjQuAAAAABXUSWE7qWMxjYKCkwZ_y8Mqy6Q-",model:"gemini-3.5-flash-lite"});
@@ -61,7 +62,7 @@ export function generalError(error){
 }
 export function createGeneralAI({config=cloudConfig,isAuthorized,loadModel}){
  let modelPromise;
- return async question=>{
+ return async (question,language="en")=>{
   const q=String(question??"").trim();
   if(!isAuthorized())return {ok:false,text:"Sign in required."};
   if(!cloudReady(config))return {ok:false,text:"Gemini is not configured."};
@@ -70,7 +71,7 @@ export function createGeneralAI({config=cloudConfig,isAuthorized,loadModel}){
    if(!modelPromise)modelPromise=Promise.resolve().then(()=>loadModel(true)).catch(e=>{modelPromise=null;throw e;});
    const model=await modelPromise;
    if(!isAuthorized())return {ok:false,text:"Sign in required."};
-   const prompt="You are CUBE AI, a general-purpose assistant. Answer the user's question directly and clearly in the language used by the user, including Tamil. You have no access to their company records, live fleet, web search or tools. Never claim to have read or changed such data. For actual company figures, say that the unified assistant can answer supported fleet queries from local records; never guess those figures. Say when uncertain. User question: "+JSON.stringify(q);
+   const prompt="You are CUBE AI, a general-purpose assistant. Answer the user's question directly and clearly in "+languages[normalizeLanguage(language)]+", regardless of the language of the question. Use that language for all explanatory text. You have no access to their company records, live fleet, web search or tools. Never claim to have read or changed such data. For actual company figures, say that the unified assistant can answer supported fleet queries from local records; never guess those figures. Say when uncertain. User question: "+JSON.stringify(q);
    const response=await model.generateContent(prompt);
    if(!isAuthorized())return {ok:false,text:"Sign in required."};
    const answer=String(response.response.text()??"").trim();

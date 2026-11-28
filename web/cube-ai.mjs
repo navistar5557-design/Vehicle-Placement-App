@@ -1,4 +1,5 @@
-import { extractFleetScope, localPlan, executePlan, plannerPrompt, validatePlan } from "./fleet-query.mjs?v=1";
+import { tr, normalizeLanguage, languages, languageLabels } from "./ai-language.mjs?v=1";
+import { extractFleetScope, localPlan, executePlan, plannerPrompt, validatePlan } from "./fleet-query.mjs?v=2";
 // Read-only fleet analytics. The model may choose a supported intent, never calculate values or execute actions.
 export const questions={
  summary:"Monthly operations summary",available:"Which vehicles are available now?",active:"Active trips this month",
@@ -33,40 +34,41 @@ const money=n=>"₹"+Number(n).toLocaleString("en-IN",{maximumFractionDigits:0})
 const num=v=>Number(v||0);
 const date=v=>v?new Date(v).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}):"Date unavailable";
 const totals=rows=>rows.reduce((s,t)=>({revenue:s.revenue+num(t.freight),margin:s.margin+num(t.margin),expenses:s.expenses+num(t.totalExpenses)}),{revenue:0,margin:0,expenses:0});
-const unavailable=()=>({title:"Data not ready",body:"Trip or vehicle data has not been confirmed by Firebase yet. Refresh or reconnect and try again.",rows:[]});
-export function answer(intent,data){
- if(!data?.authorized)return {title:"Sign in required",body:"Sign in with an authorized account.",rows:[]};
- if(!Object.hasOwn(questions,intent))return {title:"Question not supported yet",body:"Choose a suggested question. This version supports current-month fleet analytics and current vehicle availability, not record changes or future predictions.",rows:[]};
- if(financial.has(intent)&&!data.canViewReports)return {title:"Restricted",body:"Your role does not allow financial reports.",rows:[]};
+const unavailable=(language="en")=>({title:tr("Data not ready",language),body:tr("Trip or vehicle data has not been confirmed by Firebase yet. Refresh or reconnect and try again.",language),rows:[]});
+export function answer(intent,data,language="en"){
+ const T=s=>tr(s,language);
+ if(!data?.authorized)return {title:T("Sign in required"),body:T("Sign in with an authorized account."),rows:[]};
+ if(!Object.hasOwn(questions,intent))return {title:T("Question not supported yet"),body:T("Choose a suggested question. This version supports current-month fleet analytics and current vehicle availability, not record changes or future predictions."),rows:[]};
+ if(financial.has(intent)&&!data.canViewReports)return {title:T("Restricted"),body:T("Your role does not allow financial reports."),rows:[]};
  const fleet=intent==="available"||intent==="utilization";
- if(!data.tripsReady||(fleet&&!data.vehiclesReady))return unavailable();
+ if(!data.tripsReady||(fleet&&!data.vehiclesReady))return unavailable(language);
  if(fleet){
   const active=data.vehicles.filter(v=>v.active!==false);
   const available=active.filter(v=>v.availability==="available");
   const assigned=active.filter(v=>v.availability!=="available");
-  return {title:intent==="available"?"Available vehicles now":"Fleet utilization now",body:available.length+" available / "+active.length+" active vehicles. "+assigned.length+" assigned. Utilization: "+(active.length?Math.round(assigned.length/active.length*100):0)+"%. Availability is based on recorded active trips, not GPS.",rows:available.map(v=>v.number+" · Available")};
+  return {title:intent==="available"?T("Available vehicles now"):T("Fleet utilization now"),body:available.length+" "+T("available")+" / "+active.length+" "+T("active vehicles")+". "+assigned.length+" "+T("assigned")+". "+T("Utilization")+": "+(active.length?Math.round(assigned.length/active.length*100):0)+"%. "+T("Availability is based on recorded active trips, not GPS."),rows:available.map(v=>v.number+" · "+T("Available"))};
  }
  const s=data.summary, rows=s.trips;
  const label=data.period;
- const view=t=>[t.tripNumber,t.vehicle,date(t.createdAt),[t.from,t.to].filter(Boolean).join(" → "),t.status].filter(Boolean).join(" · ");
- if(intent==="summary")return {title:label+" operations",body:s.trips.length+" trips · "+s.active+" active · "+s.transit+" in transit · "+s.completed+" completed\nRevenue "+money(s.revenue)+" · Margin "+money(s.margin)+"\n"+s.low+" low margin · "+s.delayed+" delayed",rows:[]};
+ const view=t=>[t.tripNumber,t.vehicle,date(t.createdAt),[t.from,t.to].filter(Boolean).join(" → "),T(t.status||"")].filter(Boolean).join(" · ");
+ if(intent==="summary")return {title:label+" "+T("operations"),body:s.trips.length+" "+T("trips")+" · "+s.active+" "+T("active")+" · "+s.transit+" "+T("in transit")+" · "+s.completed+" "+T("completed")+"\n"+T("Revenue")+" "+money(s.revenue)+" · "+T("Margin")+" "+money(s.margin)+"\n"+s.low+" "+T("low margin")+" · "+s.delayed+" "+T("delayed"),rows:[]};
  if(intent==="best"){
   const map=new Map();
   for(const t of rows){if(!t.vehicle)continue;const v=map.get(t.vehicle)||{count:0,margin:0,revenue:0};v.count++;v.margin+=num(t.margin);v.revenue+=num(t.freight);map.set(t.vehicle,v);}
   const ranked=[...map].sort((a,b)=>b[1].margin-a[1].margin);
-  return {title:"Vehicle margin ranking · "+label,body:ranked.length?"Ranked by total recorded margin; includes all statuses, matching Monthly Operations.":"No vehicle trip records this month.",rows:ranked.map(([v,t])=>v+" · "+money(t.margin)+" margin · "+t.count+" trips")};
+  return {title:T("Vehicle margin ranking")+" · "+label,body:ranked.length?T("Ranked by total recorded margin; includes all statuses, matching Monthly Operations."):T("No vehicle trip records this month."),rows:ranked.map(([v,t])=>v+" · "+money(t.margin)+" "+T("margin")+" · "+t.count+" "+T("trips"))};
  }
  const selected=(data.kpiRows[intent]||rows);
  const t=totals(selected);
- const title=questions[intent]+" · "+label;
- let body=selected.length+" matching trip(s).";
- if(intent==="revenue")body+=" Total freight: "+money(s.revenue)+".";
- if(intent==="margin")body+=" Total margin: "+money(s.margin)+".";
- if(intent==="expenses")body+=" Total expenses: "+money(t.expenses)+".";
- if(intent==="low")body+=" Below configured threshold ("+data.minMarginPercent+"%) or negative margin.";
- if(intent==="delayed")body+=" Overdue against creation time plus planned transit hours; not a GPS-based ETA.";
- if(!selected.length)body+=" No trips found.";
- return {title,body,rows:selected.map(t=>view(t)+(intent==="revenue"?" · Freight "+money(t.freight):["margin","low"].includes(intent)?" · Margin "+money(t.margin)+" ("+num(t.marginPercent).toFixed(1)+"%)":intent==="expenses"?" · Expenses "+money(t.totalExpenses):intent==="delayed"?" · "+t.delay+" late":intent==="completed"?" · Completed "+date(t.closedAt||t.statusUpdatedAt):""))};
+ const title=T(questions[intent])+" · "+label;
+ let body=selected.length+" "+T("matching trip(s).");
+ if(intent==="revenue")body+=" "+T("Total freight")+": "+money(s.revenue)+".";
+ if(intent==="margin")body+=" "+T("Total margin")+": "+money(s.margin)+".";
+ if(intent==="expenses")body+=" "+T("Total expenses")+": "+money(t.expenses)+".";
+ if(intent==="low")body+=" "+T("Below configured threshold")+" ("+data.minMarginPercent+"%) "+T("or negative margin.");
+ if(intent==="delayed")body+=" "+T("Overdue against creation time plus planned transit hours; not a GPS-based ETA.");
+ if(!selected.length)body+=" "+T("No trips found.");
+ return {title,body,rows:selected.map(t=>view(t)+(intent==="revenue"? " · "+T("Freight")+" "+money(t.freight):["margin","low"].includes(intent)? " · "+T("Margin")+" "+money(t.margin)+" ("+num(t.marginPercent).toFixed(1)+"%)":intent==="expenses"? " · "+T("Expenses")+" "+money(t.totalExpenses):intent==="delayed"?" · "+t.delay+" "+T("late"):intent==="completed"? " · "+T("Completed")+" "+date(t.closedAt||t.statusUpdatedAt):""))};
 }
 // On-device language model is strictly an intent router. No trip records are supplied to it.
 const modelOptions={expectedInputs:[{type:"text",languages:["en"]}],expectedOutputs:[{type:"text",languages:["en"]}]};
@@ -122,21 +124,27 @@ const aiIcons={"spark":"<path d=\"M12 2c.8 6.2 3.8 9.2 10 10-6.2.8-9.2 3.8-10 10
 function aiIcon(name){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'+(aiIcons[name]||aiIcons.spark)+'</svg>';}
 export function mountCubeAI(getData,cloudRouter=null,generalAI=null,fleetPlanner=null){
  const el=document.createElement("section");el.id="cubeAi";el.hidden=true;
- el.innerHTML=`<button class="cube-ai-launch" type="button" aria-expanded="false" aria-controls="cubeAiPanel" aria-label="CUBE AI"><span class="cube-ai-orb" aria-hidden="true">${aiIcon("spark")}</span><span class="cube-ai-launch-text">CUBE AI<small>Ask your assistant</small></span><span class="cube-ai-launch-arrow">${aiIcon("arrow")}</span></button><section id="cubeAiPanel" class="cube-ai-panel" hidden role="region" aria-label="CUBE AI assistant"><header><div class="cube-ai-brand"><span class="cube-ai-orb" aria-hidden="true">${aiIcon("spark")}</span><div><span class="cube-ai-eyebrow">CUBE LOGISTICS / INTELLIGENCE</span><strong>CUBE AI</strong><small>Operations & everyday assistance</small></div></div><div class="cube-ai-header-actions"><button type="button" class="cube-ai-new" aria-label="New conversation" title="New conversation">${aiIcon("plus")}</button><button type="button" class="cube-ai-expand" aria-label="Expand assistant" title="Expand assistant">${aiIcon("expand")}</button><button type="button" class="cube-ai-close" aria-label="Close assistant" title="Close assistant">${aiIcon("close")}</button></div></header><div class="cube-ai-status"><span class="cube-ai-status-main"><i aria-hidden="true"></i>Automatic question routing</span><span class="cube-ai-status-detail">Fleet analytics <b>+</b> Gemini</span></div><div class="cube-ai-messages" role="log" aria-live="polite"></div><div class="cube-ai-suggestion-heading">EXPLORE CUBE AI</div><div class="cube-ai-suggestions" aria-label="Suggested questions"></div><div class="cube-ai-thinking" hidden role="status"><span></span><span></span><span></span> Finding the answer…</div><form><div class="cube-ai-composer"><textarea rows="2" aria-label="Ask CUBE AI" placeholder="Ask anything about your fleet or general knowledge…" maxlength="1000" required></textarea><div class="cube-ai-composer-tools"><span>Enter to send · Shift+Enter for new line</span><button type="submit" aria-label="Ask" title="Send question">${aiIcon("send")}</button></div></div></form><footer>${aiIcon("shield")}<span>Fleet records stay local. General questions may go to Gemini. Avoid confidential details.</span></footer></section>`;
+ el.innerHTML=`<button class="cube-ai-launch" type="button" aria-expanded="false" aria-controls="cubeAiPanel" aria-label="CUBE AI"><span class="cube-ai-orb" aria-hidden="true">${aiIcon("spark")}</span><span class="cube-ai-launch-text">CUBE AI<small>Ask your assistant</small></span><span class="cube-ai-launch-arrow">${aiIcon("arrow")}</span></button><section id="cubeAiPanel" class="cube-ai-panel" hidden role="region" aria-label="CUBE AI assistant"><header><div class="cube-ai-brand"><span class="cube-ai-orb" aria-hidden="true">${aiIcon("spark")}</span><div><span class="cube-ai-eyebrow">CUBE LOGISTICS / INTELLIGENCE</span><strong>CUBE AI</strong><small>Operations & everyday assistance</small></div></div><div class="cube-ai-header-actions"><button type="button" class="cube-ai-new" aria-label="New conversation" title="New conversation">${aiIcon("plus")}</button><button type="button" class="cube-ai-expand" aria-label="Expand assistant" title="Expand assistant">${aiIcon("expand")}</button><button type="button" class="cube-ai-close" aria-label="Close assistant" title="Close assistant">${aiIcon("close")}</button></div></header><div class="cube-ai-status"><span class="cube-ai-status-main"><i aria-hidden="true"></i>Automatic question routing</span><label class="cube-ai-language"><span>Answer language</span><select aria-label="Answer language" class="cube-ai-language-select">${Object.entries(languageLabels).map(([id,label])=>`<option value="${id}">${label}</option>`).join("")}</select></label></div><div class="cube-ai-messages" role="log" aria-live="polite"></div><div class="cube-ai-suggestion-heading">EXPLORE CUBE AI</div><div class="cube-ai-suggestions" aria-label="Suggested questions"></div><div class="cube-ai-thinking" hidden role="status"><span></span><span></span><span></span> Finding the answer…</div><form><div class="cube-ai-composer"><textarea rows="2" aria-label="Ask CUBE AI" placeholder="Ask anything about your fleet or general knowledge…" maxlength="1000" required></textarea><div class="cube-ai-composer-tools"><span>Enter to send · Shift+Enter for new line</span><button type="submit" aria-label="Ask" title="Send question">${aiIcon("send")}</button></div></div></form><footer>${aiIcon("shield")}<span>Fleet records stay local. General questions may go to Gemini. Avoid confidential details.</span></footer></section>`;
  document.body.append(el);
  const launch=el.querySelector(".cube-ai-launch"),panel=el.querySelector(".cube-ai-panel"),log=el.querySelector(".cube-ai-messages"),form=el.querySelector("form"),input=form.querySelector("textarea"),suggestions=el.querySelector(".cube-ai-suggestions"),thinking=el.querySelector(".cube-ai-thinking"),send=form.querySelector("button"),expand=el.querySelector(".cube-ai-expand");
  let generation=0,busy=false;
- function message(title,body,rows=[],user=false,source=""){
+ const languageSelect=el.querySelector('.cube-ai-language-select');
+ let language='en';try{language=normalizeLanguage(localStorage.getItem('cube.ai.answerLanguage'));}catch{}
+ languageSelect.value=language;let languageAnimation;
+ languageSelect.onchange=()=>{language=normalizeLanguage(languageSelect.value);try{localStorage.setItem('cube.ai.answerLanguage',language);}catch{}if(typeof languageSelect.animate==='function'&&!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches){languageAnimation?.cancel();languageAnimation=languageSelect.animate([{boxShadow:'0 0 0 0 #f5823780',transform:'scale(1)'},{boxShadow:'0 0 0 4px #f5823720',transform:'scale(1.035)'},{boxShadow:'0 0 0 0 transparent',transform:'scale(1)'}],{duration:360,easing:'ease-out'});}};
+ function message(title,body,rows=[],user=false,source="",alreadyLocalized=false){
+  const T=s=>tr(s,language);if(!user){title=T(title);if(!alreadyLocalized)body=T(body);}
+
   const a=document.createElement("article");a.className=user?"cube-ai-user":"cube-ai-answer";
   const h=document.createElement("strong");h.className="cube-ai-message-title";if(!user){const avatar=document.createElement("span");avatar.className="cube-ai-mini-avatar";avatar.innerHTML=aiIcon("spark");h.append(avatar);}h.append(document.createTextNode(title));a.append(h);
   if(body){const p=document.createElement("p");p.textContent=body;a.append(p);}
-  if(rows.length){const list=document.createElement("ul");for(const row of rows.slice(0,40)){const li=document.createElement("li");li.textContent=row;list.append(li);}a.append(list);if(rows.length>40){const p=document.createElement("p");p.textContent="Showing first 40 of "+rows.length+" records. See reports for all records.";a.append(p);}}
-  if(source){const meta=document.createElement("span");meta.className="cube-ai-source";meta.dataset.source=source.includes("Firebase")?"fleet":source.includes("Gemini")?"gemini":"local";meta.textContent=source;a.append(meta);}
+  if(rows.length){const list=document.createElement("ul");for(const row of rows.slice(0,40)){const li=document.createElement("li");li.textContent=row;list.append(li);}a.append(list);if(rows.length>40){const p=document.createElement("p");p.textContent=T("Showing first 40 of")+" "+rows.length+" "+T("records. See reports for all records.");a.append(p);}}
+  if(source){const meta=document.createElement("span");meta.className="cube-ai-source";meta.dataset.source=source.includes("Firebase")?"fleet":source.includes("Gemini")?"gemini":"local";meta.textContent=T(source);a.append(meta);}
   if(!user&&body){const copy=document.createElement("button");copy.type="button";copy.className="cube-ai-copy";copy.innerHTML=aiIcon("copy")+"<span>Copy</span>";copy.setAttribute("aria-label","Copy answer");copy.onclick=async()=>{try{await navigator.clipboard.writeText([title,body,...rows.slice(0,40)].join("\n"));copy.textContent="Copied";}catch{copy.textContent="Copy unavailable";}};a.append(copy);}
   log.append(a);log.scrollTop=log.scrollHeight;
  }
- function setOpen(open){panel.hidden=!open;launch.setAttribute("aria-expanded",String(open));if(open)input.focus();else launch.focus();}
- function setBusy(value){busy=value;send.disabled=value;thinking.hidden=!value;for(const b of suggestions.querySelectorAll("button"))b.disabled=value;}
+ function setOpen(open){panel.hidden=!open;launch.setAttribute("aria-expanded",String(open));if(open)input.focus({preventScroll:true});else launch.focus({preventScroll:true});}
+ function setBusy(value){busy=value;panel.classList.toggle('cube-ai-busy',value);send.disabled=value;languageSelect.disabled=value;thinking.hidden=!value;for(const b of suggestions.querySelectorAll("button"))b.disabled=value;}
  function populate(){
   log.replaceChildren();suggestions.replaceChildren();input.value="";
   const d=getData();
@@ -158,25 +166,25 @@ export function mountCubeAI(getData,cloudRouter=null,generalAI=null,fleetPlanner
    const exact=Object.values(questions).some(v=>clean(v)===clean(q));
    if(!exact){
     const plan=localPlan(q,scope);
-    if(plan){const result=executePlan(plan,getData(),scope);if(result){message(result.title,result.body,result.rows,false,"Fleet analytics · Firebase records");return;}}
+    if(plan){const result=executePlan(plan,getData(),scope,Date.now(),language);if(result){message(result.title,result.body,result.rows,false,"Fleet analytics · Firebase records",true);return;}}
    }
    if((scope.vehicle||scope.vendor||scope.dates.length||route.kind==="fleet-unknown"||route.kind==="unsupported")&&!exact){
     // Only send a sanitized vocabulary; unknown date ranges, actions and private queries fail closed.
     const sanitized=plannerPrompt(q,scope);
     const allowed=route.kind==="fleet-unknown"&&!scope.dates.length&&!/\b(last|previous|next|yesterday|today|week|year|month|january|february|march|april|may|june|july|august|september|october|november|december|delete|edit|cancel|update|change|create|add|send|close|and|or|average|compare|forecast|predict|idle|empty|gps|payment|outstanding)\b/i.test(q)&&!/\d/.test(q);
-    if(allowed&&fleetPlanner&&sanitized){const proposed=validatePlan(await fleetPlanner(sanitized));if(!current())return;if(proposed&&proposed.period==="thisMonth"){const result=executePlan(proposed,getData(),scope);if(result){message(result.title,result.body,result.rows,false,"Gemini query plan · Firebase records");return;}}}
+    if(allowed&&fleetPlanner&&sanitized){const proposed=validatePlan(await fleetPlanner(sanitized));if(!current())return;if(proposed&&proposed.period==="thisMonth"){const result=executePlan(proposed,getData(),scope,Date.now(),language);if(result){message(result.title,result.body,result.rows,false,"Gemini query plan · Firebase records",true);return;}}}
     message("Fleet question needs clarification","Try a single metric, vehicle or vendor and a supported date range. I will not invent company figures or send your records to Gemini.",[],false,"Fleet analytics · Local");return;
    }
    if(route.kind==="blocked"){message("Private information","Please remove identifiers, credentials or personal details and ask again. No cloud request was sent.",[] ,false,"Privacy protection");return;}
    if(route.kind==="general"){
-    const result=generalAI?await generalAI(q):{ok:false,text:"Gemini is not configured."};
-    if(current())message(result.ok?"CUBE AI":"Gemini unavailable",result.text,[],false,result.ok?"Google Gemini · Free tier":"Connection status");return;
+    const result=generalAI?await generalAI(q,language):{ok:false,text:"Gemini is not configured."};
+    if(current())message(result.ok?"CUBE AI":"Gemini unavailable",result.text,[],false,result.ok?"Google Gemini · Free tier":"Connection status",result.ok);return;
    }
    let intent=route.intent;
    if(route.kind==="fleet-unknown"&&cloudRouter){intent=await cloudRouter(q);if(!current())return;}
    if(!current())return;
    if(!intent){message("Fleet question not supported yet","I can retrieve current-month operations and current vehicle availability. Try asking for monthly margin, active trips or available vehicles. I won't guess your actual figures.",[],false,"Fleet analytics · Local");return;}
-   const result=answer(intent,getData());message(result.title,result.body,result.rows,false,"Fleet analytics · Firebase records");
+   const result=answer(intent,getData(),language);message(result.title,result.body,result.rows,false,"Fleet analytics · Firebase records",true);
   }catch{if(current())message("Unable to answer","Please try again.",[],false,"Connection status");}
   finally{if(token===generation)setBusy(false);}
  }
