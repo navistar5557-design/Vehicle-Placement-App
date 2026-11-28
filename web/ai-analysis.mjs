@@ -30,7 +30,13 @@ const tile = (label, value, detail, tone = "") =>
 
 const insight = (title, metric, detail, link, action, tone = "") =>
   '<article class="analysis-insight ' + tone + '"><h4>' + escape(title) + '</h4><strong>' + escape(metric) +
-  '</strong><p>' + escape(detail) + '</p><a href="#' + link + '">' + escape(action) + ' <span aria-hidden="true">→</span></a></article>';
+  '</strong><p>' + escape(detail) + '</p><button type="button" data-analysis-open="' + link +
+  '">' + escape(action) + ' <span aria-hidden="true">→</span></button></article>';
+
+const reportSections = [
+  ["priorities", "Priorities"], ["alerts", "Trip alerts"], ["visuals", "Charts"],
+  ["operations", "Operations"], ["finance", "Finance"], ["assistant", "Assistant"]
+];
 
 function download(name, content, type) {
   const url = URL.createObjectURL(new Blob([content], { type }));
@@ -49,23 +55,27 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
     <div class="analysis-page">
       <header class="analysis-hero">
         <h2>Fleet performance</h2>
-        <p>Booked freight, trip margins and dispatch priorities in one view.</p>
-        <nav aria-label="AI Analysis sections">
-          <a href="#analysis-priorities">Priorities</a><a href="#analysis-visuals">Charts</a><a href="#analysis-operations">Operations</a><a href="#analysis-finance">Finance</a><a href="#analysis-assistant">Assistant</a>
-        </nav>
+        <div class="analysis-section-controls" role="group" aria-label="Report sections">
+          ${reportSections.map(([id, label]) =>
+            '<button type="button" id="analysis-toggle-' + id + '" aria-controls="analysis-' + id +
+            '" aria-expanded="false">' + label + '</button>').join("")}
+        </div>
       </header>
-      <form class="card analysis-controls analysis-filters" aria-label="Report filters">
+      <details class="card analysis-filter-box">
+      <summary>Filters <span data-output="filter-count"></span></summary>
+      <form class="analysis-controls analysis-filters" aria-label="Report filters">
         <label>From<input name="from" type="date"></label><label>Through<input name="to" type="date"></label>
         <label>Vehicle<select name="vehicle"></select></label><label>Vendor<select name="vendor"></select></label>
         <button type="reset" class="secondary">Clear filters</button>
       </form>
       <p class="analysis-note">Trip dates are placement dates in India time. Financial totals use booked freight and calculated trip expenses, excluding cancellations.</p>
+      </details>
       <p class="analysis-empty" data-output="status" role="status" hidden></p>
       <div class="analysis-metrics" data-output="metrics" aria-label="Key metrics"></div>
-      <section class="card analysis-priorities" id="analysis-priorities"><h3>What needs attention</h3>
+      <section class="card" id="analysis-priorities" aria-labelledby="analysis-toggle-priorities" hidden><h3>What needs attention</h3>
         <div class="analysis-insights" data-output="insights"></div>
       </section>
-      <section class="card" id="analysis-visuals"><h3>Performance charts</h3>
+      <section class="card" id="analysis-visuals" aria-labelledby="analysis-toggle-visuals" hidden><h3>Performance charts</h3>
         <div class="analysis-controls">
           <label>Chart<select id="analysisChart"><option value="daily">Daily booked freight</option><option value="vehicles">Vehicle booked freight</option><option value="margin">Vehicle margin</option><option value="expenses">Expense breakdown</option></select></label>
           <button class="secondary" id="analysisCsv">Download trip CSV</button>
@@ -73,7 +83,7 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
         </div>
         <div data-output="chart"></div>
       </section>
-      <section class="card" id="analysis-operations"><h3>Operations &amp; dispatch</h3>
+      <section class="card" id="analysis-operations" aria-labelledby="analysis-toggle-operations" hidden><h3>Operations &amp; dispatch</h3>
         <div data-output="briefing"></div>
         <div class="analysis-controls">
           <label>Load origin<select id="analysisOrigin"></select></label>
@@ -82,7 +92,7 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
         <div data-output="load"></div>
         <p class="analysis-note">Check vehicles whose last recorded destination matches the load origin first to investigate avoidable empty travel. Confirm current location, distance, capacity and readiness before assignment.</p>
       </section>
-      <section class="card" id="analysis-finance"><h3>Profitability &amp; freight planning</h3>
+      <section class="card" id="analysis-finance" aria-labelledby="analysis-toggle-finance" hidden><h3>Profitability &amp; freight planning</h3>
         <div data-output="finance"></div>
         <div class="analysis-controls">
           <label>Monthly freight target (₹)<input id="analysisTarget" type="number" min="1" step="0.01"></label>
@@ -94,7 +104,7 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
         <details><summary>Vendor performance</summary><div data-output="vendors"></div></details>
         <details open><summary>Route profitability</summary><div data-output="routes"></div></details>
       </section>
-      <section class="card" id="analysis-assistant"><h3>Analysis assistant</h3>
+      <section class="card" id="analysis-assistant" aria-labelledby="analysis-toggle-assistant" hidden><h3>Analysis assistant</h3>
         <p>Ask about freight, profit, expenses or trip status. Follow up with “what about yesterday?” or select a saved question. Answers use the selected report records on this device.</p>
         <form id="analysisAsk" class="analysis-controls"><label>Question<input id="analysisQuestion" required maxlength="240" placeholder="Show total freight this month"></label>
           <button class="primary">Ask</button><button type="button" class="secondary" id="analysisVoice" ${Speech ? "" : "hidden"}>Dictate</button>
@@ -119,14 +129,30 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
           <button class="primary" id="analysisReview" disabled>Review in Create Trip</button>
         </details>
       </section>
-      <section class="card" id="analysis-alerts"><h3>Trip alerts</h3>
+      <section class="card" id="analysis-alerts" aria-labelledby="analysis-toggle-alerts" hidden><h3>Trip alerts</h3>
         <p class="analysis-note">Checked while the report is open. Empty runs above 40 km are flagged and above 100 km marked for review. Open-trip delay uses placement time plus planned hours. Expense comparisons use prior completed trips on the same route.</p>
         <div data-output="alerts"></div>
       </section>
     </div>`;
   const $ = selector => root.querySelector(selector);
   const out = name => $('[data-output="' + name + '"]');
-  const controls = $(".analysis-controls");
+  const controls = $(".analysis-filters");
+  const sectionButtons = [...root.querySelectorAll(".analysis-section-controls button")];
+  let activeSection = "";
+  function showSection(id) {
+    activeSection = id;
+    for (const button of sectionButtons) {
+      const panel = button.getAttribute("aria-controls");
+      button.setAttribute("aria-expanded", String(panel === id));
+      $("#" + panel).hidden = panel !== id;
+    }
+  }
+  for (const button of sectionButtons) {
+    button.onclick = () => {
+      const panel = button.getAttribute("aria-controls");
+      showSection(activeSection === panel ? "" : panel);
+    };
+  }
   const setOptions = (select, values, label) => {
     const markup = options(values, label);
     if (select.dataset.options === markup) return;
@@ -178,6 +204,8 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
     const data = getData();
     $("#analysisImport").hidden = !data.canCreateTrips;
     const scope = filters();
+    const filterCount = Object.values(scope).filter(Boolean).length;
+    out("filter-count").textContent = filterCount ? "(" + filterCount + " active)" : "";
     if (!data.ready || (scope.from && scope.to && scope.from > scope.to)) {
       report = undefined;
       briefing = "";
@@ -185,11 +213,9 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
       delete out("insights").dataset.markup;
       out("status").hidden = false;
       out("status").textContent = data.ready ? "Choose an end date on or after the start date." : "Waiting for confirmed trip and vehicle data from Firebase.";
-      $("#analysis-priorities").hidden = true;
       return;
     }
     out("status").hidden = true;
-    $("#analysis-priorities").hidden = false;
     setOptions(controls.elements.vehicle, [...data.trips.map(t => t.vehicle), ...data.vehicles.map(v => v.number)], "All vehicles");
     setOptions(controls.elements.vendor, data.trips.map(t => t.vendor), "All vendors");
     setOptions($("#analysisOrigin"), [...data.locations, ...data.trips.map(t => t.from)], "Select origin");
@@ -321,10 +347,15 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
   $("#analysisOrigin").onchange = $("#analysisOrder").onchange = renderLoad;
   $("#analysisChart").onchange = renderChart;
   out("insights").addEventListener("click", event => {
-    if (event.target.closest('a[href="#analysis-visuals"]')) {
+    const button = event.target.closest("[data-analysis-open]");
+    if (!button) return;
+    const panel = button.dataset.analysisOpen;
+    if (panel === "analysis-visuals") {
       $("#analysisChart").value = "expenses";
       renderChart();
     }
+    showSection(panel);
+    sectionButtons.find(control => control.getAttribute("aria-controls") === panel)?.focus({ preventScroll: true });
   });
   $("#analysisTarget").oninput = update;
   for (const id of ["#analysisFreight", "#analysisCosts", "#analysisMargin"]) $(id).oninput = quote;
