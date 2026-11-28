@@ -601,25 +601,50 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
         }
     }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(Color.White)) {
-        Image(
-            painter = painterResource(R.drawable.cube_mobile_login_master_hq),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.FillBounds
-        )
-
+    // Use only a clean photograph, never a screenshot with embedded form controls.
+    BoxWithConstraints(
+        Modifier.fillMaxSize()
+            .background(Brush.verticalGradient(listOf(Color(0xFFE6F2FF), Color.White, Color(0xFFEAF1FA))))
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+    ) {
+        val heroHeight = (maxHeight * .29f).coerceIn(140.dp, 245.dp)
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(Modifier.height(18.dp))
+            MockupLoginLogo()
+            Spacer(Modifier.height(7.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                Box(Modifier.width(30.dp).height(2.dp).background(CubeOrange))
+                Spacer(Modifier.width(9.dp))
+                Text("Vehicle Placement", color = CubeBlue, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(9.dp))
+                Box(Modifier.width(30.dp).height(2.dp).background(CubeOrange))
+            }
+            Spacer(Modifier.height(10.dp))
+            Box(Modifier.fillMaxWidth().height(heroHeight)) {
+                Image(
+                    painter = painterResource(R.drawable.cube_login_truck),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.Center
+                )
+                Box(Modifier.fillMaxWidth().height(28.dp).align(Alignment.BottomCenter)
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFFEFF5FC)))))
+            }
+            Spacer(Modifier.height(5.dp))
         Surface(
             modifier = Modifier
-                .align(Alignment.Center)
-                .fillMaxWidth(.82f)
-                .offset(y = maxHeight * .035f),
+                .fillMaxWidth(.92f)
+                .widthIn(max = 460.dp),
             shape = RoundedCornerShape(26.dp),
-            color = Color.White.copy(alpha = .99f),
+            color = Color.White,
             shadowElevation = 10.dp
         ) {
             Column(
-                Modifier.padding(horizontal = 22.dp, vertical = 22.dp),
+                Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text("Sign In", color = Color(0xFF294F8E), fontSize = 27.sp, fontWeight = FontWeight.Black)
@@ -687,8 +712,8 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
                         CircularProgressIndicator(Modifier.size(21.dp), strokeWidth = 2.dp, color = Color.White)
                     } else {
                         Box(Modifier.fillMaxWidth()) {
-                            Text("Login", modifier = Modifier.align(Alignment.Center), fontWeight = FontWeight.Black)
-                            Icon(Icons.Default.ArrowForward, null, modifier = Modifier.align(Alignment.CenterEnd))
+                            Text("Login", modifier = Modifier.align(Alignment.Center), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                            Icon(Icons.Default.ArrowForward, null, tint = Color.White, modifier = Modifier.align(Alignment.CenterEnd))
                         }
                     }
                 }
@@ -744,6 +769,44 @@ private fun CubeLoginScreen(onLoginSuccess: (Boolean) -> Unit) {
                         modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
                     )
                 }
+            }
+        }
+            Spacer(Modifier.height(12.dp))
+            Text(
+                buildAnnotatedString {
+                    append("C.U.B.E. - ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) { append("Customers") }
+                    append(" who inspire us. ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) { append("Universe") }
+                    append(" that enables us. ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) { append("Business partners") }
+                    append(" who support us. ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) { append("Employees") }
+                    append(" who make it all possible.")
+                },
+                modifier = Modifier.fillMaxWidth(.90f),
+                color = CubeText,
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(8.dp))
+            Canvas(Modifier.fillMaxWidth().height(47.dp)) {
+                val w = size.width
+                val h = size.height
+                val blueWave = Path().apply {
+                    moveTo(0f, h * .12f)
+                    cubicTo(w * .28f, h * 1.03f, w * .55f, h * .78f, w, h * .18f)
+                    lineTo(w, h); lineTo(0f, h); close()
+                }
+                drawPath(blueWave, CubeBlue)
+                val orangeWave = Path().apply {
+                    moveTo(w * .18f, h)
+                    cubicTo(w * .48f, h * .95f, w * .72f, h * .12f, w, 0f)
+                    lineTo(w, h); close()
+                }
+                drawPath(orangeWave, CubeOrange)
             }
         }
     }
