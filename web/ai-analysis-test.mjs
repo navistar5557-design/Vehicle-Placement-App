@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { analyze, csvCell, dayKey, freightEstimate, tripDraft } from "./ai-analysis-data.mjs";
+import { analyze, csvCell, dayKey, decisionInsights, freightEstimate, tripDraft } from "./ai-analysis-data.mjs";
 
 const now = Date.parse("2026-11-27T21:00:00Z");
 assert.equal(dayKey(now), "2026-11-28");
@@ -33,6 +33,17 @@ const empty = analyze({ trips: [], vehicles: [{ number: "Never assigned" }], now
 assert.equal(empty.available[0].unassignedHours, null);
 assert.equal(empty.forecast, null);
 assert.equal(empty.alerts.length, 0);
+assert.deepEqual(decisionInsights(empty), {
+  lossTrips: 0, losses: 0, emptyTripsOverTarget: 0, kmAboveTarget: 0, cost: null, costShare: null, route: null
+});
+const decisions = decisionInsights(analyze({ now, trips: [...peers, { ...current, margin: -125 }],
+  vehicles: [], minMargin: 10 }));
+assert.equal(decisions.losses, 125);
+assert.equal(decisions.lossTrips, 1);
+assert.equal(decisions.kmAboveTarget, 61);
+assert.equal(decisions.cost.label, "FASTag");
+assert.equal(decisions.route.label, "A → B");
+assert.equal(decisions.route.margin, 475);
 assert.deepEqual(freightEstimate({ freight: 100, cost: 90, margin: 20 }), { minimum: 112.5, profit: 10, margin: 10 });
 assert.equal(freightEstimate({ freight: 100, cost: 90, margin: 100 }), null);
 assert.deepEqual({ ...tripDraft("vendor: CUBE\r\nfrom=A\nfreight: 1250\ncreatedBy: user\n__proto__: attack") },

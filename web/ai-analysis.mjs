@@ -1,4 +1,4 @@
-import { analyze, csvCell, dayKey, draftFields, freightEstimate, tripDraft } from "./ai-analysis-data.mjs";
+import { analyze, csvCell, dayKey, decisionInsights, draftFields, freightEstimate, tripDraft } from "./ai-analysis-data.mjs?v=2";
 import { extractFleetScope, localPlan, executePlan } from "./fleet-query.mjs";
 
 const escape = value => String(value ?? "").replace(/[&<>"']/g,
@@ -12,12 +12,25 @@ const table = (headers, rows) => rows.length
   : '<p>No matching records.</p>';
 
 function chart(rows, key, format) {
-  const max = Math.max(1, ...rows.map(row => Math.abs(row[key])));
-  return rows.length ? '<div class="analysis-bars">' + rows.map(row =>
-    '<div><span>' + escape(row.label) + '</span><meter min="0" max="' + max + '" value="' +
-    Math.abs(row[key]) + '" aria-label="' + escape(row.label) + '"></meter><strong>' +
-    escape(format(row[key])) + '</strong></div>').join("") + '</div>' : '<p>No matching records.</p>';
+  const max = rows.reduce((largest, row) => Math.max(largest, Math.abs(row[key])), 1);
+  const signed = rows.some(row => row[key] < 0);
+  return rows.length ? '<ul class="analysis-bars' + (signed ? ' is-signed' : '') + '">' + rows.map(row => {
+    const value = row[key];
+    const width = Math.abs(value) / max * (signed ? 50 : 100);
+    const start = signed ? (value < 0 ? 50 - width : 50) : 0;
+    return '<li><span>' + escape(row.label) + '</span><span class="analysis-track" aria-hidden="true"><i class="' +
+      (value < 0 ? 'negative' : '') + '" style="--start:' + start + '%;--width:' + width +
+      '%"></i></span><strong>' + escape(format(value)) + '</strong></li>';
+  }).join("") + '</ul>' : '<p class="analysis-empty">No matching records.</p>';
 }
+
+const tile = (label, value, detail, tone = "") =>
+  '<article class="analysis-metric ' + tone + '"><span>' + escape(label) + '</span><strong>' +
+  escape(value) + '</strong><small>' + escape(detail) + '</small></article>';
+
+const insight = (title, metric, detail, link, action, tone = "") =>
+  '<article class="analysis-insight ' + tone + '"><h4>' + escape(title) + '</h4><strong>' + escape(metric) +
+  '</strong><p>' + escape(detail) + '</p><a href="#' + link + '">' + escape(action) + ' <span aria-hidden="true">→</span></a></article>';
 
 function download(name, content, type) {
   const url = URL.createObjectURL(new Blob([content], { type }));
@@ -34,13 +47,33 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
   let disposed = false;
   root.innerHTML = `
     <div class="analysis-page">
-      <form class="card analysis-controls" aria-label="Report filters">
+      <header class="analysis-hero">
+        <h2>Fleet performance</h2>
+        <p>Booked freight, trip margins and dispatch priorities in one view.</p>
+        <nav aria-label="AI Analysis sections">
+          <a href="#analysis-priorities">Priorities</a><a href="#analysis-visuals">Charts</a><a href="#analysis-operations">Operations</a><a href="#analysis-finance">Finance</a><a href="#analysis-assistant">Assistant</a>
+        </nav>
+      </header>
+      <form class="card analysis-controls analysis-filters" aria-label="Report filters">
         <label>From<input name="from" type="date"></label><label>Through<input name="to" type="date"></label>
         <label>Vehicle<select name="vehicle"></select></label><label>Vendor<select name="vendor"></select></label>
         <button type="reset" class="secondary">Clear filters</button>
       </form>
       <p class="analysis-note">Trip dates are placement dates in India time. Financial totals use booked freight and calculated trip expenses, excluding cancellations.</p>
-      <section class="card"><h3>Operational intelligence</h3>
+      <p class="analysis-empty" data-output="status" role="status" hidden></p>
+      <div class="analysis-metrics" data-output="metrics" aria-label="Key metrics"></div>
+      <section class="card analysis-priorities" id="analysis-priorities"><h3>What needs attention</h3>
+        <div class="analysis-insights" data-output="insights"></div>
+      </section>
+      <section class="card" id="analysis-visuals"><h3>Performance charts</h3>
+        <div class="analysis-controls">
+          <label>Chart<select id="analysisChart"><option value="daily">Daily booked freight</option><option value="vehicles">Vehicle booked freight</option><option value="margin">Vehicle margin</option><option value="expenses">Expense breakdown</option></select></label>
+          <button class="secondary" id="analysisCsv">Download trip CSV</button>
+          <button class="secondary" id="analysisText">Download briefing</button>
+        </div>
+        <div data-output="chart"></div>
+      </section>
+      <section class="card" id="analysis-operations"><h3>Operations &amp; dispatch</h3>
         <div data-output="briefing"></div>
         <div class="analysis-controls">
           <label>Load origin<select id="analysisOrigin"></select></label>
@@ -49,7 +82,7 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
         <div data-output="load"></div>
         <p class="analysis-note">Check vehicles whose last recorded destination matches the load origin first to investigate avoidable empty travel. Confirm current location, distance, capacity and readiness before assignment.</p>
       </section>
-      <section class="card"><h3>Financial intelligence</h3>
+      <section class="card" id="analysis-finance"><h3>Profitability &amp; freight planning</h3>
         <div data-output="finance"></div>
         <div class="analysis-controls">
           <label>Monthly freight target (₹)<input id="analysisTarget" type="number" min="1" step="0.01"></label>
@@ -59,9 +92,9 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
         </div>
         <p data-output="quote" aria-live="polite"></p>
         <details><summary>Vendor performance</summary><div data-output="vendors"></div></details>
-        <details><summary>Route profitability</summary><div data-output="routes"></div></details>
+        <details open><summary>Route profitability</summary><div data-output="routes"></div></details>
       </section>
-      <section class="card"><h3>Analysis assistant</h3>
+      <section class="card" id="analysis-assistant"><h3>Analysis assistant</h3>
         <p>Ask about freight, profit, expenses or trip status. Follow up with “what about yesterday?” or select a saved question. Answers use the selected report records on this device.</p>
         <form id="analysisAsk" class="analysis-controls"><label>Question<input id="analysisQuestion" required maxlength="240" placeholder="Show total freight this month"></label>
           <button class="primary">Ask</button><button type="button" class="secondary" id="analysisVoice" ${Speech ? "" : "hidden"}>Dictate</button>
@@ -86,17 +119,9 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
           <button class="primary" id="analysisReview" disabled>Review in Create Trip</button>
         </details>
       </section>
-      <section class="card"><h3>Smart alerts</h3>
+      <section class="card" id="analysis-alerts"><h3>Trip alerts</h3>
         <p class="analysis-note">Checked while the report is open. Empty runs above 40 km are flagged and above 100 km marked for review. Open-trip delay uses placement time plus planned hours. Expense comparisons use prior completed trips on the same route.</p>
         <div data-output="alerts"></div>
-      </section>
-      <section class="card"><h3>Visual reports</h3>
-        <div class="analysis-controls">
-          <label>Chart<select id="analysisChart"><option value="daily">Daily booked freight</option><option value="vehicles">Vehicle booked freight</option><option value="margin">Vehicle margin</option><option value="expenses">Expense breakdown</option></select></label>
-          <button class="secondary" id="analysisCsv">Download trip CSV</button>
-          <button class="secondary" id="analysisText">Download briefing</button>
-        </div>
-        <div data-output="chart"></div>
       </section>
     </div>`;
   const $ = selector => root.querySelector(selector);
@@ -156,16 +181,52 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
     if (!data.ready || (scope.from && scope.to && scope.from > scope.to)) {
       report = undefined;
       briefing = "";
-      for (const name of ["load","finance","alerts","chart","vendors","routes","answer"]) out(name).textContent = "";
-      out("briefing").textContent = data.ready ? "Choose an end date on or after the start date." : "Waiting for confirmed trip and vehicle data from Firebase.";
+      for (const name of ["load","finance","alerts","chart","vendors","routes","answer","briefing","insights","metrics"]) out(name).textContent = "";
+      delete out("insights").dataset.markup;
+      out("status").hidden = false;
+      out("status").textContent = data.ready ? "Choose an end date on or after the start date." : "Waiting for confirmed trip and vehicle data from Firebase.";
+      $("#analysis-priorities").hidden = true;
       return;
     }
+    out("status").hidden = true;
+    $("#analysis-priorities").hidden = false;
     setOptions(controls.elements.vehicle, [...data.trips.map(t => t.vehicle), ...data.vehicles.map(v => v.number)], "All vehicles");
     setOptions(controls.elements.vendor, data.trips.map(t => t.vendor), "All vendors");
     setOptions($("#analysisOrigin"), [...data.locations, ...data.trips.map(t => t.from)], "Select origin");
     const now = Date.now();
     report = analyze({ ...data, filters: filters(), now, target: Number($("#analysisTarget").value) });
     const { totals, monthFreight, forecast, targetGap } = report;
+    const insights = decisionInsights(report);
+    out("metrics").innerHTML = [
+      tile("Booked freight", totals.count ? rupees(totals.freight) : "—", totals.count + " trips in selection"),
+      tile("Calculated margin", totals.count ? rupees(totals.margin) : "—",
+        totals.marginPercent === null ? "Margin rate unavailable" : totals.marginPercent.toFixed(1) + "% of booked freight",
+        totals.margin < 0 ? "is-risk" : "is-positive"),
+      tile("Past planned window", report.delayed.length, report.active.length + " open trips in current status", report.delayed.length ? "is-risk" : ""),
+      tile("Dispatch candidates", report.available.length, "Active vehicles without open trips")
+    ].join("");
+    const insightCards = [
+      report.delayed.length && insight("Open trips past plan", report.delayed.length + " trips",
+        "Check trip status with dispatch. This flag uses placement time and planned transit hours.",
+        "analysis-alerts", "Review trip alerts", "is-risk"),
+      insights.lossTrips && insight("Loss-making trips", rupees(insights.losses),
+        insights.lossTrips + " trips with negative calculated margins. Review costs and pricing before repeating similar loads.",
+        "analysis-alerts", "Review alerts", "is-risk"),
+      insights.emptyTripsOverTarget && insight("Empty travel above 40 km", insights.kmAboveTarget.toLocaleString("en-IN") + " km",
+        insights.emptyTripsOverTarget + " trips above the recorded origin-distance target. Check same-origin candidates for the next load.",
+        "analysis-operations", "Open load advisor", "is-watch"),
+      insights.cost && insight("Largest expense category", insights.cost.label,
+        rupees(insights.cost.value) + (insights.costShare === null ? "" : " · " + insights.costShare.toFixed(0) + "% of calculated expenses"),
+        "analysis-visuals", "View expense breakdown"),
+      insights.route && insight("Highest total route margin", insights.route.label,
+        rupees(insights.route.margin) + " across " + insights.route.count + " trips. Comparison includes routes with at least 3 trips.",
+        "analysis-finance", "Compare routes", "is-positive")
+    ].filter(Boolean).join("") || '<p class="analysis-empty">' +
+      (totals.count ? "No cost or route insights met the criteria for this selection." : "No booked trips in this selection.") + '</p>';
+    if (out("insights").dataset.markup !== insightCards) {
+      out("insights").innerHTML = insightCards;
+      out("insights").dataset.markup = insightCards;
+    }
     briefing = [
       "Operations briefing · " + dayKey(now) + " IST",
       report.createdToday + " placements today · " + report.completedToday + " completed today · " + report.active.length + " open trips · " + report.delayed.length + " past planned window",
@@ -185,7 +246,8 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
       [row.label, row.count, rupees(row.freight), rupees(row.margin), row.marginPercent === null ? "—" : row.marginPercent.toFixed(1) + "%"]));
     out("vendors").innerHTML = ranking(report.vendors);
     out("routes").innerHTML = ranking(report.routes);
-    out("alerts").innerHTML = table(["Priority", "Vehicle", "Trip", "Reason"], report.alerts.map(row =>
+    const prioritized = [...report.alerts].sort((a,b) => (a.level !== "Review") - (b.level !== "Review"));
+    out("alerts").innerHTML = table(["Priority", "Vehicle", "Trip", "Reason"], prioritized.map(row =>
       [row.level, row.trip?.vehicle || row.vehicle || "", row.trip ? tripId(row.trip) : "", row.reason]));
     renderLoad();
     renderChart();
@@ -258,6 +320,12 @@ export function mountAnalysis(root, getData, reviewDraft, { history, favorites }
   controls.onreset = () => setTimeout(() => { if (!disposed) controls.onchange(); });
   $("#analysisOrigin").onchange = $("#analysisOrder").onchange = renderLoad;
   $("#analysisChart").onchange = renderChart;
+  out("insights").addEventListener("click", event => {
+    if (event.target.closest('a[href="#analysis-visuals"]')) {
+      $("#analysisChart").value = "expenses";
+      renderChart();
+    }
+  });
   $("#analysisTarget").oninput = update;
   for (const id of ["#analysisFreight", "#analysisCosts", "#analysisMargin"]) $(id).oninput = quote;
   $("#analysisMargin").value = getData().minMargin;
