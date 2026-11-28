@@ -64,6 +64,7 @@ let state = {
 let analysisView, analysisDraft;
 let openReportSection = "";
 let reportSearch = "";
+const analysisReport = "ai-analysis";
 let analysisSession = { history: [], favorites: new Set() };
 let cubeAIReady={trips:false,vehicles:false};
 const cloudAuthorized=()=>!!(state.user&&state.profile&&state.role&&state.user.uid===state.profile.uid);
@@ -491,10 +492,8 @@ async function showApp(){
   const versionEl=$("#profileVersion");if(versionEl)versionEl.textContent="v"+WEB_VERSION;
   const newTripBtn=document.querySelector('[data-page="newtrip"]'); if(newTripBtn) newTripBtn.style.display=canCreateTrips()?"":"none";
   ["vehicles","vendors","locations"].forEach(p=>{const b=document.querySelector(`[data-page="${p}"]`);if(b)b.style.display=canManageMasters()?"":"none";});
-  for (const page of ["reports", "analysis"]) {
-    const button = document.querySelector('[data-page="' + page + '"]');
-    if (button) button.style.display = canViewReports() ? "" : "none";
-  }
+  const reportsButton = document.querySelector('[data-page="reports"]');
+  if (reportsButton) reportsButton.style.display = canViewReports() ? "" : "none";
 
   try{
     const migrated=await migrateExistingTripsToV3();
@@ -1208,8 +1207,9 @@ function configureTopbarForPage(page){
 }
 
 function navigate(page){
-  if(["reports","analysis"].includes(page)&&!canViewReports()){toast("Your role does not allow Reports");page="dashboard";}
-  if (page !== "analysis" && analysisView) {
+  if(page==="reports"&&!canViewReports()){toast("Your role does not allow Reports");page="dashboard";}
+  if (openReportSection === analysisReport) openReportSection = "";
+  if (analysisView) {
     analysisView.dispose();
     analysisView = undefined;
   }
@@ -1219,7 +1219,7 @@ function navigate(page){
   syncSidebarLayout();
   if(page!=="dashboard"){
     restoreStandardTopbar();
-    const titles={trips:["Trips","Live trip placement and status"],newtrip:["Create Trip","Add a new vehicle placement"],vehicles:["Vehicles","Vehicle master"],vendors:["Vendors","Vendor master"],locations:["Locations","Location master"],reports:["Reports","Operational and profitability summary"],analysis:["AI Analysis","Fleet operations and profitability"],settings:["Settings","Users, roles and access permissions"]};
+    const titles={trips:["Trips","Live trip placement and status"],newtrip:["Create Trip","Add a new vehicle placement"],vehicles:["Vehicles","Vehicle master"],vendors:["Vendors","Vendor master"],locations:["Locations","Location master"],reports:["Reports","Operational and profitability summary"],settings:["Settings","Users, roles and access permissions"]};
     $("#pageTitle").textContent=titles[page]?.[0]||"CUBE";
     $("#pageSubtitle").textContent=titles[page]?.[1]||"";
   }
@@ -1236,31 +1236,6 @@ function render(){
     root.innerHTML=dashboardHtml();configureTopbarForPage("dashboard");wireDashboard();
   }
   if(state.page==="trips"){root.innerHTML=tripsHtml();wireTrips();}
-  if (state.page === "analysis") {
-    if (!cloudAuthorized() || !canViewReports()) {
-      analysisView?.dispose();
-      analysisView = undefined;
-      root.textContent = "Your role does not allow Reports.";
-      return;
-    }
-    if (analysisView) analysisView.update();
-    else analysisView = mountAnalysis(root, () => ({
-      ready: cloudAuthorized() && canViewReports() && cubeAIReady.trips && cubeAIReady.vehicles,
-      canCreateTrips: cloudAuthorized() && canViewReports() && canCreateTrips(),
-      trips: state.trips.map(t => ({
-        ...t, tripNumber: displayTripNumber(t), isOpen: isTripOpenStatus(t.status),
-        freight: parseMoneyValue(t.freight), fastag: parseMoneyValue(t.fastag),
-        fixedExpenses: parseMoneyValue(t.fixedExpenses),
-        advance: t.advance == null || t.advance === "" ? undefined : parseMoneyValue(t.advance)
-      })),
-      vehicles: state.vehicles, locations: state.locations.map(item => item.name),
-      minMargin: state.minMarginPercent
-    }), draft => {
-      if (!cloudAuthorized() || !canViewReports() || !canCreateTrips()) return;
-      analysisDraft = draft;
-      navigate("newtrip");
-    }, analysisSession);
-  }
   if (state.page === "newtrip" && !(analysisDraft && $("#tripForm"))) {
     root.innerHTML = newTripHtml();
     if (canCreateTrips()) wireNewTrip();
@@ -1269,6 +1244,12 @@ function render(){
   if(state.page==="vendors"){root.innerHTML=masterHtml("vendors");wireMaster("vendors");}
   if(state.page==="locations"){root.innerHTML=masterHtml("locations");wireMaster("locations");}
   if (state.page === "reports") {
+    if (openReportSection === analysisReport && cloudAuthorized() && canViewReports()) {
+      renderAnalysisReport(root);
+      return;
+    }
+    analysisView?.dispose();
+    analysisView = undefined;
     const previousFocus = document.activeElement;
     const focusedControl = root.contains(previousFocus) &&
       (previousFocus.id.startsWith("reports-toggle-") || previousFocus.id === "reportsSearch") ? previousFocus.id : "";
@@ -1287,6 +1268,39 @@ function render(){
     if(state.page==="trips") refreshActiveMarginBreakdown();
     else closeMarginBreakdown();
   }
+}
+
+function renderAnalysisReport(root) {
+  if (analysisView) {
+    analysisView.update();
+    return;
+  }
+  root.innerHTML = `<div class="section-head">
+    <h3>AI Analysis</h3>
+    <button id="reportsBack" class="secondary" type="button">Back to report catalog</button>
+  </div><div id="reportsAnalysisContent"></div>`;
+  $("#reportsBack").onclick = () => {
+    openReportSection = "";
+    render();
+    $("#reportsOpenAnalysis")?.focus({ preventScroll: true });
+  };
+  analysisView = mountAnalysis($("#reportsAnalysisContent"), () => ({
+    ready: cloudAuthorized() && canViewReports() && cubeAIReady.trips && cubeAIReady.vehicles,
+    canCreateTrips: cloudAuthorized() && canViewReports() && canCreateTrips(),
+    trips: state.trips.map(t => ({
+      ...t, tripNumber: displayTripNumber(t), isOpen: isTripOpenStatus(t.status),
+      freight: parseMoneyValue(t.freight), fastag: parseMoneyValue(t.fastag),
+      fixedExpenses: parseMoneyValue(t.fixedExpenses),
+      advance: t.advance == null || t.advance === "" ? undefined : parseMoneyValue(t.advance)
+    })),
+    vehicles: state.vehicles, locations: state.locations.map(item => item.name),
+    minMargin: state.minMarginPercent
+  }), draft => {
+    if (!cloudAuthorized() || !canViewReports() || !canCreateTrips()) return;
+    analysisDraft = draft;
+    navigate("newtrip");
+  }, analysisSession);
+  $("#reportsBack").focus({ preventScroll: true });
 }
 
 function getPeriodRange(filter,customFrom="",customTo=""){
@@ -2572,6 +2586,9 @@ function reportsHtml(){
    <div class="report-directory-group"><h3>Finance</h3>
      ${reportSectionButtons([["vendors", "Vendor performance"], ...(isAdmin() ? [["threshold", "Margin alert threshold"]] : [])], "reports")}
    </div>
+   <div class="report-directory-group"><h3>Analysis</h3>
+     <button type="button" id="reportsOpenAnalysis">AI Analysis</button>
+   </div>
    <p id="reportsNoMatches" role="status" class="analysis-note" hidden>No matching reports.</p>
  </div>
  <div class="report-directory-detail">
@@ -2602,7 +2619,7 @@ function wireReports(root){
    const terms = search.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
    let visible = 0;
    for (const group of groups) {
-     const buttons = [...group.querySelectorAll("[data-report-section]")];
+     const buttons = [...group.querySelectorAll("button")];
      for (const button of buttons) {
        const name = (button.textContent + " " + group.querySelector("h3").textContent).toLowerCase();
        button.hidden = !terms.every(term => name.includes(term));
@@ -2614,6 +2631,11 @@ function wireReports(root){
    $("#reportsNoMatches").hidden = visible > 0;
  }
  search.oninput = () => { reportSearch = search.value; filterReports(); };
+ $("#reportsOpenAnalysis").onclick = () => {
+   if (!cloudAuthorized() || !canViewReports()) return;
+   openReportSection = analysisReport;
+   render();
+ };
  filterReports();
  $("#saveMarginThreshold")?.addEventListener("click",async()=>{
    const value=Number($("#marginThresholdInput")?.value||10);
